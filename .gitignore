@@ -1,0 +1,58 @@
+# ---- Node / Monorepo ----
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# ---- Env / Credenciales ----
+.env
+**/.env
+.env*.local
+**/.env*.local
+
+# ---- Build / Output ----
+dist/
+**/dist/
+build/
+**/build/
+coverage/
+**/coverage/
+
+# ---- Expo / React Native (frontend meClub/) ----
+meClub/.expo/
+meClub/dist/
+meClub/web-build/
+meClub/expo-env.d.ts
+meClub/.metro-health-check*
+meClub/android/
+meClub/ios/
+meClub/ios-build/
+meClub/android-build/
+
+# ---- Backups / DB / Archivos grandes temporales ----
+*.sql
+*.dump
+*.bak
+dump-*.sql
+
+# ---- LLaves / Firmas / Certificados ----
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# ---- SO / Editores ----
+.DS_Store
+Thumbs.db
+*.orig.*
+*.tsbuildinfo
+
+# ---- Otros temporales comunes ----
+*.log
+*.pid
+*.seed

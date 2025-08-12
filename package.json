@@ -1,0 +1,11 @@
+{
+  "name": "meclub-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run start --prefix meclub\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
