@@ -19,7 +19,7 @@ app.use('/api/clubes', clubesRoutes);
 app.use('/api/deportes', deportesRoutes);
 app.use('/api/reservas', reservasRoutes);
 
-// RUTAS ------------------------------------------------------------------------------------------
+// INFO API ------------------------------------------------------------------------------------------
 app.get('/', (req, res) => {
   res.send('API de meClub funcionando correctamente.');
 });
