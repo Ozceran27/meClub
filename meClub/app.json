@@ -24,10 +24,14 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "apiBaseUrl": "http://localhost:3006/api"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

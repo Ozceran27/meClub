@@ -1,3 +1,4 @@
+import '@expo/metro-runtime';
 import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,15 +12,13 @@ const queryClient = new QueryClient();
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    Inter_400Regular, Inter_600SemiBold, Inter_700Bold,
   });
 
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0e131f', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#2b8280" />
+      <View className="flex-1 items-center justify-center bg-mc-bg">
+        <ActivityIndicator />
       </View>
     );
   }

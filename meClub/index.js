@@ -1,7 +1,12 @@
-import 'react-native-gesture-handler';
-import 'react-native-reanimated'; // reanimated debe cargarse muy temprano
+// meClub/meClub/index.js
+import "react-native-gesture-handler";
+import "react-native-reanimated";
+import { registerRootComponent } from "expo";
+import { Platform } from "react-native";
+import App from "./App";
 
-import { registerRootComponent } from 'expo';
-import App from './App';
+if (Platform.OS === 'web') {
+  require('./global.css');
+}
 
 registerRootComponent(App);
