@@ -1,11 +1,13 @@
 module.exports = function (api) {
-  const isWeb = api.caller((caller) => caller && caller.platform === "web");
+  const isWeb = api.caller((caller) => caller && caller.platform === 'web');
 
   return {
-    presets: ["babel-preset-expo"],
+    presets: [
+      'babel-preset-expo',
+      'nativewind/babel',
+    ],
     plugins: [
-      "nativewind/babel",
-      !isWeb && "react-native-reanimated/plugin", // nunca en web y SIEMPRE al final
+      !isWeb && 'react-native-reanimated/plugin',
     ].filter(Boolean),
   };
 };

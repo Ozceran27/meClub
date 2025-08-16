@@ -52,7 +52,7 @@ Thumbs.db
 *.orig.*
 *.tsbuildinfo
 
-# ---- Otros temporales comunes ----
+# ---- Otros temporales ----
 *.log
 *.pid
 *.seed

@@ -29,12 +29,14 @@ export default function LandingScreen() {
             style={{ fontFamily: 'Inter_700Bold' }}
             className="text-mc-text text-2xl"
           >
-            me<Text className="text-mc-info">Club</Text>
+            me<Text className="text-mc-warn">Club</Text>
           </Text>
 
           <Pressable
             onPress={() => nav.navigate('Login')}
-            className="hidden md:flex bg-transparent px-4 py-2 rounded-xl border border-mc-stroke"
+            className="hidden md:flex bg-transparent px-4 py-2 rounded-xl border border-mc-stroke
+                       transition-all duration-200 hover:border-mc-info hover:shadow-[0_0_24px_rgba(102,194,255,0.25)]
+                       focus:outline-none focus-visible:ring-2 focus-visible:ring-mc-info/60"
           >
             <Text style={{ fontFamily: 'Inter_600SemiBold' }} className="text-mc-text">Iniciar sesión</Text>
           </Pressable>
@@ -58,15 +60,20 @@ export default function LandingScreen() {
                 style={{ fontFamily: 'Inter_400Regular' }}
                 className="text-mc-textDim mt-4 text-base md:text-lg"
               >
-                Descubrí canchas cercanas, coordiná con tu equipo y seguí tus partidos.
-                Tu juego, tus reglas — estilo <Text className="text-mc-warn">Football Manager</Text>.
+                Descubrí <Text className="text-mc-warn">canchas</Text> cercanas, coordiná con tu 
+                <Text className="text-mc-warn"> equipo</Text> y seguí tus <Text className="text-mc-warn">partidos</Text>.
+                — Tu juego, tus reglas — 
               </Text>
 
               {/* CTA */}
               <View className="flex-row gap-3 mt-8">
                 <Pressable
                   onPress={() => nav.navigate('Login')}
-                  className="bg-mc-primary px-6 py-3 rounded-xl2 shadow-soft"
+                  className="bg-mc-primary px-6 py-3 rounded-xl2 shadow-soft
+                             transition-transform duration-150 hover:-translate-y-0.5
+                             hover:shadow-[0_12px_32px_rgba(43,130,128,0.35)]
+                             focus:outline-none focus-visible:ring-2 focus-visible:ring-mc-primary/60"
+                  android_ripple={{ color: 'rgba(43,130,128,0.2)' }}
                 >
                   <Text style={{ fontFamily: 'Inter_600SemiBold' }} className="text-white text-base">
                     Empezar ahora
@@ -75,7 +82,10 @@ export default function LandingScreen() {
 
                 <Pressable
                   onPress={() => nav.navigate('Login')}
-                  className="px-6 py-3 rounded-xl2 border border-mc-stroke"
+                  className="px-6 py-3 rounded-xl2 border border-mc-stroke
+                             transition-all duration-200
+                             hover:border-mc-info hover:shadow-[0_0_24px_rgba(102,194,255,0.25)]
+                             focus:outline-none focus-visible:ring-2 focus-visible:ring-mc-info/60"
                 >
                   <Text style={{ fontFamily: 'Inter_600SemiBold' }} className="text-mc-text text-base">
                     Iniciar sesión
@@ -85,35 +95,20 @@ export default function LandingScreen() {
 
               {/* Bullets */}
               <View className="flex-row gap-6 mt-8 flex-wrap">
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="time-outline" size={20} color="#66c2ff" />
-                  <Text style={{ fontFamily: 'Inter_400Regular' }} className="text-mc-textDim">
-                    Reservá en segundos
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="account-group-outline" size={20} color="#2b8280" />
-                  <Text style={{ fontFamily: 'Inter_400Regular' }} className="text-mc-textDim">
-                    Armá tu meEquipo
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <MaterialCommunityIcons name="camera-outline" size={20} color="#dba741" />
-                  <Text style={{ fontFamily: 'Inter_400Regular' }} className="text-mc-textDim">
-                    Grabá con meCam
-                  </Text>
-                </View>
+                <Row icon={<Ionicons name="time-outline" size={20} color="#66c2ff" />} text="Reservá en segundos" />
+                <Row icon={<MaterialCommunityIcons name="account-group-outline" size={20} color="#66c2ff" />} text="Armá tu Equipo" />
+                <Row icon={<MaterialCommunityIcons name="camera-outline" size={20} color="#dba741" />} text="Grabá con meCam" />
               </View>
             </View>
 
-            {/* Card ilustrativa (placeholder) */}
+            {/* Card ilustrativa */}
             <View className="w-full md:w-[40%] mt-10 md:mt-0">
               <View className="bg-mc-surface rounded-xl2 p-5 border border-mc-stroke shadow-soft">
                 <Text style={{ fontFamily: 'Inter_600SemiBold' }} className="text-mc-text mb-3">
                   Próximos pasos
                 </Text>
                 <View className="gap-3">
-                  <Row icon={<Ionicons name="checkmark-circle" size={18} color="#66c2ff" />} text="Elegí deporte y ubicación" />
+                  <Row icon={<Ionicons name="checkmark-circle" size={18} color="#2b8280" />} text="Elegí deporte y ubicación" />
                   <Row icon={<Ionicons name="checkmark-circle" size={18} color="#2b8280" />} text="Seleccioná horario disponible" />
                   <Row icon={<Ionicons name="checkmark-circle" size={18} color="#dba741" />} text="Confirmá y ¡a jugar!" />
                 </View>
@@ -125,7 +120,7 @@ export default function LandingScreen() {
         {/* Footer */}
         <View className="py-6 items-center">
           <Text style={{ fontFamily: 'Inter_400Regular' }} className="text-mc-textDim">
-            © {new Date().getFullYear()} meClub — Posadas, Misiones
+            © {new Date().getFullYear()} meClub — Posadas, Misiones, Argentina.
           </Text>
         </View>
       </View>

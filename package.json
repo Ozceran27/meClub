@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run start --prefix meclub\""
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run web --prefix meClub\"",
+    "dev:native": "concurrently \"npm run dev --prefix backend\" \"npm run start --prefix meClub\""
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^9.1.2"
   }
 }
