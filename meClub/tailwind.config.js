@@ -22,12 +22,17 @@ module.exports = {
       },
       borderRadius: {
         xl2: '1.25rem',
+        xl: "14px",
       },
       boxShadow: {
         soft: '0 8px 24px rgba(0,0,0,0.25)',
+        "card": "0 10px 30px rgba(0,0,0,0.25)",
       },
       fontFamily: {
-        inter: ['Inter_400Regular', 'Inter_600SemiBold', 'Inter_700Bold'],
+        sans: ["Inter", "system-ui", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+      },
+      spacing: {
+        18: "4.5rem",
       },
     },
   },

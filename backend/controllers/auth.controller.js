@@ -1,7 +1,15 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
+
+// === TOKENS DE RESET EN MEMORIA (DEV) =========================
+// Para producción, persistir en DB (tabla password_resets) y expirar.
+const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
+const resetTokens = new Map(); // tokenHash -> { userId, exp }
+const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
+// =============================================================
 
 exports.register = async (req, res) => {
   const {
@@ -83,6 +91,70 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en login:', error);
+    res.status(500).json({ mensaje: 'Error en el servidor' });
+  }
+};
+
+// ====== Solicitud de reseteo ===========================
+exports.forgot = async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ mensaje: 'Email requerido' });
+
+  try {
+    const usuarios = await UsuariosModel.buscarPorEmail(email);
+    if (usuarios.length === 0) {
+      return res.json({ mensaje: 'Si el email existe, enviamos instrucciones' });
+    }
+
+    const user = usuarios[0];
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    resetTokens.set(tokenHash, { userId: user.usuario_id, exp: Date.now() + RESET_TTL_MS });
+
+    const frontBase = process.env.FRONT_BASE_URL || 'http://localhost:19006';
+    const link = `${frontBase}/reset?token=${rawToken}`;
+
+    // En producción = enviar email. En dev devuelve el token/link.
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[meClub] Link de reseteo:', link);
+      return res.json({ mensaje: 'Instrucciones enviadas', token: rawToken, link });
+    }
+    return res.json({ mensaje: 'Instrucciones enviadas' });
+  } catch (error) {
+    console.error('Error en forgot:', error);
+    res.status(500).json({ mensaje: 'Error en el servidor' });
+  }
+};
+
+// ====== Reset con token ================================
+exports.reset = async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) {
+    return res.status(400).json({ mensaje: 'Token y nueva contraseña requeridos' });
+  }
+
+  try {
+    const tokenHash = hashToken(token);
+    const entry = resetTokens.get(tokenHash);
+    if (!entry || entry.exp < Date.now()) {
+      resetTokens.delete(tokenHash);
+      return res.status(400).json({ mensaje: 'Token inválido o expirado' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    // IMPORTANTE: tu modelo debería exponer actualizarContrasena(usuario_id, contrasenaHasheada)
+    if (typeof UsuariosModel.actualizarContrasena !== 'function') {
+      console.error('Falta UsuariosModel.actualizarContrasena(usuario_id, hash)');
+      return res.status(500).json({ mensaje: 'No se pudo actualizar la contraseña (método inexistente)' });
+    }
+
+    await UsuariosModel.actualizarContrasena(entry.userId, hashed);
+    resetTokens.delete(tokenHash);
+
+    return res.json({ mensaje: 'Contraseña actualizada' });
+  } catch (error) {
+    console.error('Error en reset:', error);
     res.status(500).json({ mensaje: 'Error en el servidor' });
   }
 };

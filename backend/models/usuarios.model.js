@@ -3,9 +3,10 @@ const db = require('../config/db');
 const UsuariosModel = {
   buscarPorEmail: async (email) => {
     const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-    return rows; // array
+    return rows;
   },
 
+  // Crear usuario
   crearUsuario: async ({
     nombre,
     apellido,
@@ -39,6 +40,23 @@ const UsuariosModel = {
       [usuario_id]
     );
     return rows[0] || null;
+  },
+
+  // Actualiza la contraseña (hash ya generado) por usuario_id
+  actualizarContrasena: async (usuario_id, contrasenaHash) => {
+    const [result] = await db.query(
+      'UPDATE usuarios SET contrasena = ? WHERE usuario_id = ?',
+      [contrasenaHash, usuario_id]
+    );
+    return result.affectedRows === 1;
+  },
+
+  actualizarContrasenaPorEmail: async (email, contrasenaHash) => {
+    const [result] = await db.query(
+      'UPDATE usuarios SET contrasena = ? WHERE email = ?',
+      [contrasenaHash, email]
+    );
+    return result.affectedRows === 1;
   },
 };
 

@@ -82,10 +82,12 @@ export default function LandingScreen() {
 
                 <Pressable
                   onPress={() => nav.navigate('Login')}
-                  className="px-6 py-3 rounded-xl2 border border-mc-stroke
-                             transition-all duration-200
-                             hover:border-mc-info hover:shadow-[0_0_24px_rgba(102,194,255,0.25)]
-                             focus:outline-none focus-visible:ring-2 focus-visible:ring-mc-info/60"
+                  className="
+                    px-6 py-3 rounded-xl2 border border-mc-stroke
+                    transition-all duration-200
+                    hover:border-mc-info hover:shadow-[0_0_24px_rgba(102,194,255,0.25)]
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-mc-info/60
+                  "
                 >
                   <Text style={{ fontFamily: 'Inter_600SemiBold' }} className="text-mc-text text-base">
                     Iniciar sesión
