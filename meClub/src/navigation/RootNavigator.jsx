@@ -1,70 +1,53 @@
-// src/navigation/RootNavigator.jsx
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, ActivityIndicator, Text, Pressable } from 'react-native';
-import LandingScreen   from '../screens/LandingScreen';
-import LoginScreen     from '../screens/LoginScreen';
-import DashboardShell  from '../screens/DashboardShell';
-import { useAuth }     from '../features/auth/useAuth';
-import ProtectedClub   from './ProtectedClub';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import LandingScreen from '../screens/LandingScreen';
+import LoginScreen from '../screens/LoginScreen';
+import DashboardShell from '../screens/DashboardShell';
+import { useAuth } from './features/auth/useAuth';
 
-const Stack = createNativeStackNavigator();
+function ProtectedClub({ children }) {
+  const { isLogged, isClub, loading } = useAuth();
+  if (loading) return <View style={{flex:1,alignItems:'center',justifyContent:'center'}}><ActivityIndicator /></View>;
+  if (!isLogged) return <Navigate to="/login" replace />;
+  if (!isClub)   return <Navigate to="/" replace />;
+  return children;
+}
 
-function isClubUser(user) {
-  const value = String(user?.rol ?? user?.role ?? '').toLowerCase();
-  return value === 'club' || value === 'clubes';
+function LogoutNow() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => {
+    (async () => {
+      await logout();
+      navigate('/login', { replace: true });
+    })();
+  }, []);
+  return <View style={{flex:1,alignItems:'center',justifyContent:'center'}}><ActivityIndicator /></View>;
 }
 
 export default function RootNavigator() {
-  const { user, ready, logout } = useAuth();
-
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0e131f', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#2b8280" />
-      </View>
-    );
-  }
-
-  const allowClub = user && isClubUser(user);
-
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-        {!allowClub ? (
-          <>
-            {}
-            <Stack.Screen name="Landing" component={LandingScreen} />
-            <Stack.Screen name="Login"   component={LoginScreen} />
-            {/* Una pantalla mínima por si el usuario logueado no es club */}
-            {user ? (
-              <Stack.Screen name="NoAutorizado">
-                {() => (
-                  <View style={{ flex: 1, backgroundColor: '#0e131f', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-                    <Text style={{ color:'#dbe7ff', fontSize:18, fontWeight:'800' }}>Tu cuenta no es de Club</Text>
-                    <Text style={{ color:'#8ca0b3', textAlign:'center' }}>
-                      Este panel es exclusivo para clubes. Cierra sesión para acceder con otra cuenta
-                      o vuelve a la página principal.
-                    </Text>
-                    <Pressable onPress={logout} style={{ paddingVertical:10, paddingHorizontal:16, borderRadius:10, borderWidth:1, borderColor:'#24334d' }}>
-                      <Text style={{ color:'#e87979', fontWeight:'700' }}>Cerrar sesión</Text>
-                    </Pressable>
-                  </View>
-                )}
-              </Stack.Screen>
-            ) : null}
-          </>
-        ) : (
-          // Solo clubes
-          <Stack.Screen name="Dashboard">
-            {() => (
-              <ProtectedClub>
-                <DashboardShell />
-              </ProtectedClub>
-            )}
-          </Stack.Screen>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+
+        {/* Dashboard Club */}
+        <Route
+          path="/dashboard/*"
+          element={
+            <ProtectedClub>
+              <DashboardShell />
+            </ProtectedClub>
+          }
+        />
+
+        <Route path="/logout" element={<LogoutNow />} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
