@@ -1,69 +1,92 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+// src/features/auth/useAuth.js
+import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import api from '../../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from '../../lib/api';
 
 const AuthCtx = createContext(null);
-export const useAuth = () => useContext(AuthCtx);
+export const useAuth = () => {
+  const ctx = useContext(AuthCtx);
+  if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>');
+  return ctx;
+};
 
-const TOKEN_KEY = 'meclub_token';
-const USER_KEY  = 'meclub_user';
+const tokenKey = 'mc_token';
+const userKey  = 'mc_user';
+
+// almacenamiento híbrido (SecureStore -> localStorage -> AsyncStorage)
+const storage = {
+  async getItem(k) {
+    try { const v = await SecureStore.getItemAsync(k); if (v != null) return v; } catch {}
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      const v = localStorage.getItem(k);
+      if (v != null) return v;
+    }
+    return AsyncStorage.getItem(k);
+  },
+  async setItem(k, v) {
+    try { await SecureStore.setItemAsync(k, v); } catch {}
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') localStorage.setItem(k, v);
+    await AsyncStorage.setItem(k, v);
+  },
+  async delItem(k) {
+    try { await SecureStore.deleteItemAsync(k); } catch {}
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') localStorage.removeItem(k);
+    await AsyncStorage.removeItem(k);
+  },
+};
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(null);
   const [user,  setUser]  = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
-  // Cargar sesión
+  // hidratar sesión
   useEffect(() => {
     (async () => {
       try {
-        const t = await SecureStore.getItemAsync(TOKEN_KEY);
-        const u = await SecureStore.getItemAsync(USER_KEY);
-        if (t) setToken(t);
-        if (u) setUser(JSON.parse(u));
-      } catch {}
-      setLoading(false);
+        const t = await storage.getItem(tokenKey);
+        const u = await storage.getItem(userKey);
+        if (t && u) setUser(JSON.parse(u));
+      } finally {
+        setReady(true);
+      }
     })();
   }, []);
 
-  // Header auth
-  useEffect(() => {
-    if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
-    else delete api.defaults.headers.common.Authorization;
-  }, [token]);
-
   const login = async ({ email, password }) => {
-    const { data } = await api.post('/auth/login', { email, password });
-    const t = data?.token;
-    const u = data?.user;
-    if (!t || !u) throw new Error('Respuesta de login inválida');
+    // Tu backend espera { email, contrasena }
+    const data = await api.post('/auth/login', { email, contrasena: password });
+    // Respuesta esperada: { token, usuario }
+    const { token, usuario } = data || {};
+    if (!token || !usuario) throw new Error('Respuesta de login inválida');
 
-    setToken(t);
-    setUser(u);
-    await SecureStore.setItemAsync(TOKEN_KEY, t);
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(u));
-    return u;
+    await storage.setItem(tokenKey, token);
+    await storage.setItem(userKey,  JSON.stringify(usuario));
+    setUser(usuario);
+    return usuario;
   };
 
   const logout = async () => {
-    try {
-      setToken(null);
-      setUser(null);
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-      await SecureStore.deleteItemAsync(USER_KEY);
-    } finally {
-      // Redirección robusta en Web (evita quedarse en /dashboard)
-      if (Platform.OS === 'web') window.location.assign('/login');
+    await storage.delItem(tokenKey);
+    await storage.delItem(userKey);
+    setUser(null);
+    // Redirección robusta en Web: evita que el stack quede en /dashboard
+    if (Platform.OS === 'web') {
+      try { window.location.assign('/login'); } catch {}
     }
   };
 
+  const isClub = !!user && String(user.rol ?? user.role ?? '').toLowerCase().startsWith('club');
+
   const value = useMemo(() => ({
-    token, user, loading, login, logout,
-    isLogged: !!token,
-    // soporto user.rol o user.role (según backend)
-    isClub: !!user && (user.rol === 'club' || user.role === 'club'),
-  }), [token, user, loading]);
+    user,
+    ready,
+    isLogged: !!user,
+    isClub,
+    login,
+    logout,
+  }), [user, ready, isClub]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
