@@ -1,3 +1,4 @@
+// src/screens/DashboardShell.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -5,8 +6,8 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
 
-const NAV_BG = 'bg-[#0F172A]/80'; // mismo tono para sidebar y topbar
-const PANEL_BG = 'bg-[#0B1222]/60'; // tarjetas oscuras semi
+const NAV_BG = 'bg-[#0F172A]/80';          // sidebar/topbar (igual que antes)
+const PANEL_BG = 'bg-[#0F172A]/90';        // cards: mismo tono que nav, un pelín más sólido
 
 function SidebarItem({ icon, label, active, onPress }) {
   return (
@@ -14,7 +15,7 @@ function SidebarItem({ icon, label, active, onPress }) {
       onPress={onPress}
       className={`w-full rounded-xl px-3 py-3 mb-1.5 ${
         active ? 'bg-white/5' : 'bg-transparent'
-      } hover:bg-white/10`} // <-- hover real en web
+      } hover:bg-white/10`}
       style={({ pressed }) => ({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
@@ -24,7 +25,7 @@ function SidebarItem({ icon, label, active, onPress }) {
         <Text
           className={`text-[15px] leading-5 ${
             active ? 'text-white' : 'text-white/80'
-          } hover:text-white`} // <-- texto se ilumina al hover
+          } hover:text-white`}
           numberOfLines={1}
         >
           {label}
@@ -41,7 +42,7 @@ export default function DashboardShell({ children }) {
 
   const [activeKey, setActiveKey] = useState('inicio');
 
-  // Datos “reales” con fallback silencioso (no cambia estética)
+  // Datos “reales” con fallback silencioso
   const [summary, setSummary] = useState({
     courtsAvailable: 3,
     reservasHoy: 8,
@@ -88,7 +89,6 @@ export default function DashboardShell({ children }) {
     { key: 'soporte', label: 'Soporte', icon: <Ionicons name="help-circle-outline" size={18} color="#9FB3C8" /> },
   ];
 
-  // Mapa preparado para cuando enchufes rutas reales
   const routeMap = {
     inicio: 'Dashboard',
     buzon: 'Dashboard',
@@ -123,6 +123,8 @@ export default function DashboardShell({ children }) {
     return String(n).split(' ')[0];
   }, [user]);
 
+const cardCls = `${PANEL_BG} rounded-2xl p-5 shadow-[0_2px_8px_rgba(148,163,184,0.12),0_2px_8px_rgba(255,255,255,0.06)]`;
+
   return (
     <View className="flex-1 bg-[#0A0F1D]">
       {/* Topbar */}
@@ -138,7 +140,7 @@ export default function DashboardShell({ children }) {
 
         <Pressable
           onPress={handleLogout}
-          className="h-10 w-10 rounded-full overflow-hidden border border-white/10 hover:bg-white/5" // hover sutil avatar
+          className="h-10 w-10 rounded-full overflow-hidden border border-white/10 hover:bg-white/5"
         >
           <Image
             source={{ uri: 'https://i.pravatar.cc/100?img=12' }}
@@ -191,19 +193,17 @@ export default function DashboardShell({ children }) {
           <View className="gap-6">
             {/* fila 1 */}
             <View className="flex-row gap-6">
-              <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
+              <View className={`flex-1 ${cardCls}`}>
                 <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">MIS CANCHAS</Text>
                 <Text className="text-white text-[32px] mt-2 font-bold">
                   {summary.courtsAvailable} disponibles
                 </Text>
-
-                {/* botón con relleno y hover (como en Landing) */}
                 <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30">
                   <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
                 </Pressable>
               </View>
 
-              <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
+              <View className={`flex-1 ${cardCls}`}>
                 <Text className="text-amber-300 font-semibold tracking-widest text-[13px]">PRÓXIMO EVENTO</Text>
                 <Text className="text-white text-[28px] mt-2 font-semibold">Torneo de Primavera</Text>
                 <Text className="text-white/60 mt-2">martes, 30 de abril de 2024</Text>
@@ -212,20 +212,18 @@ export default function DashboardShell({ children }) {
 
             {/* fila 2 */}
             <View className="flex-row gap-6">
-              <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
+              <View className={`flex-1 ${cardCls}`}>
                 <Text className="text-sky-300 font-semibold tracking-widest text-[13px]">RESERVAS</Text>
                 <Text className="text-white text-[32px] mt-2 font-bold">
                   {summary.reservasHoy} hoy
                 </Text>
                 <Text className="text-white/60 mt-1">+{summary.reservasSemana} esta semana</Text>
-
-                {/* botón con relleno y hover */}
                 <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25">
                   <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
                 </Pressable>
               </View>
 
-              <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
+              <View className={`flex-1 ${cardCls}`}>
                 <Text className="text-emerald-300 font-semibold tracking-widest text-[13px]">ECONOMÍA</Text>
                 <Text className="text-white text-[32px] mt-2 font-bold">
                   ${Number(summary.economiaMes || 0).toLocaleString('es-AR')} este mes
@@ -236,7 +234,7 @@ export default function DashboardShell({ children }) {
 
             {/* fila 3 */}
             <View className="flex-row gap-6">
-              <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
+              <View className={`flex-1 ${cardCls}`}>
                 <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">EVENTOS</Text>
                 <View className="mt-3 flex-row items-center justify-between">
                   <Text className="text-white text-[24px] font-semibold">meEquipo</Text>
@@ -244,7 +242,7 @@ export default function DashboardShell({ children }) {
                 </View>
               </View>
 
-              <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
+              <View className={`flex-1 ${cardCls}`}>
                 <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">EVENTOS</Text>
                 <View className="mt-3 flex-row items-center justify-between">
                   <Text className="text-white text-[24px] font-semibold">Ranking</Text>
