@@ -1,4 +1,3 @@
-// src/screens/DashboardShell.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -6,8 +5,8 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
 
-const NAV_BG = 'bg-[#0F172A]/80';          // sidebar/topbar (igual que antes)
-const PANEL_BG = 'bg-[#0F172A]/90';        // cards: mismo tono que nav, un pelín más sólido
+const NAV_BG = 'bg-[#0F172A]/80';
+const PANEL_BG = 'bg-[#0F172A]/90';
 
 function SidebarItem({ icon, label, active, onPress }) {
   return (
@@ -39,10 +38,7 @@ export default function DashboardShell({ children }) {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-
   const [activeKey, setActiveKey] = useState('inicio');
-
-  // Datos “reales” con fallback silencioso
   const [summary, setSummary] = useState({
     courtsAvailable: 3,
     reservasHoy: 8,
