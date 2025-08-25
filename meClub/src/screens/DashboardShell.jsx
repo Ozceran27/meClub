@@ -1,26 +1,31 @@
-// src/features/dashboard/DashboardShell.jsx
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useAuth } from '..//features/auth/useAuth';
+import { getClubSummary } from '..//lib/api';
 
-const NAV_BG = 'bg-[#0F172A]/80'; // mismo tono para sidebar y topbar (slate-900 con opacidad)
-const PANEL_BG = 'bg-[#0B1222]/60'; // tarjetas oscuras semi
+const NAV_BG = 'bg-[#0F172A]/80';
+const PANEL_BG = 'bg-[#0B1222]/60';
 
 const SidebarItem = ({ icon, label, active, onPress }) => (
   <Pressable
     onPress={onPress}
-    className={`w-full rounded-xl px-3 py-3 mb-1.5
-                ${active ? 'bg-white/5' : 'bg-transparent'}
-               `}
-    style={{}}
+    className={`w-full rounded-xl px-3 py-3 mb-1.5 ${active ? 'bg-white/5' : 'bg-transparent'}`}
+    // hover/active (web) sin cambiar tu look & feel
+    style={({ hovered, pressed }) => ({
+      backgroundColor: active
+        ? 'rgba(255,255,255,0.05)'
+        : hovered
+        ? 'rgba(255,255,255,0.03)'
+        : 'transparent',
+      transform: [{ scale: pressed ? 0.98 : 1 }],
+    })}
   >
     <View className="flex-row items-center justify-start gap-3">
       {icon}
       <Text
-        className={`text-[15px] leading-5 ${
-          active ? 'text-white' : 'text-white/80'
-        }`}
+        className={`text-[15px] leading-5 ${active ? 'text-white' : 'text-white/80'}`}
         numberOfLines={1}
       >
         {label}
@@ -29,12 +34,53 @@ const SidebarItem = ({ icon, label, active, onPress }) => (
   </Pressable>
 );
 
-export default function DashboardShell({ children, user }) {
+export default function DashboardShell({ children }) {
   const navigation = useNavigation();
   const route = useRoute();
   const current = route?.name || 'inicio';
+  const { user, logout } = useAuth();
 
-  // Lista de items (solo Club). Si luego cambian rutas, edita "key" y navegación.
+  // resumen "real" con fallback
+  const [summary, setSummary] = useState({
+    courtsAvailable: 3,
+    reservasHoy: 8,
+    reservasSemana: 24,
+    economiaMes: 14520,
+  });
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await getClubSummary({
+          clubId: user?.clubId || user?.club?.id,
+        });
+        if (alive && data) setSummary(data);
+      } catch {
+        // silencioso: ya tenemos fallback arriba
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [user?.clubId, user?.club?.id]);
+
+  // CERRAR SESIÓN
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      if (typeof window !== 'undefined') {
+        window.location.assign('/');
+      } else {
+        try {
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        } catch {}
+      }
+    }
+  };
+
+  // Lista de items
   const items = [
     { key: 'inicio', label: 'Inicio', icon: <Ionicons name="home-outline" size={18} color="#9FB3C8" /> },
     { key: 'buzon', label: 'Buzón', icon: <Ionicons name="mail-outline" size={18} color="#9FB3C8" /> },
@@ -51,44 +97,72 @@ export default function DashboardShell({ children, user }) {
     { key: 'soporte', label: 'Soporte', icon: <Ionicons name="help-circle-outline" size={18} color="#9FB3C8" /> },
   ];
 
-  const go = (key) => {
-    // ajusta a tus rutas reales
-    if (key === 'inicio') navigation.navigate('DashboardClubHome');
-    else navigation.navigate('DashboardClubHome'); // placeholder, luego mapearás a sus pantallas
+  // preparado para rutas reales sin romper lo actual
+  const routeMap = {
+    inicio: 'Dashboard',
+    buzon: 'Dashboard',
+    'mis-canchas': 'Dashboard',
+    reservas: 'Dashboard',
+    horarios: 'Dashboard',
+    tarifas: 'Dashboard',
+    grabaciones: 'Dashboard',
+    eventos: 'Dashboard',
+    'me-equipo': 'Dashboard',
+    ranking: 'Dashboard',
+    conciliar: 'Dashboard',
+    ajustes: 'Dashboard',
+    soporte: 'Dashboard',
   };
+
+  const go = (key) => {
+    navigation.navigate(routeMap[key] || 'Dashboard');
+  };
+
+  const today = useMemo(() => {
+    try {
+      return new Date().toLocaleDateString('es-AR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const firstName = useMemo(() => {
+    const n = user?.nombre || user?.name || 'Usuario';
+    return String(n).split(' ')[0];
+  }, [user]);
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
       {/* Topbar */}
       <View className={`${NAV_BG} h-16 w-full flex-row items-center px-6`}>
         <View className="flex-1 flex-row items-center gap-3">
-          {/* Logo + nombre club */}
           <View className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-400/60 to-blue-500/60 items-center justify-center">
             <Ionicons name="tennisball-outline" size={18} color="white" />
           </View>
-          <Text className="text-white text-[16px] font-semibold tracking-wide">Club Centro</Text>
+          <Text className="text-white text-[16px] font-semibold tracking-wide">
+            {user?.clubNombre || 'Club Centro'}
+          </Text>
         </View>
 
-        {/* Perfil */}
-        <View className="h-10 w-10 rounded-full overflow-hidden border border-white/10">
-          {/* avatar demo */}
+        <Pressable onPress={handleLogout} className="h-10 w-10 rounded-full overflow-hidden border border-white/10">
           <Image
             source={{ uri: 'https://i.pravatar.cc/100?img=12' }}
             className="h-full w-full"
             resizeMode="cover"
           />
-        </View>
+        </Pressable>
       </View>
 
       {/* Body */}
       <View className="flex-1 flex-row">
         {/* SIDEBAR */}
         <View className={`${NAV_BG} w-[240px] px-3 pt-4`}>
-          <ScrollView
-            contentContainerStyle={{ paddingBottom: 24 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Bloque de navegación */}
+          <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
             <View className="mt-2">
               {items.map((it) => (
                 <SidebarItem
@@ -101,13 +175,12 @@ export default function DashboardShell({ children, user }) {
               ))}
             </View>
 
-            {/* Divider suave */}
             <View className="h-[1px] bg-white/5 my-4" />
 
-            {/* Cerrar sesión */}
-            <Pressable
-              onPress={() => navigation.navigate('Logout')}
-              className="w-full rounded-xl px-3 py-3 bg-transparent"
+            <Pressable onPress={handleLogout} className="w-full rounded-xl px-3 py-3 bg-transparent"
+              style={({ hovered }) => ({
+                backgroundColor: hovered ? 'rgba(255,255,255,0.03)' : 'transparent',
+              })}
             >
               <View className="flex-row items-center gap-3">
                 <Ionicons name="log-out-outline" size={18} color="#FCA5A5" />
@@ -118,42 +191,37 @@ export default function DashboardShell({ children, user }) {
         </View>
 
         {/* MAIN */}
-        <ScrollView
-          className="flex-1 px-6"
-          contentContainerStyle={{ paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header de página (título + fecha) */}
+        <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          {/* Header (título + fecha) */}
           <View className="py-6">
             <Text className="text-white text-[36px] font-extrabold tracking-tight">
-              Hola, {user?.nombre || 'Fernando'}
+              Hola, {firstName}
             </Text>
-            <Text className="text-white/60 mt-1">lunes, 22 de abril de 2024</Text>
+            <Text className="text-white/60 mt-1">{today}</Text>
           </View>
 
-          {/* GRID de cards (responsive) */}
+          {/* GRID de cards */}
           <View className="gap-6">
             {/* fila 1 */}
             <View className="flex-row gap-6">
               <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
-                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">
-                  MIS CANCHAS
-                </Text>
+                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">MIS CANCHAS</Text>
                 <Text className="text-white text-[32px] mt-2 font-bold">
-                  3 disponibles
+                  {summary.courtsAvailable} disponibles
                 </Text>
-                <Pressable className="self-start mt-4 rounded-xl px-4 py-2 bg-teal-400/20 border border-teal-300/30">
+                <Pressable
+                  className="self-start mt-4 rounded-xl px-4 py-2 bg-teal-400/20 border border-teal-300/30"
+                  style={({ hovered }) => ({
+                    backgroundColor: hovered ? 'rgba(45,212,191,0.25)' : 'rgba(45,212,191,0.20)',
+                  })}
+                >
                   <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
                 </Pressable>
               </View>
 
               <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
-                <Text className="text-amber-300 font-semibold tracking-widest text-[13px]">
-                  PRÓXIMO EVENTO
-                </Text>
-                <Text className="text-white text-[28px] mt-2 font-semibold">
-                  Torneo de Primavera
-                </Text>
+                <Text className="text-amber-300 font-semibold tracking-widest text-[13px]">PRÓXIMO EVENTO</Text>
+                <Text className="text-white text-[28px] mt-2 font-semibold">Torneo de Primavera</Text>
                 <Text className="text-white/60 mt-2">martes, 30 de abril de 2024</Text>
               </View>
             </View>
@@ -161,24 +229,28 @@ export default function DashboardShell({ children, user }) {
             {/* fila 2 */}
             <View className="flex-row gap-6">
               <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
-                <Text className="text-sky-300 font-semibold tracking-widest text-[13px]">
-                  RESERVAS
+                <Text className="text-sky-300 font-semibold tracking-widest text-[13px]">RESERVAS</Text>
+                <Text className="text-white text-[32px] mt-2 font-bold">
+                  {summary.reservasHoy} hoy
                 </Text>
-                <Text className="text-white text-[32px] mt-2 font-bold">8 hoy</Text>
-                <Text className="text-white/60 mt-1">+24 esta semana</Text>
-                <Pressable className="self-start mt-4 rounded-xl px-4 py-2 bg-sky-400/15 border border-sky-300/30">
+                <Text className="text-white/60 mt-1">
+                  +{summary.reservasSemana} esta semana
+                </Text>
+                <Pressable
+                  className="self-start mt-4 rounded-xl px-4 py-2 bg-sky-400/15 border border-sky-300/30"
+                  style={({ hovered }) => ({
+                    backgroundColor: hovered ? 'rgba(56,189,248,0.22)' : 'rgba(56,189,248,0.15)',
+                  })}
+                >
                   <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
                 </Pressable>
               </View>
 
               <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
-                <Text className="text-emerald-300 font-semibold tracking-widest text-[13px]">
-                  ECONOMÍA
-                </Text>
+                <Text className="text-emerald-300 font-semibold tracking-widest text-[13px]">ECONOMÍA</Text>
                 <Text className="text-white text-[32px] mt-2 font-bold">
-                  $14.520 este mes
+                  ${Number(summary.economiaMes || 0).toLocaleString('es-AR')} este mes
                 </Text>
-                {/* gráfico placeholder */}
                 <View className="mt-4 h-24 rounded-xl bg-white/5" />
               </View>
             </View>
@@ -186,9 +258,7 @@ export default function DashboardShell({ children, user }) {
             {/* fila 3 */}
             <View className="flex-row gap-6">
               <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
-                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">
-                  EVENTOS
-                </Text>
+                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">EVENTOS</Text>
                 <View className="mt-3 flex-row items-center justify-between">
                   <Text className="text-white text-[24px] font-semibold">meEquipo</Text>
                   <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
@@ -196,9 +266,7 @@ export default function DashboardShell({ children, user }) {
               </View>
 
               <View className={`flex-1 ${PANEL_BG} rounded-2xl p-5`}>
-                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">
-                  EVENTOS
-                </Text>
+                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">EVENTOS</Text>
                 <View className="mt-3 flex-row items-center justify-between">
                   <Text className="text-white text-[24px] font-semibold">Ranking</Text>
                   <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
@@ -207,7 +275,6 @@ export default function DashboardShell({ children, user }) {
             </View>
           </View>
 
-          {/* children (rutas internas) */}
           {children}
         </ScrollView>
       </View>

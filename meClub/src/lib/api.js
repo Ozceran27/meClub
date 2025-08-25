@@ -44,3 +44,24 @@ export const authApi = {
   forgot: (email) => api.post('/auth/forgot', { email }),
   reset: (token, password) => api.post('/auth/reset', { token, password }),
 };
+
+export async function getClubSummary({ clubId }) {
+  try {
+    const { data } = await api.get(`/clubes/${clubId}/resumen`);
+    // Esperado: { courtsAvailable, reservasHoy, reservasSemana, economiaMes }
+    return {
+      courtsAvailable: data?.courtsAvailable ?? 3,
+      reservasHoy: data?.reservasHoy ?? 0,
+      reservasSemana: data?.reservasSemana ?? 0,
+      economiaMes: data?.economiaMes ?? 0,
+    };
+  } catch {
+    // Fallback
+    return {
+      courtsAvailable: 3,
+      reservasHoy: 8,
+      reservasSemana: 24,
+      economiaMes: 14520,
+    };
+  }
+}
