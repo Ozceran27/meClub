@@ -2,45 +2,46 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
-import { useAuth } from '..//features/auth/useAuth';
-import { getClubSummary } from '..//lib/api';
+import { useAuth } from '../features/auth/useAuth';
+import { getClubSummary } from '../lib/api';
 
-const NAV_BG = 'bg-[#0F172A]/80';
-const PANEL_BG = 'bg-[#0B1222]/60';
+const NAV_BG = 'bg-[#0F172A]/80'; // mismo tono para sidebar y topbar
+const PANEL_BG = 'bg-[#0B1222]/60'; // tarjetas oscuras semi
 
-const SidebarItem = ({ icon, label, active, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    className={`w-full rounded-xl px-3 py-3 mb-1.5 ${active ? 'bg-white/5' : 'bg-transparent'}`}
-    // hover/active (web) sin cambiar tu look & feel
-    style={({ hovered, pressed }) => ({
-      backgroundColor: active
-        ? 'rgba(255,255,255,0.05)'
-        : hovered
-        ? 'rgba(255,255,255,0.03)'
-        : 'transparent',
-      transform: [{ scale: pressed ? 0.98 : 1 }],
-    })}
-  >
-    <View className="flex-row items-center justify-start gap-3">
-      {icon}
-      <Text
-        className={`text-[15px] leading-5 ${active ? 'text-white' : 'text-white/80'}`}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </View>
-  </Pressable>
-);
+function SidebarItem({ icon, label, active, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`w-full rounded-xl px-3 py-3 mb-1.5 ${
+        active ? 'bg-white/5' : 'bg-transparent'
+      } hover:bg-white/10`} // <-- hover real en web
+      style={({ pressed }) => ({
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      })}
+    >
+      <View className="flex-row items-center justify-start gap-3">
+        {icon}
+        <Text
+          className={`text-[15px] leading-5 ${
+            active ? 'text-white' : 'text-white/80'
+          } hover:text-white`} // <-- texto se ilumina al hover
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function DashboardShell({ children }) {
   const navigation = useNavigation();
   const route = useRoute();
-  const current = route?.name || 'inicio';
   const { user, logout } = useAuth();
 
-  // resumen "real" con fallback
+  const [activeKey, setActiveKey] = useState('inicio');
+
+  // Datos “reales” con fallback silencioso (no cambia estética)
   const [summary, setSummary] = useState({
     courtsAvailable: 3,
     reservasHoy: 8,
@@ -52,35 +53,25 @@ export default function DashboardShell({ children }) {
     let alive = true;
     (async () => {
       try {
-        const data = await getClubSummary({
-          clubId: user?.clubId || user?.club?.id,
-        });
+        const data = await getClubSummary({ clubId: user?.clubId || user?.club?.id });
         if (alive && data) setSummary(data);
       } catch {
-        // silencioso: ya tenemos fallback arriba
+        /* fallback */
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [user?.clubId, user?.club?.id]);
 
-  // CERRAR SESIÓN
   const handleLogout = async () => {
-    try {
-      await logout();
-    } finally {
+    try { await logout(); } finally {
       if (typeof window !== 'undefined') {
         window.location.assign('/');
       } else {
-        try {
-          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-        } catch {}
+        try { navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); } catch {}
       }
     }
   };
 
-  // Lista de items
   const items = [
     { key: 'inicio', label: 'Inicio', icon: <Ionicons name="home-outline" size={18} color="#9FB3C8" /> },
     { key: 'buzon', label: 'Buzón', icon: <Ionicons name="mail-outline" size={18} color="#9FB3C8" /> },
@@ -97,7 +88,7 @@ export default function DashboardShell({ children }) {
     { key: 'soporte', label: 'Soporte', icon: <Ionicons name="help-circle-outline" size={18} color="#9FB3C8" /> },
   ];
 
-  // preparado para rutas reales sin romper lo actual
+  // Mapa preparado para cuando enchufes rutas reales
   const routeMap = {
     inicio: 'Dashboard',
     buzon: 'Dashboard',
@@ -115,20 +106,16 @@ export default function DashboardShell({ children }) {
   };
 
   const go = (key) => {
+    setActiveKey(key);
     navigation.navigate(routeMap[key] || 'Dashboard');
   };
 
   const today = useMemo(() => {
     try {
       return new Date().toLocaleDateString('es-AR', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
+        weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
       });
-    } catch {
-      return '';
-    }
+    } catch { return ''; }
   }, []);
 
   const firstName = useMemo(() => {
@@ -149,7 +136,10 @@ export default function DashboardShell({ children }) {
           </Text>
         </View>
 
-        <Pressable onPress={handleLogout} className="h-10 w-10 rounded-full overflow-hidden border border-white/10">
+        <Pressable
+          onPress={handleLogout}
+          className="h-10 w-10 rounded-full overflow-hidden border border-white/10 hover:bg-white/5" // hover sutil avatar
+        >
           <Image
             source={{ uri: 'https://i.pravatar.cc/100?img=12' }}
             className="h-full w-full"
@@ -169,7 +159,7 @@ export default function DashboardShell({ children }) {
                   key={it.key}
                   icon={it.icon}
                   label={it.label}
-                  active={current === it.key}
+                  active={activeKey === it.key}
                   onPress={() => go(it.key)}
                 />
               ))}
@@ -177,10 +167,9 @@ export default function DashboardShell({ children }) {
 
             <View className="h-[1px] bg-white/5 my-4" />
 
-            <Pressable onPress={handleLogout} className="w-full rounded-xl px-3 py-3 bg-transparent"
-              style={({ hovered }) => ({
-                backgroundColor: hovered ? 'rgba(255,255,255,0.03)' : 'transparent',
-              })}
+            <Pressable
+              onPress={handleLogout}
+              className="w-full rounded-xl px-3 py-3 bg-transparent hover:bg-white/10"
             >
               <View className="flex-row items-center gap-3">
                 <Ionicons name="log-out-outline" size={18} color="#FCA5A5" />
@@ -192,15 +181,13 @@ export default function DashboardShell({ children }) {
 
         {/* MAIN */}
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {/* Header (título + fecha) */}
+          {/* Header */}
           <View className="py-6">
-            <Text className="text-white text-[36px] font-extrabold tracking-tight">
-              Hola, {firstName}
-            </Text>
+            <Text className="text-white text-[36px] font-extrabold tracking-tight">Hola, {firstName}</Text>
             <Text className="text-white/60 mt-1">{today}</Text>
           </View>
 
-          {/* GRID de cards */}
+          {/* GRID */}
           <View className="gap-6">
             {/* fila 1 */}
             <View className="flex-row gap-6">
@@ -209,12 +196,9 @@ export default function DashboardShell({ children }) {
                 <Text className="text-white text-[32px] mt-2 font-bold">
                   {summary.courtsAvailable} disponibles
                 </Text>
-                <Pressable
-                  className="self-start mt-4 rounded-xl px-4 py-2 bg-teal-400/20 border border-teal-300/30"
-                  style={({ hovered }) => ({
-                    backgroundColor: hovered ? 'rgba(45,212,191,0.25)' : 'rgba(45,212,191,0.20)',
-                  })}
-                >
+
+                {/* botón con relleno y hover (como en Landing) */}
+                <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30">
                   <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
                 </Pressable>
               </View>
@@ -233,15 +217,10 @@ export default function DashboardShell({ children }) {
                 <Text className="text-white text-[32px] mt-2 font-bold">
                   {summary.reservasHoy} hoy
                 </Text>
-                <Text className="text-white/60 mt-1">
-                  +{summary.reservasSemana} esta semana
-                </Text>
-                <Pressable
-                  className="self-start mt-4 rounded-xl px-4 py-2 bg-sky-400/15 border border-sky-300/30"
-                  style={({ hovered }) => ({
-                    backgroundColor: hovered ? 'rgba(56,189,248,0.22)' : 'rgba(56,189,248,0.15)',
-                  })}
-                >
+                <Text className="text-white/60 mt-1">+{summary.reservasSemana} esta semana</Text>
+
+                {/* botón con relleno y hover */}
+                <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25">
                   <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
                 </Pressable>
               </View>
