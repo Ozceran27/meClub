@@ -67,6 +67,17 @@ export function AuthProvider({ children }) {
     return usuario;
   };
 
+  const register = async (params) => {
+    const data = await api.post('/auth/register', params);
+    const { token, usuario } = data || {};
+    if (!token || !usuario) throw new Error('Respuesta de registro inválida');
+
+    await storage.setItem(tokenKey, token);
+    await storage.setItem(userKey, JSON.stringify(usuario));
+    setUser(usuario);
+    return usuario;
+  };
+
   const logout = async () => {
     await storage.delItem(tokenKey);
     await storage.delItem(userKey);
@@ -85,6 +96,7 @@ export function AuthProvider({ children }) {
     isLogged: !!user,
     isClub,
     login,
+    register,
     logout,
   }), [user, ready, isClub]);
 
