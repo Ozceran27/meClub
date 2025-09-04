@@ -102,7 +102,7 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-// GET mis reservas
+// GET /mias
 router.get('/mias', verifyToken, async (req, res) => {
   try {
     const usuarioId = getUserId(req.usuario);
