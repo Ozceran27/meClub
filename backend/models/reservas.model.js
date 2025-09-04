@@ -7,12 +7,9 @@ const ReservasModel = {
        FROM reservas r
        WHERE r.cancha_id = ?
          AND r.fecha = ?
-         AND (
-              (r.hora_inicio < ? AND r.hora_fin > ?)
-           OR (r.hora_inicio < ? AND r.hora_fin > ?)
-           OR (r.hora_inicio >= ? AND r.hora_fin <= ?)
-         )`,
-      [cancha_id, fecha, hora_fin, hora_fin, hora_inicio, hora_inicio, hora_inicio, hora_fin]
+         AND NOT (r.hora_fin <= ? OR r.hora_inicio >= ?)
+       LIMIT 1`,
+      [cancha_id, fecha, hora_inicio, hora_fin]
     );
     return rows.length > 0;
   },
