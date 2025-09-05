@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors as mcColors } from '../theme/tokens';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
 import { InicioScreen, ReservasScreen, CanchasScreen } from './dashboard';
@@ -10,6 +11,7 @@ const NAV_BG = 'bg-[#0F172A]/80';
 
 function SidebarItem({ iconName, label, active, onPress }) {
   const theme = useTheme();
+  const warnColor = theme?.colors?.mc?.warn ?? mcColors.warn;
   return (
     <Pressable
       onPress={onPress}
@@ -25,7 +27,7 @@ function SidebarItem({ iconName, label, active, onPress }) {
           <Ionicons
             name={iconName}
             size={18}
-            color={active ? theme.colors.mc.warn : '#9FB3C8'}
+            color={active ? warnColor : '#9FB3C8'}
           />
         )}
         <Text

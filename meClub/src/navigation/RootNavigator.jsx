@@ -7,6 +7,7 @@ import LoginScreen from '../screens/LoginScreen';
 import DashboardShell from '../screens/DashboardShell';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../features/auth/useAuth';
+import { theme } from '../theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,7 +23,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={theme}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="Landing" component={LandingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
