@@ -5,6 +5,7 @@ const verifyToken = require('../middleware/auth.middleware');
 const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
 const TarifasModel = require('../models/tarifas.model');
+const ClubesHorarioModel = require('../models/clubesHorario.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
 // helpers
 const getUserId = (u) => u?.id ?? u?.usuario_id;
