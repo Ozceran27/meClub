@@ -76,6 +76,21 @@ router.get('/publico/:club_id', async (req, res) => {
   }
 });
 
+// ---------------- Resumen por club
+router.get('/:club_id/resumen', async (req, res) => {
+  try {
+    const { club_id } = req.params;
+    const club = await ClubesModel.obtenerClubPorId(club_id);
+    if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
+
+    const data = await ClubesModel.obtenerResumen(club_id);
+    res.json({ data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
 // ---------------- Panel club: reservas por cancha/fecha
 router.get('/canchas/:cancha_id/reservas', verifyToken, requireRole('club'), async (req, res) => {
   try {
