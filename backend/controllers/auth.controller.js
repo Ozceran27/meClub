@@ -43,8 +43,15 @@ exports.register = async (req, res) => {
       });
     }
 
+    const token = jwt.sign(
+      { usuario_id: nuevoUsuario.usuario_id, email: nuevoUsuario.email, rol: nuevoUsuario.rol },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
     res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
+      token,
       usuario: nuevoUsuario,
       club: clubCreado,
     });
