@@ -11,13 +11,13 @@ async function getToken() {
   return AsyncStorage.getItem(tokenKey);
 }
 
-async function request(path, { method = 'GET', body, headers } = {}) {
-  const token = await getToken();
+async function request(path, { method = 'GET', body, headers, auth = true } = {}) {
+  const token = auth ? await getToken() : null;
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers || {}),
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -34,10 +34,10 @@ async function request(path, { method = 'GET', body, headers } = {}) {
 }
 
 export const api = {
-  get: (p) => request(p),
-  post: (p, b) => request(p, { method: 'POST', body: b }),
-  put: (p, b) => request(p, { method: 'PUT', body: b }),
-  del: (p) => request(p, { method: 'DELETE' }),
+  get: (p, opts) => request(p, opts),
+  post: (p, b, opts) => request(p, { method: 'POST', body: b, ...(opts || {}) }),
+  put: (p, b, opts) => request(p, { method: 'PUT', body: b, ...(opts || {}) }),
+  del: (p, opts) => request(p, { method: 'DELETE', ...(opts || {}) }),
 };
 
 export const authApi = {
