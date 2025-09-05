@@ -144,8 +144,8 @@ exports.forgot = async (req, res) => {
     const frontBase = process.env.FRONT_BASE_URL || 'http://localhost:19006';
     const link = `${frontBase}/reset?token=${rawToken}`;
 
-    // En producción = enviar email. En dev devuelve el token/link.
-    if (process.env.NODE_ENV !== 'production') {
+    // En modo desarrollo se devuelve el token/link para pruebas.
+    if (process.env.NODE_ENV === 'development') {
       console.log('[meClub] Link de reseteo:', link);
       return res.json({ mensaje: 'Instrucciones enviadas', token: rawToken, link });
     }
