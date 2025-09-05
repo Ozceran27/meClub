@@ -43,6 +43,10 @@ exports.register = async (req, res) => {
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET no configurado');
+    }
+
     const token = jwt.sign(
       {
         usuario_id: nuevoUsuario.usuario_id,
@@ -65,7 +69,7 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en registro:', error);
-    res.status(500).json({ mensaje: 'Error en el servidor' });
+    res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
   }
 };
 
@@ -82,6 +86,10 @@ exports.login = async (req, res) => {
     const esValida = await bcrypt.compare(contrasena, usuario.contrasena);
     if (!esValida) {
       return res.status(401).json({ mensaje: 'Contraseña incorrecta' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET no configurado');
     }
 
     const token = jwt.sign(
@@ -120,7 +128,7 @@ exports.login = async (req, res) => {
     res.json(respuesta);
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ mensaje: 'Error en el servidor' });
+    res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
   }
 };
 
