@@ -45,9 +45,9 @@ const ClubesModel = {
   },
 
   obtenerClubPorId: async (club_id) => {
-  const [rows] = await db.query(`SELECT * FROM clubes WHERE club_id = ?`, [club_id]);
-  return rows[0] || null;
-},
+    const [rows] = await db.query(`SELECT * FROM clubes WHERE club_id = ?`, [club_id]);
+    return rows[0] || null;
+  },
 
 };
 
