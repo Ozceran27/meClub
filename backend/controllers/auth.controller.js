@@ -75,7 +75,20 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({
+    // Si el usuario es un club, buscamos los datos básicos del club
+    let clubInfo = null;
+    if (usuario.rol === 'club') {
+      try {
+        const club = await ClubesModel.obtenerClubPorPropietario(usuario.usuario_id);
+        if (club) {
+          clubInfo = { club_id: club.club_id, nombre: club.nombre };
+        }
+      } catch (err) {
+        console.error('Error obteniendo club del usuario', err);
+      }
+    }
+
+    const respuesta = {
       mensaje: 'Login exitoso',
       token,
       usuario: {
@@ -85,7 +98,11 @@ exports.login = async (req, res) => {
         email: usuario.email,
         rol: usuario.rol,
       },
-    });
+    };
+
+    if (clubInfo) respuesta.club = clubInfo;
+
+    res.json(respuesta);
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ mensaje: 'Error en el servidor' });
