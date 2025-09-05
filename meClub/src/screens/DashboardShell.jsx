@@ -48,10 +48,10 @@ export default function DashboardShell() {
   const { user, logout } = useAuth();
   const [activeKey, setActiveKey] = useState('inicio');
   const [summary, setSummary] = useState({
-    courtsAvailable: 3,
-    reservasHoy: 8,
-    reservasSemana: 24,
-    economiaMes: 14520,
+    courtsAvailable: 0,
+    reservasHoy: 0,
+    reservasSemana: 0,
+    economiaMes: 0,
   });
 
   useEffect(() => {
