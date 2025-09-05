@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useNavigation, useTheme } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
 import { InicioScreen, ReservasScreen, CanchasScreen } from './dashboard';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
-function SidebarItem({ Icon, iconName, label, active, onPress }) {
+function SidebarItem({ iconName, label, active, onPress }) {
+  const theme = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -20,11 +21,11 @@ function SidebarItem({ Icon, iconName, label, active, onPress }) {
       })}
     >
       <View className="flex-row items-center justify-start gap-3">
-        {Icon && (
-          <Icon
+        {iconName && (
+          <Ionicons
             name={iconName}
             size={18}
-            color={active ? '#dba741' : '#9FB3C8'}
+            color={active ? theme.colors.mc.warn : '#9FB3C8'}
           />
         )}
         <Text
@@ -82,19 +83,19 @@ export default function DashboardShell() {
   };
 
   const items = [
-    { key: 'inicio', label: 'Inicio', iconName: 'home-outline', Icon: Ionicons },
-    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline', Icon: Ionicons },
-    { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennis', Icon: MaterialCommunityIcons },
-    { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline', Icon: Ionicons },
-    { key: 'horarios', label: 'Horarios', iconName: 'time-outline', Icon: Ionicons },
-    { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline', Icon: Ionicons },
-    { key: 'grabaciones', label: 'Grabaciones', iconName: 'video', Icon: Feather },
-    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', Icon: Ionicons },
-    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', Icon: Ionicons },
-    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', Icon: Ionicons },
-    { key: 'conciliar', label: 'Conciliar', iconName: 'repeat-outline', Icon: Ionicons },
-    { key: 'ajustes', label: 'Ajustes', iconName: 'settings-outline', Icon: Ionicons },
-    { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline', Icon: Ionicons },
+    { key: 'inicio', label: 'Inicio', iconName: 'home-outline' },
+    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline' },
+    { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline' },
+    { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline' },
+    { key: 'horarios', label: 'Horarios', iconName: 'time-outline' },
+    { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline' },
+    { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline' },
+    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline' },
+    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline' },
+    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline' },
+    { key: 'conciliar', label: 'Conciliar', iconName: 'repeat-outline' },
+    { key: 'ajustes', label: 'Ajustes', iconName: 'settings-outline' },
+    { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline' },
   ];
 
   const go = (key) => {
@@ -156,7 +157,6 @@ export default function DashboardShell() {
               {items.map((it) => (
                 <SidebarItem
                   key={it.key}
-                  Icon={it.Icon}
                   iconName={it.iconName}
                   label={it.label}
                   active={activeKey === it.key}
