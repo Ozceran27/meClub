@@ -8,7 +8,7 @@ import { InicioScreen, ReservasScreen, CanchasScreen } from './dashboard';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
-function SidebarItem({ icon, label, active, onPress }) {
+function SidebarItem({ Icon, iconName, label, active, onPress }) {
   return (
     <Pressable
       onPress={onPress}
@@ -20,10 +20,16 @@ function SidebarItem({ icon, label, active, onPress }) {
       })}
     >
       <View className="flex-row items-center justify-start gap-3">
-        {icon}
+        {Icon && (
+          <Icon
+            name={iconName}
+            size={18}
+            color={active ? '#dba741' : '#9FB3C8'}
+          />
+        )}
         <Text
           className={`text-[15px] leading-5 ${
-            active ? 'text-white' : 'text-white/80'
+            active ? 'text-mc-warn' : 'text-white/80'
           } hover:text-white`}
           numberOfLines={1}
         >
@@ -76,19 +82,19 @@ export default function DashboardShell() {
   };
 
   const items = [
-    { key: 'inicio', label: 'Inicio', icon: <Ionicons name="home-outline" size={18} color="#9FB3C8" /> },
-    { key: 'buzon', label: 'Buzón', icon: <Ionicons name="mail-outline" size={18} color="#9FB3C8" /> },
-    { key: 'mis-canchas', label: 'Mis Canchas', icon: <MaterialCommunityIcons name="tennis" size={18} color="#9FB3C8" /> },
-    { key: 'reservas', label: 'Reservas', icon: <Ionicons name="calendar-outline" size={18} color="#9FB3C8" /> },
-    { key: 'horarios', label: 'Horarios', icon: <Ionicons name="time-outline" size={18} color="#9FB3C8" /> },
-    { key: 'tarifas', label: 'Tarifas', icon: <Ionicons name="pricetags-outline" size={18} color="#9FB3C8" /> },
-    { key: 'grabaciones', label: 'Grabaciones', icon: <Feather name="video" size={18} color="#9FB3C8" /> },
-    { key: 'eventos', label: 'Eventos', icon: <Ionicons name="sparkles-outline" size={18} color="#9FB3C8" /> },
-    { key: 'me-equipo', label: 'meEquipo', icon: <Ionicons name="people-outline" size={18} color="#9FB3C8" /> },
-    { key: 'ranking', label: 'Ranking', icon: <Ionicons name="trophy-outline" size={18} color="#9FB3C8" /> },
-    { key: 'conciliar', label: 'Conciliar', icon: <Ionicons name="repeat-outline" size={18} color="#9FB3C8" /> },
-    { key: 'ajustes', label: 'Ajustes', icon: <Ionicons name="settings-outline" size={18} color="#9FB3C8" /> },
-    { key: 'soporte', label: 'Soporte', icon: <Ionicons name="help-circle-outline" size={18} color="#9FB3C8" /> },
+    { key: 'inicio', label: 'Inicio', iconName: 'home-outline', Icon: Ionicons },
+    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline', Icon: Ionicons },
+    { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennis', Icon: MaterialCommunityIcons },
+    { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline', Icon: Ionicons },
+    { key: 'horarios', label: 'Horarios', iconName: 'time-outline', Icon: Ionicons },
+    { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline', Icon: Ionicons },
+    { key: 'grabaciones', label: 'Grabaciones', iconName: 'video', Icon: Feather },
+    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', Icon: Ionicons },
+    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', Icon: Ionicons },
+    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', Icon: Ionicons },
+    { key: 'conciliar', label: 'Conciliar', iconName: 'repeat-outline', Icon: Ionicons },
+    { key: 'ajustes', label: 'Ajustes', iconName: 'settings-outline', Icon: Ionicons },
+    { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline', Icon: Ionicons },
   ];
 
   const go = (key) => {
@@ -150,7 +156,8 @@ export default function DashboardShell() {
               {items.map((it) => (
                 <SidebarItem
                   key={it.key}
-                  icon={it.icon}
+                  Icon={it.Icon}
+                  iconName={it.iconName}
                   label={it.label}
                   active={activeKey === it.key}
                   onPress={() => go(it.key)}
