@@ -107,6 +107,7 @@ export default function DashboardShell() {
     'mis-canchas': CanchasScreen,
   };
   const ScreenComponent = screenMap[activeKey] || (() => null);
+  const screenProps = { summary, firstName, today };
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
@@ -166,7 +167,7 @@ export default function DashboardShell() {
 
         {/* MAIN */}
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          <ScreenComponent summary={summary} firstName={firstName} today={today} />
+          <ScreenComponent {...screenProps} />
         </ScrollView>
       </View>
     </View>
