@@ -63,12 +63,16 @@ const ClubesModel = {
       [club_id]
     );
 
+    const reservasSemanaQuery = `
+      SELECT COUNT(*) AS total
+      FROM reservas r
+      JOIN canchas c ON c.cancha_id = r.cancha_id
+      WHERE c.club_id = ?
+        AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)
+    `;
+
     const [[{ total: reservasSemana = 0 } = {}]] = await db.query(
-      `SELECT COUNT(*) AS total
-       FROM reservas r
-       JOIN canchas c ON c.cancha_id = r.cancha_id
-       WHERE c.club_id = ?
-         AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)`,
+      reservasSemanaQuery,
       [club_id]
     );
 
