@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,10 +17,20 @@ export default function LandingScreen() {
       />
 
       {/* halos decorativos */}
-      <View className="absolute -top-20 -left-20 w-[380px] h-[380px] rounded-full"
-            style={{ backgroundColor: 'rgba(102,194,255,0.10)', filter: 'blur(40px)' }} />
-      <View className="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full"
-            style={{ backgroundColor: 'rgba(43,130,128,0.10)', filter: 'blur(46px)' }} />
+      <View
+        className="absolute -top-20 -left-20 w-[380px] h-[380px] rounded-full"
+        style={{
+          backgroundColor: 'rgba(102,194,255,0.10)',
+          ...(Platform.OS === 'web' && { filter: 'blur(40px)' }),
+        }}
+      />
+      <View
+        className="absolute -bottom-24 -right-24 w-[420px] h-[420px] rounded-full"
+        style={{
+          backgroundColor: 'rgba(43,130,128,0.10)',
+          ...(Platform.OS === 'web' && { filter: 'blur(46px)' }),
+        }}
+      />
 
       <View className="flex-1 px-6 md:px-10 lg:px-16">
         {/* Header minimal (branding) */}
