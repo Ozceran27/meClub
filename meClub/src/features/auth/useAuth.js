@@ -62,21 +62,17 @@ export function AuthProvider({ children }) {
 
   const register = async (params) => {
     const data = await api.post('/auth/register', params);
-    const { token, usuario } = data || {};
-    if (!token || !usuario) throw new Error('Respuesta de registro inválida');
     // Algunas versiones del backend pueden devolver `user` en lugar de `usuario`
     const { token, usuario, user } = data || {};
     const usr = usuario || user;
     if (!token || !usr) throw new Error('Respuesta de registro inválida');
 
     await storage.setItem(tokenKey, token);
-    await storage.setItem(userKey, JSON.stringify(usuario));
-    setUser(usuario);
-    return usuario;
     await storage.setItem(userKey, JSON.stringify(usr));
     setUser(usr);
     return usr;
   };
+
 
   const logout = async () => {
     await storage.delItem(tokenKey);
