@@ -49,6 +49,41 @@ const ClubesModel = {
     return rows[0] || null;
   },
 
+  obtenerResumen: async (club_id) => {
+    const [[{ total: courtsAvailable = 0 } = {}]] = await db.query(
+      'SELECT COUNT(*) AS total FROM canchas WHERE club_id = ?',
+      [club_id]
+    );
+
+    const [[{ total: reservasHoy = 0 } = {}]] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ? AND r.fecha = CURDATE()`,
+      [club_id]
+    );
+
+    const [[{ total: reservasSemana = 0 } = {}]] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)`,
+      [club_id]
+    );
+
+    const [[{ total: economiaMes = 0 } = {}]] = await db.query(
+      `SELECT COALESCE(SUM(r.monto), 0) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND DATE_FORMAT(r.fecha, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')`,
+      [club_id]
+    );
+
+    return { courtsAvailable, reservasHoy, reservasSemana, economiaMes };
+  },
+
 };
 
 module.exports = ClubesModel;

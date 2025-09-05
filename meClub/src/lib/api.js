@@ -48,20 +48,20 @@ export const authApi = {
 export async function getClubSummary({ clubId }) {
   try {
     const { data } = await api.get(`/clubes/${clubId}/resumen`);
+    if (!data) {
+      // Backend no respondió correctamente
+      return { courtsAvailable: 0, reservasHoy: 0, reservasSemana: 0, economiaMes: 0 };
+    }
     // Esperado: { courtsAvailable, reservasHoy, reservasSemana, economiaMes }
     return {
-      courtsAvailable: data?.courtsAvailable ?? 3,
-      reservasHoy: data?.reservasHoy ?? 0,
-      reservasSemana: data?.reservasSemana ?? 0,
-      economiaMes: data?.economiaMes ?? 0,
+      courtsAvailable: data.courtsAvailable ?? 0,
+      reservasHoy: data.reservasHoy ?? 0,
+      reservasSemana: data.reservasSemana ?? 0,
+      economiaMes: data.economiaMes ?? 0,
     };
-  } catch {
-    // Fallback
-    return {
-      courtsAvailable: 3,
-      reservasHoy: 8,
-      reservasSemana: 24,
-      economiaMes: 14520,
-    };
+  } catch (err) {
+    console.warn('getClubSummary error', err);
+    // Si el backend no responde devolvemos valores en cero
+    return { courtsAvailable: 0, reservasHoy: 0, reservasSemana: 0, economiaMes: 0 };
   }
 }
