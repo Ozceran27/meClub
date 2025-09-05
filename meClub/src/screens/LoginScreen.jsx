@@ -36,7 +36,13 @@ const resetSchema = z.object({
 
 export default function LoginScreen() {
   const nav  = useNavigation();
-  const auth = useAuth();
+  const { login, register, user, isLogged } = useAuth();
+
+  useEffect(() => {
+    if (isLogged) {
+      nav.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
+    }
+  }, [isLogged, nav, user]);
 
   // 'login' | 'register' | 'forgot' | 'reset'
   const [mode, setMode] = useState('login');
@@ -103,8 +109,7 @@ export default function LoginScreen() {
   const submitLogin = async ({ email, password }) => {
     setBusy(true); setErr(''); setOk('');
     try {
-      await auth.login({ email, password });
-      nav.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
+      await login({ email, password });
     } catch (e) {
       setErr(e.message || 'Credenciales inválidas');
     } finally { setBusy(false); }
@@ -113,7 +118,7 @@ export default function LoginScreen() {
   const submitRegister = async (data) => {
     setBusy(true); setErr(''); setOk('');
     try {
-      await auth.register(data);
+      await register(data);
       nav.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
     } catch (e) {
       setErr(e.message || 'No se pudo registrar');
