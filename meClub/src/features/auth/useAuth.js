@@ -56,7 +56,7 @@ export function AuthProvider({ children }) {
 
   const login = async ({ email, password }) => {
     // Tu backend espera { email, contrasena }
-    const data = await api.post('/auth/login', { email, contrasena: password });
+    const data = await api.post('/auth/login', { email, contrasena: password }, { auth: false });
     // Respuesta esperada: { token, usuario, club? }
     const { token, usuario, club } = data || {};
     if (!token || !usuario) throw new Error('Respuesta de login inválida');
