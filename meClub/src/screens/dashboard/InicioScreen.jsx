@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 const PANEL_BG = 'bg-[#0F172A]/90';
 const cardCls = `${PANEL_BG} rounded-2xl p-5 shadow-card`;
 
-export default function InicioScreen({ summary = {}, firstName, today }) {
+export default function InicioScreen({ summary = {}, firstName, today, go }) {
   return (
     <>
       <View className="py-6">
@@ -21,7 +21,10 @@ export default function InicioScreen({ summary = {}, firstName, today }) {
             <Text className="text-white text-[32px] mt-2 font-bold">
               {summary.courtsAvailable ?? 0} disponibles
             </Text>
-            <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30">
+            <Pressable
+              onPress={() => go('mis-canchas')}
+              className="self-start mt-4 rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30"
+            >
               <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
             </Pressable>
           </View>
@@ -41,7 +44,10 @@ export default function InicioScreen({ summary = {}, firstName, today }) {
               {summary.reservasHoy ?? 0} hoy
             </Text>
             <Text className="text-white/60 mt-1">+{summary.reservasSemana ?? 0} esta semana</Text>
-            <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25">
+            <Pressable
+              onPress={() => go('reservas')}
+              className="self-start mt-4 rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25"
+            >
               <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
             </Pressable>
           </View>

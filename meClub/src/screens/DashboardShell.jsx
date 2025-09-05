@@ -120,7 +120,7 @@ export default function DashboardShell() {
     'mis-canchas': CanchasScreen,
   };
   const ScreenComponent = screenMap[activeKey] || (() => null);
-  const screenProps = { summary, firstName, today };
+  const screenProps = { summary, firstName, today, go };
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
