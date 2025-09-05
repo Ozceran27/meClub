@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
   const nav = useNavigation();
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || typeof isLogged === 'undefined') return;
     if (!isLogged) {
       nav.reset({ index: 0, routes: [{ name: 'Login' }] });
     } else if (requiredRole && !hasRole(user, requiredRole)) {
@@ -22,7 +22,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
     }
   }, [ready, isLogged, user, requiredRole, nav]);
 
-  if (!ready || !isLogged || (requiredRole && !hasRole(user, requiredRole))) {
+  if (!ready || typeof isLogged === 'undefined' || !isLogged || (requiredRole && !hasRole(user, requiredRole))) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0e131f', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color="#2b8280" />
