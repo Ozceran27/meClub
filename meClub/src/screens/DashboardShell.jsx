@@ -180,7 +180,11 @@ export default function DashboardShell() {
         </View>
 
         {/* MAIN */}
-        <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          className="flex-1 px-6 rounded-tl-xl bg-mc-surface"
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
           <ScreenComponent {...screenProps} />
         </ScrollView>
       </View>
