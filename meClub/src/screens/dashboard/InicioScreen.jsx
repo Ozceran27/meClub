@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const PANEL_BG = 'bg-[#0F172A]/90';
-const cardCls = `${PANEL_BG} rounded-2xl p-5 shadow-[0_2px_8px_rgba(148,163,184,0.12),0_2px_8px_rgba(255,255,255,0.06)]`;
+const cardCls = `${PANEL_BG} rounded-2xl p-5 shadow-card`;
 
 export default function InicioScreen({ summary = {}, firstName, today }) {
   return (
