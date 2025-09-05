@@ -27,9 +27,7 @@ export default function LandingScreen() {
         <View className="py-6 flex-row items-center justify-between">
           <Text
             style={{ fontFamily: 'Inter_700Bold' }}
-            className="text-mc-text text-2xl"
-          >
-            me<Text className="text-mc-warn">Club</Text>
+            className="text-mc-text text-2xl">me<Text className="text-mc-warn">Club</Text>
           </Text>
 
           <Pressable

@@ -9,7 +9,7 @@ export default function InicioScreen({ summary = {}, firstName, today }) {
   return (
     <>
       <View className="py-6">
-        <Text className="text-white text-[36px] font-extrabold tracking-tight">Hola, {firstName}</Text>
+        <Text className="text-white text-[36px] font-extrabold tracking-tight">Hola, <Text className="text-mc-warn">{firstName}</Text></Text>
         <Text className="text-white/60 mt-1">{today}</Text>
       </View>
 
