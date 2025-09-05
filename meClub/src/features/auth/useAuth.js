@@ -1,9 +1,8 @@
 // src/features/auth/useAuth.js
 import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../lib/api';
+import { tokenKey, getItem, setItem, delItem } from '../../lib/storage';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => {
@@ -12,30 +11,7 @@ export const useAuth = () => {
   return ctx;
 };
 
-const tokenKey = 'mc_token';
 const userKey  = 'mc_user';
-
-// almacenamiento híbrido (SecureStore -> localStorage -> AsyncStorage)
-const storage = {
-  async getItem(k) {
-    try { const v = await SecureStore.getItemAsync(k); if (v != null) return v; } catch {}
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-      const v = localStorage.getItem(k);
-      if (v != null) return v;
-    }
-    return AsyncStorage.getItem(k);
-  },
-  async setItem(k, v) {
-    try { await SecureStore.setItemAsync(k, v); } catch {}
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') localStorage.setItem(k, v);
-    await AsyncStorage.setItem(k, v);
-  },
-  async delItem(k) {
-    try { await SecureStore.deleteItemAsync(k); } catch {}
-    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') localStorage.removeItem(k);
-    await AsyncStorage.removeItem(k);
-  },
-};
 
 export function AuthProvider({ children }) {
   const [user,  setUser]  = useState(null);
@@ -45,8 +21,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const t = await storage.getItem(tokenKey);
-        const u = await storage.getItem(userKey);
+        const t = await getItem(tokenKey);
+        const u = await getItem(userKey);
         if (t && u) setUser(JSON.parse(u));
       } finally {
         setReady(true);
@@ -66,8 +42,8 @@ export function AuthProvider({ children }) {
       ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
     };
 
-    await storage.setItem(tokenKey, token);
-    await storage.setItem(userKey, JSON.stringify(userData));
+    await setItem(tokenKey, token);
+    await setItem(userKey, JSON.stringify(userData));
     setUser(userData);
     return userData;
   };
@@ -79,16 +55,16 @@ export function AuthProvider({ children }) {
     const usr = usuario || user;
     if (!token || !usr) throw new Error('Respuesta de registro inválida');
 
-    await storage.setItem(tokenKey, token);
-    await storage.setItem(userKey, JSON.stringify(usr));
+    await setItem(tokenKey, token);
+    await setItem(userKey, JSON.stringify(usr));
     setUser(usr);
     return usr;
   };
 
 
   const logout = async () => {
-    await storage.delItem(tokenKey);
-    await storage.delItem(userKey);
+    await delItem(tokenKey);
+    await delItem(userKey);
     setUser(null);
     // Redirección robusta en Web: evita que el stack quede en /dashboard
     if (Platform.OS === 'web') {
