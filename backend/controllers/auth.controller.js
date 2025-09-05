@@ -33,12 +33,12 @@ exports.register = async (req, res) => {
 
     let clubCreado = null;
     if (rol === 'club') {
-      const nivel = Number.isInteger(nivel_id) ? nivel_id : 1;
+      const nivel = parseInt(nivel_id, 10);
       clubCreado = await ClubesModel.crearClub({
         nombre: nombre_club || `Club de ${nombre}`,
         descripcion: descripcion_club || null,
         usuario_id: nuevoUsuario.usuario_id,
-        nivel_id: nivel,
+        nivel_id: isNaN(nivel) ? 1 : nivel,
         foto_logo: foto_logo || null,
       });
     }
