@@ -1,6 +1,5 @@
 const ClubesModel = require('../models/clubes.model');
-
-const getUserId = (u) => u?.id ?? u?.usuario_id;
+const { getUserId } = require('../utils/auth');
 
 const loadClub = async (req, res, next) => {
   try {
