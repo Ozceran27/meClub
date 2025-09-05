@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
+import InicioScreen from './dashboard/InicioScreen';
+import ReservasScreen from './dashboard/ReservasScreen';
+import CanchasScreen from './dashboard/CanchasScreen';
 
 const NAV_BG = 'bg-[#0F172A]/80';
-const PANEL_BG = 'bg-[#0F172A]/90';
 
 function SidebarItem({ icon, label, active, onPress }) {
   return (
@@ -34,9 +36,8 @@ function SidebarItem({ icon, label, active, onPress }) {
   );
 }
 
-export default function DashboardShell({ children }) {
+export default function DashboardShell() {
   const navigation = useNavigation();
-  const route = useRoute();
   const { user, logout } = useAuth();
   const [activeKey, setActiveKey] = useState('inicio');
   const [summary, setSummary] = useState({
@@ -119,7 +120,12 @@ export default function DashboardShell({ children }) {
     return String(n).split(' ')[0];
   }, [user]);
 
-const cardCls = `${PANEL_BG} rounded-2xl p-5 shadow-[0_2px_8px_rgba(148,163,184,0.12),0_2px_8px_rgba(255,255,255,0.06)]`;
+  const screenMap = {
+    inicio: InicioScreen,
+    reservas: ReservasScreen,
+    'mis-canchas': CanchasScreen,
+  };
+  const ScreenComponent = screenMap[activeKey] || (() => null);
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
@@ -179,76 +185,7 @@ const cardCls = `${PANEL_BG} rounded-2xl p-5 shadow-[0_2px_8px_rgba(148,163,184,
 
         {/* MAIN */}
         <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View className="py-6">
-            <Text className="text-white text-[36px] font-extrabold tracking-tight">Hola, {firstName}</Text>
-            <Text className="text-white/60 mt-1">{today}</Text>
-          </View>
-
-          {/* GRID */}
-          <View className="gap-6">
-            {/* fila 1 */}
-            <View className="flex-row gap-6">
-              <View className={`flex-1 ${cardCls}`}>
-                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">MIS CANCHAS</Text>
-                <Text className="text-white text-[32px] mt-2 font-bold">
-                  {summary.courtsAvailable} disponibles
-                </Text>
-                <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30">
-                  <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
-                </Pressable>
-              </View>
-
-              <View className={`flex-1 ${cardCls}`}>
-                <Text className="text-amber-300 font-semibold tracking-widest text-[13px]">PRÓXIMO EVENTO</Text>
-                <Text className="text-white text-[28px] mt-2 font-semibold">Torneo de Primavera</Text>
-                <Text className="text-white/60 mt-2">martes, 30 de abril de 2024</Text>
-              </View>
-            </View>
-
-            {/* fila 2 */}
-            <View className="flex-row gap-6">
-              <View className={`flex-1 ${cardCls}`}>
-                <Text className="text-sky-300 font-semibold tracking-widest text-[13px]">RESERVAS</Text>
-                <Text className="text-white text-[32px] mt-2 font-bold">
-                  {summary.reservasHoy} hoy
-                </Text>
-                <Text className="text-white/60 mt-1">+{summary.reservasSemana} esta semana</Text>
-                <Pressable className="self-start mt-4 rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25">
-                  <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
-                </Pressable>
-              </View>
-
-              <View className={`flex-1 ${cardCls}`}>
-                <Text className="text-emerald-300 font-semibold tracking-widest text-[13px]">ECONOMÍA</Text>
-                <Text className="text-white text-[32px] mt-2 font-bold">
-                  ${Number(summary.economiaMes || 0).toLocaleString('es-AR')} este mes
-                </Text>
-                <View className="mt-4 h-24 rounded-xl bg-white/5" />
-              </View>
-            </View>
-
-            {/* fila 3 */}
-            <View className="flex-row gap-6">
-              <View className={`flex-1 ${cardCls}`}>
-                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">EVENTOS</Text>
-                <View className="mt-3 flex-row items-center justify-between">
-                  <Text className="text-white text-[24px] font-semibold">meEquipo</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
-                </View>
-              </View>
-
-              <View className={`flex-1 ${cardCls}`}>
-                <Text className="text-teal-300 font-semibold tracking-widest text-[13px]">EVENTOS</Text>
-                <View className="mt-3 flex-row items-center justify-between">
-                  <Text className="text-white text-[24px] font-semibold">Ranking</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {children}
+          <ScreenComponent summary={summary} firstName={firstName} today={today} />
         </ScrollView>
       </View>
     </View>
