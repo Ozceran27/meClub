@@ -57,14 +57,20 @@ export function AuthProvider({ children }) {
   const login = async ({ email, password }) => {
     // Tu backend espera { email, contrasena }
     const data = await api.post('/auth/login', { email, contrasena: password });
-    // Respuesta esperada: { token, usuario }
-    const { token, usuario } = data || {};
+    // Respuesta esperada: { token, usuario, club? }
+    const { token, usuario, club } = data || {};
     if (!token || !usuario) throw new Error('Respuesta de login inválida');
 
+    // Enriquecemos el usuario con info del club si aplica
+    const userData = {
+      ...usuario,
+      ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
+    };
+
     await storage.setItem(tokenKey, token);
-    await storage.setItem(userKey,  JSON.stringify(usuario));
-    setUser(usuario);
-    return usuario;
+    await storage.setItem(userKey, JSON.stringify(userData));
+    setUser(userData);
+    return userData;
   };
 
   const register = async (params) => {

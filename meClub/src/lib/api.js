@@ -46,6 +46,9 @@ export const authApi = {
 };
 
 export async function getClubSummary({ clubId }) {
+  if (clubId === undefined) {
+    return { courtsAvailable: 0, reservasHoy: 0, reservasSemana: 0, economiaMes: 0 };
+  }
   try {
     const { data } = await api.get(`/clubes/${clubId}/resumen`);
     if (!data) {
