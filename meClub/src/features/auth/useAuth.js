@@ -4,14 +4,17 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../lib/api';
+
 const AuthCtx = createContext(null);
 export const useAuth = () => {
   const ctx = useContext(AuthCtx);
   if (!ctx) throw new Error('useAuth debe usarse dentro de <AuthProvider>');
   return ctx;
 };
+
 const tokenKey = 'mc_token';
 const userKey  = 'mc_user';
+
 // almacenamiento híbrido (SecureStore -> localStorage -> AsyncStorage)
 const storage = {
   async getItem(k) {
@@ -33,9 +36,11 @@ const storage = {
     await AsyncStorage.removeItem(k);
   },
 };
+
 export function AuthProvider({ children }) {
   const [user,  setUser]  = useState(null);
   const [ready, setReady] = useState(false);
+
   // hidratar sesión
   useEffect(() => {
     (async () => {
@@ -48,16 +53,23 @@ export function AuthProvider({ children }) {
       }
     })();
   }, []);
+
   const login = async ({ email, password }) => {
     // Tu backend espera { email, contrasena }
     const data = await api.post('/auth/login', { email, contrasena: password });
-    // Respuesta esperada: { token, usuario }
-    const { token, usuario } = data || {};
+    // Respuesta esperada: { token, usuario, club? }
+    const { token, usuario, club } = data || {};
     if (!token || !usuario) throw new Error('Respuesta de login inválida');
+    // Enriquecemos el usuario con info del club si aplica
+    const userData = {
+      ...usuario,
+      ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
+    };
+
     await storage.setItem(tokenKey, token);
-    await storage.setItem(userKey,  JSON.stringify(usuario));
-    setUser(usuario);
-    return usuario;
+    await storage.setItem(userKey, JSON.stringify(userData));
+    setUser(userData);
+    return userData;
   };
 
   const register = async (params) => {
