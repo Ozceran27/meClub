@@ -3,13 +3,10 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
+const PasswordResetsModel = require('../models/passwordResets.model');
 
-// === TOKENS DE RESET EN MEMORIA (DEV) =========================
-// Para producción, persistir en DB (tabla password_resets) y expirar.
 const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
-const resetTokens = new Map(); // tokenHash -> { userId, exp }
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
-// =============================================================
 
 exports.register = async (req, res) => {
   const {
@@ -109,7 +106,8 @@ exports.forgot = async (req, res) => {
     const user = usuarios[0];
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashToken(rawToken);
-    resetTokens.set(tokenHash, { userId: user.usuario_id, exp: Date.now() + RESET_TTL_MS });
+    const expira = new Date(Date.now() + RESET_TTL_MS);
+    await PasswordResetsModel.insert(tokenHash, user.usuario_id, expira);
 
     const frontBase = process.env.FRONT_BASE_URL || 'http://localhost:19006';
     const link = `${frontBase}/reset?token=${rawToken}`;
@@ -135,9 +133,9 @@ exports.reset = async (req, res) => {
 
   try {
     const tokenHash = hashToken(token);
-    const entry = resetTokens.get(tokenHash);
-    if (!entry || entry.exp < Date.now()) {
-      resetTokens.delete(tokenHash);
+    const entry = await PasswordResetsModel.findByHash(tokenHash);
+    if (!entry || new Date(entry.expira) < new Date()) {
+      if (entry) await PasswordResetsModel.delete(tokenHash);
       return res.status(400).json({ mensaje: 'Token inválido o expirado' });
     }
 
@@ -149,8 +147,8 @@ exports.reset = async (req, res) => {
       return res.status(500).json({ mensaje: 'No se pudo actualizar la contraseña (método inexistente)' });
     }
 
-    await UsuariosModel.actualizarContrasena(entry.userId, hashed);
-    resetTokens.delete(tokenHash);
+    await UsuariosModel.actualizarContrasena(entry.usuario_id, hashed);
+    await PasswordResetsModel.delete(tokenHash);
 
     return res.json({ mensaje: 'Contraseña actualizada' });
   } catch (error) {
