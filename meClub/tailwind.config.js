@@ -26,7 +26,7 @@ module.exports = {
       },
       boxShadow: {
         soft: '0 8px 24px rgba(0,0,0,0.25)',
-        "card": "0 10px 30px rgba(0,0,0,0.25)",
+        card: '0 2px 8px rgba(148,163,184,0.12), 0 2px 8px rgba(255,255,255,0.06)',
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
