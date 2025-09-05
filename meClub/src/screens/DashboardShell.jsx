@@ -84,25 +84,8 @@ export default function DashboardShell() {
     { key: 'soporte', label: 'Soporte', icon: <Ionicons name="help-circle-outline" size={18} color="#9FB3C8" /> },
   ];
 
-  const routeMap = {
-    inicio: 'Dashboard',
-    buzon: 'Dashboard',
-    'mis-canchas': 'Dashboard',
-    reservas: 'Dashboard',
-    horarios: 'Dashboard',
-    tarifas: 'Dashboard',
-    grabaciones: 'Dashboard',
-    eventos: 'Dashboard',
-    'me-equipo': 'Dashboard',
-    ranking: 'Dashboard',
-    conciliar: 'Dashboard',
-    ajustes: 'Dashboard',
-    soporte: 'Dashboard',
-  };
-
   const go = (key) => {
     setActiveKey(key);
-    navigation.navigate(routeMap[key] || 'Dashboard');
   };
 
   const today = useMemo(() => {
