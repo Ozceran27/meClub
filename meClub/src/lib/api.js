@@ -1,18 +1,9 @@
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { tokenKey, getItem } from './storage';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3006/api';
 
-const tokenKey = 'mc_token';
-async function getToken() {
-  try { const t = await SecureStore.getItemAsync(tokenKey); if (t) return t; } catch {}
-  if (Platform.OS === 'web') return localStorage.getItem(tokenKey);
-  return AsyncStorage.getItem(tokenKey);
-}
-
 async function request(path, { method = 'GET', body, headers, auth = true } = {}) {
-  const token = auth ? await getToken() : null;
+  const token = auth ? await getItem(tokenKey) : null;
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: {
