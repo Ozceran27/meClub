@@ -4,31 +4,10 @@ const router = express.Router();
 const verifyToken = require('../middleware/auth.middleware');
 const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
-const ClubesHorarioModel = require('../models/clubesHorario.model');
 const TarifasModel = require('../models/tarifas.model');
+const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
 // helpers
 const getUserId = (u) => u?.id ?? u?.usuario_id;
-const diaSemana1a7 = (yyyy_mm_dd) => {
-  const d = new Date(`${yyyy_mm_dd}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  const dow0 = d.getUTCDay();     // 0..6
-  return dow0 === 0 ? 7 : dow0;   // 1..7 (L=1 ... D=7)
-};
-const addHoursHHMMSS = (hhmmss, hours) => {
-  const [h, m, s] = hhmmss.split(':').map(Number);
-  if ([h, m, s].some((x) => Number.isNaN(x))) return null;
-  const base = new Date(Date.UTC(1970, 0, 1, h, m, s || 0));
-  base.setUTCHours(base.getUTCHours() + Number(hours));
-  const hh = String(base.getUTCHours()).padStart(2, '0');
-  const mm = String(base.getUTCMinutes()).padStart(2, '0');
-  const ss = String(base.getUTCSeconds()).padStart(2, '0');
-  return `${hh}:${mm}:${ss}`;
-};
-const isPastDateTime = (yyyy_mm_dd, hhmmss) => {
-  const now = new Date();
-  const dt = new Date(`${yyyy_mm_dd}T${hhmmss}`);
-  return dt.getTime() < now.getTime();
-};
 // -----------------------------------------------------------------------------------------------
 
 // POST crear reserva
