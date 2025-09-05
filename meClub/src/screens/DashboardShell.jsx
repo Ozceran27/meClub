@@ -4,9 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
-import InicioScreen from './dashboard/InicioScreen';
-import ReservasScreen from './dashboard/ReservasScreen';
-import CanchasScreen from './dashboard/CanchasScreen';
+import { InicioScreen, ReservasScreen, CanchasScreen } from './dashboard';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
