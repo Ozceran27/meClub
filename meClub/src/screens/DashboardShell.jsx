@@ -46,6 +46,13 @@ export default function DashboardShell() {
   });
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setActiveKey('inicio');
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
     let alive = true;
     (async () => {
       try {
