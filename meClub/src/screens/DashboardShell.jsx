@@ -183,7 +183,7 @@ export default function DashboardShell() {
 
         {/* MAIN */}
         <ScrollView
-          className="flex-1 px-6 rounded-tl-xl bg-mc-surface"
+          className="flex-1 px-6"
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
