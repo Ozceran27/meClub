@@ -2,6 +2,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
+import * as Linking from 'expo-linking';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardShell from '../screens/DashboardShell';
@@ -10,6 +11,11 @@ import { useAuth } from '../features/auth/useAuth';
 import { theme } from '../theme';
 
 const Stack = createNativeStackNavigator();
+
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: { screens: { Landing: '', Login: 'login', Dashboard: 'dashboard' } }
+};
 
 export default function RootNavigator() {
   const { ready } = useAuth();
@@ -23,7 +29,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={theme}>
+    <NavigationContainer theme={theme} linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="Landing" component={LandingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
