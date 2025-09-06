@@ -18,7 +18,7 @@ const linking = {
 };
 
 export default function RootNavigator() {
-  const { ready } = useAuth();
+  const { ready, isLogged, isClub } = useAuth();
 
   if (!ready) {
     return (
@@ -28,9 +28,15 @@ export default function RootNavigator() {
     );
   }
 
+  const initialRouteName = isLogged && isClub ? 'Dashboard' : 'Landing';
+
   return (
     <NavigationContainer theme={theme} linking={linking}>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+      <Stack.Navigator
+        key={isLogged ? 'auth' : 'guest'}
+        initialRouteName={initialRouteName}
+        screenOptions={{ headerShown: false, animation: 'fade' }}
+      >
         <Stack.Screen name="Landing" component={LandingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Dashboard">
