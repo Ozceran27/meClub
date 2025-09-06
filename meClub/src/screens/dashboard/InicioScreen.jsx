@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import CardTitle from '../../components/CardTitle';
 
 const titleColors = ['text-mc-primary', 'text-mc-info', 'text-mc-warn', 'text-mc-purpleAccent'];
 const getTitleColor = (index) => titleColors[index % titleColors.length];
@@ -18,7 +19,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         {/* fila 1 */}
         <View className="flex-row gap-6">
           <Card className="flex-1">
-            <Text className={`${getTitleColor(0)} font-semibold tracking-widest text-[16px]`}>MIS CANCHAS</Text>
+            <CardTitle colorClass={getTitleColor(0)}>MIS CANCHAS</CardTitle>
             <Text className="text-white text-[32px] mt-2 font-bold">
               {summary.courtsAvailable ?? 0} disponibles
             </Text>
@@ -31,7 +32,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
           </Card>
 
           <Card className="flex-1">
-            <Text className={`${getTitleColor(1)} font-semibold tracking-widest text-[16px]`}>PRÓXIMO EVENTO</Text>
+            <CardTitle colorClass={getTitleColor(1)}>PRÓXIMO EVENTO</CardTitle>
             <Text className="text-white text-[28px] mt-2 font-semibold">Torneo de Primavera</Text>
             <Text className="text-white/60 mt-2">martes, 30 de abril de 2024</Text>
           </Card>
@@ -40,7 +41,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         {/* fila 2 */}
         <View className="flex-row gap-6">
           <Card className="flex-1">
-            <Text className={`${getTitleColor(2)} font-semibold tracking-widest text-[16px]`}>RESERVAS</Text>
+            <CardTitle colorClass={getTitleColor(2)}>RESERVAS</CardTitle>
             <Text className="text-white text-[32px] mt-2 font-bold">
               {summary.reservasHoy ?? 0} hoy
             </Text>
@@ -54,7 +55,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
           </Card>
 
           <Card className="flex-1">
-            <Text className={`${getTitleColor(3)} font-semibold tracking-widest text-[16px]`}>ECONOMÍA</Text>
+            <CardTitle colorClass={getTitleColor(3)}>ECONOMÍA</CardTitle>
             <Text className="text-white text-[32px] mt-2 font-bold">
               {`$${Number(summary.economiaMes ?? 0).toLocaleString('es-AR')} este mes`}
             </Text>
@@ -65,7 +66,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         {/* fila 3 */}
         <View className="flex-row gap-6">
           <Card className="flex-1">
-            <Text className={`${getTitleColor(4)} font-semibold tracking-widest text-[16px]`}>EVENTOS</Text>
+            <CardTitle colorClass={getTitleColor(4)}>EVENTOS</CardTitle>
             <View className="mt-3 flex-row items-center justify-between">
               <Text className="text-white text-[24px] font-semibold">meEquipo</Text>
               <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
@@ -73,7 +74,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
           </Card>
 
           <Card className="flex-1">
-            <Text className={`${getTitleColor(5)} font-semibold tracking-widest text-[16px]`}>EVENTOS</Text>
+            <CardTitle colorClass={getTitleColor(5)}>EVENTOS</CardTitle>
             <View className="mt-3 flex-row items-center justify-between">
               <Text className="text-white text-[24px] font-semibold">Ranking</Text>
               <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
