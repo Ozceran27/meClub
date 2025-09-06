@@ -75,13 +75,7 @@ export default function DashboardShell() {
   }, [user?.clubId, user?.club?.id]);
 
   const handleLogout = async () => {
-    try { await logout(); } finally {
-      if (typeof window !== 'undefined') {
-        window.location.assign('/');
-      } else {
-        try { navigation.reset({ index: 0, routes: [{ name: 'Login' }] }); } catch {}
-      }
-    }
+    await logout();
   };
 
   const items = [

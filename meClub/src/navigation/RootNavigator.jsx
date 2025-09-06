@@ -9,6 +9,7 @@ import DashboardShell from '../screens/DashboardShell';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../features/auth/useAuth';
 import { theme } from '../theme';
+import { navigationRef } from './navigationRef';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,7 +32,7 @@ export default function RootNavigator() {
   const initialRouteName = isLogged && isClub ? 'Dashboard' : 'Landing';
 
   return (
-    <NavigationContainer theme={theme} linking={linking}>
+    <NavigationContainer ref={navigationRef} theme={theme} linking={linking}>
       <Stack.Navigator
         key={isLogged ? 'auth' : 'guest'}
         initialRouteName={initialRouteName}

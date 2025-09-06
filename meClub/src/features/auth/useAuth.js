@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { api } from '../../lib/api';
 import { tokenKey, getItem, setItem, delItem } from '../../lib/storage';
+import { navigationRef } from '../../navigation/navigationRef';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => {
@@ -66,9 +67,16 @@ export function AuthProvider({ children }) {
     await delItem(tokenKey);
     await delItem(userKey);
     setUser(null);
-    // Redirección robusta en Web: evita que el stack quede en /dashboard
-    if (Platform.OS === 'web') {
-      try { window.location.assign('/login'); } catch {}
+    try {
+      if (navigationRef.isReady()) {
+        navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
+      } else if (Platform.OS === 'web') {
+        window.location.assign('/login');
+      }
+    } catch {
+      if (Platform.OS === 'web') {
+        try { window.location.assign('/login'); } catch {}
+      }
     }
   };
   const isClub = !!user && String(user.rol ?? user.role ?? '').toLowerCase().startsWith('club');
