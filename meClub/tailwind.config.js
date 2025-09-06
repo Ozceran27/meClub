@@ -17,6 +17,7 @@ module.exports = {
           primary: '#2b8280',
           info: '#66c2ff',
           warn: '#dba741',
+          purpleAccent: '#C522FF',
           stroke: '#1a2332',
         },
       },
