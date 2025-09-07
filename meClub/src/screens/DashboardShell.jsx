@@ -53,6 +53,7 @@ export default function DashboardShell() {
     reservasSemana: 0,
     economiaMes: 0,
   });
+  const [err, setErr] = useState('');
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -66,9 +67,12 @@ export default function DashboardShell() {
     (async () => {
       try {
         const data = await getClubSummary({ clubId: user?.clubId || user?.club?.id });
-        if (alive && data) setSummary(data);
-      } catch {
-        /* fallback */
+        if (alive && data) {
+          setSummary(data);
+          setErr('');
+        }
+      } catch (e) {
+        if (alive) setErr(e.message);
       }
     })();
     return () => { alive = false; };
@@ -181,6 +185,7 @@ export default function DashboardShell() {
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
+          {!!err && <Text className="text-red-400 text-center my-2">{err}</Text>}
           <ScreenComponent {...screenProps} />
         </ScrollView>
       </View>
