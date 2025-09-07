@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { validationResult } = require('express-validator');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
 const PasswordResetsModel = require('../models/passwordResets.model');
@@ -9,6 +10,10 @@ const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
 exports.register = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ mensaje: errors.array()[0].msg });
+  }
   const {
     nombre, apellido, email, contrasena,
     rol = 'deportista',
@@ -74,6 +79,10 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ mensaje: errors.array()[0].msg });
+  }
   const { email, contrasena } = req.body;
 
   try {
@@ -134,8 +143,11 @@ exports.login = async (req, res) => {
 
 // ====== Solicitud de reseteo ===========================
 exports.forgot = async (req, res) => {
-  const { email } = req.body || {};
-  if (!email) return res.status(400).json({ mensaje: 'Email requerido' });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ mensaje: errors.array()[0].msg });
+  }
+  const { email } = req.body;
 
   try {
     const usuarios = await UsuariosModel.buscarPorEmail(email);
@@ -166,10 +178,11 @@ exports.forgot = async (req, res) => {
 
 // ====== Reset con token ================================
 exports.reset = async (req, res) => {
-  const { token, password } = req.body || {};
-  if (!token || !password) {
-    return res.status(400).json({ mensaje: 'Token y nueva contraseña requeridos' });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ mensaje: errors.array()[0].msg });
   }
+  const { token, password } = req.body;
 
   try {
     const tokenHash = hashToken(token);
