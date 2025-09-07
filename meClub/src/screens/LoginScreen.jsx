@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../features/auth/useAuth';
-import { api, authApi } from '../lib/api';
+import { authApi } from '../lib/api';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
@@ -40,13 +40,13 @@ const resetSchema = z.object({
 
 export default function LoginScreen() {
   const nav  = useNavigation();
-  const { login, register, user, isLogged } = useAuth();
+  const { login, register, isLogged } = useAuth();
 
   useEffect(() => {
     if (isLogged) {
       nav.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
     }
-  }, [isLogged, nav, user]);
+  }, [isLogged, nav]);
 
   // 'login' | 'register' | 'forgot' | 'reset'
   const [mode, setMode] = useState('login');
@@ -125,7 +125,8 @@ export default function LoginScreen() {
     setBusy(true); setErr(''); setOk('');
     try {
       await register(data);
-      nav.reset({ index: 0, routes: [{ name: 'Dashboard' }] });
+      nav.reset({ index: 0, routes: [{ name: 'Login' }] });
+      setOk('Usuario creado, por favor inicia sesión');
     } catch (e) {
       setErr(e.message || 'No se pudo registrar');
     } finally { setBusy(false); }
