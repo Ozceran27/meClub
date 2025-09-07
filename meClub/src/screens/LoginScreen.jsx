@@ -20,6 +20,9 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   rol: z.enum(['deportista', 'club']).default('deportista'),
   nombre_club: z.string().optional(),
+  descripcion_club: z.string().optional(),
+  foto_logo: z.string().optional(),
+  nivel_id: z.string().optional(),
 });
 
 const forgotSchema = z.object({
@@ -62,7 +65,7 @@ export default function LoginScreen() {
   }, [mode]);
 
   const {
-    control, handleSubmit, reset, setValue,
+    control, handleSubmit, reset, setValue, watch,
     formState: { errors }
   } = useForm({
     resolver,
@@ -70,11 +73,13 @@ export default function LoginScreen() {
       // login
       email: '', password: '',
       // register
-      nombre: '', apellido: '', rol: 'deportista', nombre_club: '',
+      nombre: '', apellido: '', rol: 'deportista', nombre_club: '', descripcion_club: '', foto_logo: '', nivel_id: '',
       // reset
       token: '', confirm: '',
     },
   });
+
+  const rol = watch('rol');
 
   // Leer ?token= de la URL (web) para ir directo a reset
   useEffect(() => {
@@ -94,7 +99,7 @@ export default function LoginScreen() {
     if (mode === 'login') {
       reset({ email: '', password: '' });
     } else if (mode === 'register') {
-      reset({ nombre: '', apellido: '', email: '', password: '', rol: 'deportista', nombre_club: '' });
+      reset({ nombre: '', apellido: '', email: '', password: '', rol: 'deportista', nombre_club: '', descripcion_club: '', foto_logo: '', nivel_id: '' });
     } else if (mode === 'forgot') {
       reset({ email: '' });
     } else if (mode === 'reset') {
@@ -270,22 +275,78 @@ export default function LoginScreen() {
                   )}
                 />
 
-                <Controller
-                  control={control}
-                  name="nombre_club"
-                  render={({ field: { onChange, value } }) => (
-                    <View>
-                      <Text className="text-mc-textDim mb-2">Nombre del club (solo si sos Club)</Text>
-                      <TextInput
-                        className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                        placeholder="Mi Club Deportivo"
-                        placeholderTextColor="#7789a6"
-                        value={value}
-                        onChangeText={onChange}
-                      />
-                    </View>
-                  )}
-                />
+                {rol === 'club' && (
+                  <>
+                    <Controller
+                      control={control}
+                      name="nombre_club"
+                      render={({ field: { onChange, value } }) => (
+                        <View>
+                          <Text className="text-mc-textDim mb-2">Nombre del club</Text>
+                          <TextInput
+                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                            placeholder="Mi Club Deportivo"
+                            placeholderTextColor="#7789a6"
+                            value={value}
+                            onChangeText={onChange}
+                          />
+                        </View>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="descripcion_club"
+                      render={({ field: { onChange, value } }) => (
+                        <View>
+                          <Text className="text-mc-textDim mb-2">Descripción del club (opcional)</Text>
+                          <TextInput
+                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                            placeholder="Breve descripción"
+                            placeholderTextColor="#7789a6"
+                            value={value}
+                            onChangeText={onChange}
+                          />
+                        </View>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="foto_logo"
+                      render={({ field: { onChange, value } }) => (
+                        <View>
+                          <Text className="text-mc-textDim mb-2">Logo del club (URL opcional)</Text>
+                          <TextInput
+                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                            placeholder="https://..."
+                            placeholderTextColor="#7789a6"
+                            value={value}
+                            onChangeText={onChange}
+                          />
+                        </View>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="nivel_id"
+                      render={({ field: { onChange, value } }) => (
+                        <View>
+                          <Text className="text-mc-textDim mb-2">Nivel del club (opcional)</Text>
+                          <TextInput
+                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                            placeholder="ID de nivel"
+                            placeholderTextColor="#7789a6"
+                            keyboardType="numeric"
+                            value={value}
+                            onChangeText={onChange}
+                          />
+                        </View>
+                      )}
+                    />
+                  </>
+                )}
               </>
             )}
 
