@@ -49,8 +49,11 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const register = async ({ nombre, apellido, email, password, rol, nombre_club }) => {
+  const register = async ({ nombre, apellido, email, password, rol, nombre_club, descripcion_club, foto_logo, nivel_id }) => {
     const payload = { nombre, apellido, email, contrasena: password, rol, nombre_club };
+    if (descripcion_club) payload.descripcion_club = descripcion_club;
+    if (foto_logo) payload.foto_logo = foto_logo;
+    if (nivel_id) payload.nivel_id = nivel_id;
     const data = await api.post('/auth/register', payload, { auth: false });
     // Algunas versiones del backend pueden devolver `user` en lugar de `usuario`
     const { token, usuario, user, club } = data || {};
