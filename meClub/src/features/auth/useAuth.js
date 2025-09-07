@@ -55,19 +55,10 @@ export function AuthProvider({ children }) {
     if (foto_logo) payload.foto_logo = foto_logo;
     if (nivel_id) payload.nivel_id = nivel_id;
     const data = await api.post('/auth/register', payload, { auth: false });
-    // Algunas versiones del backend pueden devolver `user` en lugar de `usuario`
-    const { token, usuario, user, club } = data || {};
-    const usr = usuario || user;
-    if (!token || !usr) throw new Error('Respuesta de registro inválida');
-    const userData = {
-      ...usr,
-      ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
-    };
-
-    await setItem(tokenKey, token);
-    await setItem(userKey, JSON.stringify(userData));
-    setUser(userData);
-    return userData;
+    // Devolver solo el mensaje y asegurarse de cerrar cualquier sesión previa
+    const { mensaje } = data || {};
+    await logout();
+    return mensaje;
   };
 
 
