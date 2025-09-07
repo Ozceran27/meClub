@@ -1,6 +1,6 @@
 // src/screens/LoginScreen.jsx
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../features/auth/useAuth';
 import { api, authApi } from '../lib/api';
@@ -309,7 +309,7 @@ export default function LoginScreen() {
                       secureTextEntry
                       value={value}
                       onChangeText={onChange}
-                      onSubmitEditing={mode === 'login' ? handleSubmit(submitLogin) : undefined}
+                      onSubmitEditing={mode === 'login' ? () => handleSubmit(submitLogin)() : undefined}
                     />
                     {errors.password && <Text className="text-red-400 mt-1">{errors.password.message}</Text>}
                   </View>
@@ -383,12 +383,15 @@ export default function LoginScreen() {
             {/* CTA principal */}
             <Pressable
               disabled={busy}
-              onPress={handleSubmit(
-                mode === 'login'    ? submitLogin :
-                mode === 'register' ? submitRegister :
-                mode === 'forgot'   ? submitForgot :
-                submitReset
-              )}
+              onPress={() => {
+                Keyboard.dismiss();
+                handleSubmit(
+                  mode === 'login'    ? submitLogin :
+                  mode === 'register' ? submitRegister :
+                  mode === 'forgot'   ? submitForgot :
+                  submitReset
+                )();
+              }}
               className="bg-mc-primary rounded-xl2 py-3 items-center mt-2
                          transition-transform duration-150 hover:-translate-y-0.5
                          hover:shadow-[0_12px_28px_rgba(43,130,128,0.35)]
