@@ -4,15 +4,20 @@ const BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3006/api';
 
 async function request(path, { method = 'GET', body, headers, auth = true } = {}) {
   const token = auth ? await getItem(tokenKey) : null;
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(headers || {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(headers || {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error('Network unavailable');
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data?.mensaje || data?.error || `HTTP ${res.status}`;
@@ -55,7 +60,6 @@ export async function getClubSummary({ clubId }) {
     };
   } catch (err) {
     console.warn('getClubSummary error', err);
-    // Si el backend no responde devolvemos valores en cero
-    return { courtsAvailable: 0, reservasHoy: 0, reservasSemana: 0, economiaMes: 0 };
+    throw err;
   }
 }
