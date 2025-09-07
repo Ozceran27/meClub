@@ -6,6 +6,7 @@ import * as Linking from 'expo-linking';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardShell from '../screens/DashboardShell';
+import WorkInProgressScreen from '../screens/WorkInProgressScreen';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../features/auth/useAuth';
 import { theme } from '../theme';
@@ -15,7 +16,14 @@ const Stack = createNativeStackNavigator();
 
 const linking = {
   prefixes: [Linking.createURL('/')],
-  config: { screens: { Landing: '', Login: 'login', Dashboard: 'dashboard' } }
+  config: {
+    screens: {
+      Landing: '',
+      Login: 'login',
+      WorkInProgress: 'working',
+      Dashboard: 'dashboard',
+    },
+  },
 };
 
 export default function RootNavigator() {
@@ -29,7 +37,7 @@ export default function RootNavigator() {
     );
   }
 
-  const initialRouteName = isLogged && isClub ? 'Dashboard' : 'Landing';
+  const initialRouteName = isLogged ? (isClub ? 'Dashboard' : 'WorkInProgress') : 'Landing';
 
   return (
     <NavigationContainer ref={navigationRef} theme={theme} linking={linking}>
@@ -40,6 +48,13 @@ export default function RootNavigator() {
       >
         <Stack.Screen name="Landing" component={LandingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="WorkInProgress">
+          {() => (
+            <ProtectedRoute>
+              <WorkInProgressScreen />
+            </ProtectedRoute>
+          )}
+        </Stack.Screen>
         <Stack.Screen name="Dashboard">
           {() => (
             <ProtectedRoute requiredRole="club">
