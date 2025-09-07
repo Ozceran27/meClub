@@ -49,8 +49,9 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const register = async (params) => {
-    const data = await api.post('/auth/register', params);
+  const register = async ({ nombre, apellido, email, password, rol, nombre_club }) => {
+    const payload = { nombre, apellido, email, contrasena: password, rol, nombre_club };
+    const data = await api.post('/auth/register', payload, { auth: false });
     // Algunas versiones del backend pueden devolver `user` en lugar de `usuario`
     const { token, usuario, user } = data || {};
     const usr = usuario || user;

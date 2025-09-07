@@ -15,6 +15,7 @@ const loginSchema = z.object({
 
 const registerSchema = z.object({
   nombre: z.string().min(2, 'Ingresá tu nombre'),
+  apellido: z.string().min(2, 'Ingresá tu apellido'),
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   rol: z.enum(['deportista', 'club']).default('deportista'),
@@ -69,7 +70,7 @@ export default function LoginScreen() {
       // login
       email: '', password: '',
       // register
-      nombre: '', rol: 'deportista', nombre_club: '',
+      nombre: '', apellido: '', rol: 'deportista', nombre_club: '',
       // reset
       token: '', confirm: '',
     },
@@ -93,7 +94,7 @@ export default function LoginScreen() {
     if (mode === 'login') {
       reset({ email: '', password: '' });
     } else if (mode === 'register') {
-      reset({ nombre: '', email: '', password: '', rol: 'deportista', nombre_club: '' });
+      reset({ nombre: '', apellido: '', email: '', password: '', rol: 'deportista', nombre_club: '' });
     } else if (mode === 'forgot') {
       reset({ email: '' });
     } else if (mode === 'reset') {
@@ -226,6 +227,24 @@ export default function LoginScreen() {
                         onChangeText={onChange}
                       />
                       {errors.nombre && <Text className="text-red-400 mt-1">{errors.nombre.message}</Text>}
+                    </View>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="apellido"
+                  render={({ field: { onChange, value } }) => (
+                    <View>
+                      <Text className="text-mc-textDim mb-2">Apellido</Text>
+                      <TextInput
+                        className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                        placeholder="Tu apellido"
+                        placeholderTextColor="#7789a6"
+                        value={value}
+                        onChangeText={onChange}
+                      />
+                      {errors.apellido && <Text className="text-red-400 mt-1">{errors.apellido.message}</Text>}
                     </View>
                   )}
                 />
