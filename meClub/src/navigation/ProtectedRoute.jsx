@@ -14,6 +14,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
   const nav = useNavigation();
 
   useEffect(() => {
+    console.log (isLogged)
     if (!ready || typeof isLogged === 'undefined') return;
     if (!isLogged) {
       nav.reset({ index: 0, routes: [{ name: 'Login' }] });

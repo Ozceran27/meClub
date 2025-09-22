@@ -48,6 +48,9 @@ export default function LoginScreen() {
         ? 'Dashboard'
         : 'WorkInProgress';
       nav.reset({ index: 0, routes: [{ name: dest }] });
+      const lavariablebanana = nav.getState();
+
+      console.log (lavariablebanana);
     }
   }, [isLogged, user, nav]);
 
