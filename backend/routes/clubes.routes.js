@@ -10,6 +10,7 @@ const CanchasModel = require('../models/canchas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ReservasModel = require('../models/reservas.model');
 const TarifasModel = require('../models/tarifas.model');
+const ProvinciasModel = require('../models/provincias.model');
 
 // Aplica middlewares de autenticación/rol y carga de club
 router.use(['/mis-datos', '/mis-canchas', '/canchas', '/mis-horarios', '/mis-tarifas'], verifyToken, requireRole('club'), loadClub);
@@ -17,6 +18,52 @@ router.use(['/mis-datos', '/mis-canchas', '/canchas', '/mis-horarios', '/mis-tar
 // ---------------- Mis datos
 router.get('/mis-datos', (req, res) => {
   res.json(req.club);
+});
+
+router.patch('/mis-datos', async (req, res) => {
+  try {
+    const { nombre, descripcion, foto_logo, provincia_id } = req.body || {};
+
+    if (typeof nombre !== 'string' || nombre.trim() === '') {
+      return res.status(400).json({ mensaje: 'El nombre es obligatorio' });
+    }
+
+    let provinciaIdValue = provincia_id;
+    if (provincia_id !== undefined) {
+      if (provincia_id === null || provincia_id === '') {
+        provinciaIdValue = null;
+      } else {
+        const provinciaNumerica = Number(provincia_id);
+        if (!Number.isInteger(provinciaNumerica)) {
+          return res.status(400).json({ mensaje: 'provincia_id inválido' });
+        }
+
+        const existeProvincia = await ProvinciasModel.existe(provinciaNumerica);
+        if (!existeProvincia) {
+          return res.status(400).json({ mensaje: 'La provincia especificada no existe' });
+        }
+
+        provinciaIdValue = provinciaNumerica;
+      }
+    }
+
+    const payload = {
+      nombre,
+    };
+
+    if (descripcion !== undefined) payload.descripcion = descripcion;
+    if (foto_logo !== undefined) payload.foto_logo = foto_logo;
+    if (provincia_id !== undefined) payload.provincia_id = provinciaIdValue;
+
+    const clubActualizado = await ClubesModel.actualizarPorId(req.club.club_id, payload);
+
+    req.club = clubActualizado;
+
+    res.json({ mensaje: 'Datos del club actualizados', club: clubActualizado });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
 });
 
 // ---------------- Mis canchas (listar)

@@ -49,6 +49,60 @@ const ClubesModel = {
     return rows[0] || null;
   },
 
+  actualizarPorId: async (club_id, {
+    nombre,
+    descripcion,
+    foto_logo,
+    provincia_id,
+  } = {}) => {
+    const updates = [];
+    const values = [];
+
+    const handleStringField = (fieldName, value) => {
+      if (value === undefined) return;
+      if (value === null) {
+        updates.push(`${fieldName} = NULL`);
+        return;
+      }
+
+      if (typeof value !== 'string') {
+        throw new Error(`${fieldName} debe ser una cadena o null`);
+      }
+
+      const trimmed = value.trim();
+      updates.push(`${fieldName} = ?`);
+      values.push(trimmed);
+    };
+
+    handleStringField('nombre', nombre);
+    handleStringField('descripcion', descripcion);
+    handleStringField('foto_logo', foto_logo);
+
+    if (provincia_id !== undefined) {
+      if (provincia_id === null || provincia_id === '') {
+        updates.push('provincia_id = NULL');
+      } else {
+        const provinciaNumber = Number(provincia_id);
+        if (!Number.isInteger(provinciaNumber)) {
+          throw new Error('provincia_id debe ser numérico o null');
+        }
+        updates.push('provincia_id = ?');
+        values.push(provinciaNumber);
+      }
+    }
+
+    if (updates.length === 0) {
+      return ClubesModel.obtenerClubPorId(club_id);
+    }
+
+    const sql = `UPDATE clubes SET ${updates.join(', ')} WHERE club_id = ?`;
+    values.push(club_id);
+
+    await db.query(sql, values);
+
+    return ClubesModel.obtenerClubPorId(club_id);
+  },
+
   obtenerResumen: async (club_id) => {
     const [[{ total: courtsAvailable = 0 } = {}]] = await db.query(
       'SELECT COUNT(*) AS total FROM canchas WHERE club_id = ?',
