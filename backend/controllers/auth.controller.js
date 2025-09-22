@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
 const PasswordResetsModel = require('../models/passwordResets.model');
+const logger = require('../utils/logger');
 
 const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -73,7 +74,7 @@ exports.register = async (req, res) => {
       club: clubInfo,
     });
   } catch (error) {
-    console.error('Error en registro:', error);
+    logger.error('Error en registro:', error);
     res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
   }
 };
@@ -116,7 +117,7 @@ exports.login = async (req, res) => {
           clubInfo = { club_id: club.club_id, nombre: club.nombre };
         }
       } catch (err) {
-        console.error('Error obteniendo club del usuario', err);
+        logger.error('Error obteniendo club del usuario', err);
       }
     }
 
@@ -136,7 +137,7 @@ exports.login = async (req, res) => {
 
     res.json(respuesta);
   } catch (error) {
-    console.error('Error en login:', error);
+    logger.error('Error en login:', error);
     res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
   }
 };
@@ -166,12 +167,12 @@ exports.forgot = async (req, res) => {
 
     // En modo desarrollo se devuelve el token/link para pruebas.
     if (process.env.NODE_ENV === 'development') {
-      console.log('[meClub] Link de reseteo:', link);
+      logger.debug('Link de reseteo generado para el usuario:', user.email);
       return res.json({ mensaje: 'Instrucciones enviadas', token: rawToken, link });
     }
     return res.json({ mensaje: 'Instrucciones enviadas' });
   } catch (error) {
-    console.error('Error en forgot:', error);
+    logger.error('Error en forgot:', error);
     res.status(500).json({ mensaje: 'Error en el servidor' });
   }
 };
@@ -196,7 +197,7 @@ exports.reset = async (req, res) => {
 
     // IMPORTANTE: tu modelo debería exponer actualizarContrasena(usuario_id, contrasenaHasheada)
     if (typeof UsuariosModel.actualizarContrasena !== 'function') {
-      console.error('Falta UsuariosModel.actualizarContrasena(usuario_id, hash)');
+      logger.error('Falta UsuariosModel.actualizarContrasena(usuario_id, hash)');
       return res.status(500).json({ mensaje: 'No se pudo actualizar la contraseña (método inexistente)' });
     }
 
@@ -205,7 +206,7 @@ exports.reset = async (req, res) => {
 
     return res.json({ mensaje: 'Contraseña actualizada' });
   } catch (error) {
-    console.error('Error en reset:', error);
+    logger.error('Error en reset:', error);
     res.status(500).json({ mensaje: 'Error en el servidor' });
   }
 };

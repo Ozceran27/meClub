@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const logger = require('./utils/logger');
 const app = express();
 const PORT = process.env.PORT || 3006;
 const PasswordResetsModel = require('./models/passwordResets.model');
@@ -32,12 +33,12 @@ setInterval(async () => {
   try {
     await PasswordResetsModel.deleteExpired();
   } catch (err) {
-    console.error('Error purgando tokens de reseteo:', err);
+    logger.error('Error purgando tokens de reseteo:', err);
   }
 }, PURGE_INTERVAL_MS);
 
 // RUN SERVER -------------------------------------------------------------------------------------
 app.listen(PORT, () => {
-  console.log(`Servidor backend escuchando en http://localhost:${PORT}`);
+  logger.info(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
 
