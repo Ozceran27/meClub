@@ -41,19 +41,7 @@ const resetSchema = z.object({
 
 export default function LoginScreen() {
   const nav  = useNavigation();
-  const { login, register, isLogged, user } = useAuth();
-
-  useEffect(() => {
-    if (isLogged) {
-      const dest = String(user?.rol ?? '').toLowerCase().startsWith('club')
-        ? 'Dashboard'
-        : 'WorkInProgress';
-      nav.reset({ index: 0, routes: [{ name: dest }] });
-      const lavariablebanana = nav.getState();
-
-      console.log (lavariablebanana);
-    }
-  }, [isLogged, user, nav]);
+  const { login, register } = useAuth();
 
   // 'login' | 'register' | 'forgot' | 'reset'
   const [mode, setMode] = useState('login');

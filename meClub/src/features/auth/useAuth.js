@@ -46,6 +46,34 @@ export function AuthProvider({ children }) {
     await setItem(tokenKey, token);
     await setItem(userKey, JSON.stringify(userData));
     setUser(userData);
+
+    const destination = String(userData?.rol ?? userData?.role ?? '')
+      .toLowerCase()
+      .startsWith('club')
+      ? 'Dashboard'
+      : 'WorkInProgress';
+
+    const ensureNavigation = () => {
+      try {
+        if (navigationRef.isReady()) {
+          navigationRef.reset({ index: 0, routes: [{ name: destination }] });
+        } else if (Platform.OS === 'web') {
+          const webPath = destination === 'Dashboard' ? '/dashboard' : '/working';
+          window.location.assign(webPath);
+        } else {
+          setTimeout(ensureNavigation, 50);
+        }
+      } catch {
+        if (Platform.OS === 'web') {
+          try {
+            const webPath = destination === 'Dashboard' ? '/dashboard' : '/working';
+            window.location.assign(webPath);
+          } catch {}
+        }
+      }
+    };
+
+    ensureNavigation();
     return userData;
   };
 
