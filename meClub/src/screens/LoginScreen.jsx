@@ -4,6 +4,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, Keyboard
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../features/auth/useAuth';
 import { authApi } from '../lib/api';
+import logger from '../utils/logger';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
@@ -142,7 +143,7 @@ export default function LoginScreen() {
       setOk('Si el email existe, enviamos instrucciones a tu correo.');
       // En dev, puede venir {token, link}
       if (r?.token) {
-        console.log('[DEV] Token reset:', r.token, 'Link:', r.link);
+        logger.debug('Token de reseteo recibido para pruebas de desarrollo.');
       }
     } catch (e) {
       setErr(e.message || 'No se pudo procesar la solicitud');
