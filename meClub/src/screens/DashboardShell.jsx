@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors as mcColors } from '../theme/tokens';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
-import { InicioScreen, ReservasScreen, CanchasScreen } from './dashboard';
+import { InicioScreen, ReservasScreen, CanchasScreen, ConfiguracionScreen } from './dashboard';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
@@ -54,6 +54,7 @@ export default function DashboardShell() {
     economiaMes: 0,
   });
   const [err, setErr] = useState('');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -78,9 +79,10 @@ export default function DashboardShell() {
     return () => { alive = false; };
   }, [user?.clubId, user?.club?.id]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
+    setProfileMenuOpen(false);
     await logout();
-  };
+  }, [logout]);
 
   const items = [
     { key: 'inicio', label: 'Inicio', iconName: 'home-outline' },
@@ -94,13 +96,34 @@ export default function DashboardShell() {
     { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline' },
     { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline' },
     { key: 'conciliar', label: 'Conciliar', iconName: 'repeat-outline' },
-    { key: 'ajustes', label: 'Ajustes', iconName: 'settings-outline' },
+    { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline' },
     { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline' },
   ];
 
-  const go = (key) => {
+  const go = useCallback((key) => {
+    setProfileMenuOpen(false);
     setActiveKey(key);
-  };
+  }, []);
+
+  const handleMenuAction = useCallback(
+    (action) => {
+      switch (action) {
+        case 'inicio':
+          go('inicio');
+          break;
+        case 'configuracion':
+          go('configuracion');
+          break;
+        case 'logout':
+          handleLogout();
+          break;
+        default:
+          setProfileMenuOpen(false);
+          break;
+      }
+    },
+    [go, handleLogout]
+  );
 
   const today = useMemo(() => {
     try {
@@ -119,33 +142,87 @@ export default function DashboardShell() {
     inicio: InicioScreen,
     reservas: ReservasScreen,
     'mis-canchas': CanchasScreen,
+    configuracion: ConfiguracionScreen,
   };
   const ScreenComponent = screenMap[activeKey] || (() => null);
   const screenProps = { summary, firstName, today, go };
+
+  const clubLogo = user?.foto_logo;
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
       {/* Topbar */}
       <View className={`${NAV_BG} h-16 w-full flex-row items-center px-6`}>
         <View className="flex-1 flex-row items-center gap-3">
-          <View className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-400/60 to-blue-500/60 items-center justify-center">
-            <Ionicons name="tennisball-outline" size={18} color="white" />
-          </View>
+          {clubLogo ? (
+            <Image
+              source={{ uri: clubLogo }}
+              className="h-8 w-8 rounded-full border border-white/10"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-400/60 to-blue-500/60 items-center justify-center">
+              <Ionicons name="tennisball-outline" size={18} color="white" />
+            </View>
+          )}
           <Text className="text-white text-[16px] font-semibold tracking-wide">
             {user?.clubNombre || 'Club Centro'}
           </Text>
         </View>
 
-        <Pressable
-          onPress={handleLogout}
-          className="h-10 w-10 rounded-full overflow-hidden border border-white/10 hover:bg-white/5"
-        >
-          <Image
-            source={{ uri: 'https://i.pravatar.cc/100?img=12' }}
-            className="h-full w-full"
-            resizeMode="cover"
-          />
-        </Pressable>
+        <View className="relative">
+          <Pressable
+            onPress={() => setProfileMenuOpen((prev) => !prev)}
+            className="h-10 w-10 rounded-full overflow-hidden border border-white/10 bg-white/5"
+          >
+            <Image
+              source={{ uri: user?.avatar || user?.foto_logo || 'https://i.pravatar.cc/100?img=12' }}
+              className="h-full w-full"
+              resizeMode="cover"
+            />
+          </Pressable>
+          {profileMenuOpen && (
+            <View className="absolute right-0 mt-3 w-48 rounded-2xl border border-white/10 bg-[#0B152E] py-2 shadow-xl">
+              <Pressable
+                onPress={() => handleMenuAction('inicio')}
+                className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
+              >
+                <Ionicons name="home-outline" size={18} color="#E2E8F0" />
+                <Text className="text-white/90 text-sm">Inicio</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleMenuAction('configuracion')}
+                className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
+              >
+                <Ionicons name="settings-outline" size={18} color="#E2E8F0" />
+                <Text className="text-white/90 text-sm">Ajustes</Text>
+              </Pressable>
+              <View className="h-px bg-white/10 my-1" />
+              <Pressable
+                onPress={() => setProfileMenuOpen(false)}
+                className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
+              >
+                <Ionicons name="sparkles-outline" size={18} color="#E2E8F0" />
+                <Text className="text-white/90 text-sm">Mejorar</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setProfileMenuOpen(false)}
+                className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
+              >
+                <Ionicons name="help-circle-outline" size={18} color="#E2E8F0" />
+                <Text className="text-white/90 text-sm">Soporte</Text>
+              </Pressable>
+              <View className="h-px bg-white/10 my-1" />
+              <Pressable
+                onPress={() => handleMenuAction('logout')}
+                className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
+              >
+                <Ionicons name="log-out-outline" size={18} color="#FCA5A5" />
+                <Text className="text-red-300/90 text-sm">Cerrar sesión</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Body */}
