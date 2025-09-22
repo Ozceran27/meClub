@@ -33,6 +33,7 @@ export const api = {
   get: (p, opts) => request(p, opts),
   post: (p, b, opts) => request(p, { method: 'POST', body: b, ...(opts || {}) }),
   put: (p, b, opts) => request(p, { method: 'PUT', body: b, ...(opts || {}) }),
+  patch: (p, b, opts) => request(p, { method: 'PATCH', body: b, ...(opts || {}) }),
   del: (p, opts) => request(p, { method: 'DELETE', ...(opts || {}) }),
 };
 
@@ -40,6 +41,21 @@ export const authApi = {
   forgot: (email) => api.post('/auth/forgot', { email }),
   reset: (token, password) => api.post('/auth/reset', { token, password }),
 };
+
+export async function getClubProfile() {
+  const { data } = await api.get('/clubes/mis-datos');
+  return data;
+}
+
+export async function updateClubProfile(payload) {
+  const { data } = await api.patch('/clubes/mis-datos', payload);
+  return data;
+}
+
+export async function listProvinces() {
+  const { data } = await api.get('/provincias');
+  return data ?? [];
+}
 
 export async function getClubSummary({ clubId }) {
   if (clubId === undefined) {

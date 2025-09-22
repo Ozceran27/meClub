@@ -1,5 +1,5 @@
 // src/features/auth/useAuth.js
-import { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { api } from '../../lib/api';
 import { tokenKey, getItem, setItem, delItem } from '../../lib/storage';
@@ -106,6 +106,21 @@ export function AuthProvider({ children }) {
       }
     }
   };
+  const updateUser = useCallback(async (updates = {}) => {
+    let nextUser = null;
+    setUser((prev) => {
+      const base = prev ? { ...prev } : {};
+      nextUser = { ...base, ...(updates || {}) };
+      return nextUser;
+    });
+    if (nextUser) {
+      await setItem(userKey, JSON.stringify(nextUser));
+    } else {
+      await delItem(userKey);
+    }
+    return nextUser;
+  }, []);
+
   const isClub = !!user && String(user.rol ?? user.role ?? '').toLowerCase().startsWith('club');
   const value = useMemo(() => ({
     user,
@@ -115,6 +130,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-  }), [user, ready, isClub]);
+    updateUser,
+  }), [user, ready, isClub, login, register, logout, updateUser]);
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
