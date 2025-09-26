@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "npm install --prefix backend && npm install --prefix meClub",
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run web --prefix meClub\"",
     "dev:native": "concurrently \"npm run dev --prefix backend\" \"npm run start --prefix meClub\""
   },
