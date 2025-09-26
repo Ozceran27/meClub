@@ -123,7 +123,45 @@ export async function uploadClubLogo(file) {
     }
     const name =
       candidate?.name || candidate?.fileName || uri.split('/').pop() || `logo-${Date.now()}`;
-    const type = candidate?.type || 'image/jpeg';
+
+    const resolveMimeType = () => {
+      const normalize = (value) => {
+        if (!value) return null;
+        const normalized = String(value).trim().toLowerCase();
+        if (!normalized) return null;
+        const map = {
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          heic: 'image/heic',
+          heif: 'image/heif',
+          bmp: 'image/bmp',
+          svg: 'image/svg+xml',
+          'image/jpg': 'image/jpeg',
+        };
+        if (normalized in map) {
+          return map[normalized];
+        }
+        if (normalized === 'image' || normalized === 'img') {
+          return 'image/jpeg';
+        }
+        if (normalized.startsWith('image/')) {
+          return map[normalized] || normalized;
+        }
+        return map[normalized] || null;
+      };
+
+      const candidateType =
+        normalize(candidate?.mimeType) ||
+        normalize(candidate?.type) ||
+        normalize(candidate?.fileType);
+
+      return candidateType || 'image/jpeg';
+    };
+
+    const type = resolveMimeType();
 
     formData.append('logo', {
       uri,
