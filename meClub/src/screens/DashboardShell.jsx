@@ -152,7 +152,10 @@ export default function DashboardShell() {
   return (
     <View className="flex-1 bg-[#0A0F1D]">
       {/* Topbar */}
-      <View className={`${NAV_BG} h-16 w-full flex-row items-center px-6`}>
+      <View
+        className={`${NAV_BG} h-16 w-full flex-row items-center px-6 relative overflow-visible`}
+        style={{ zIndex: 60, elevation: 60 }}
+      >
         <View className="flex-1 flex-row items-center gap-3">
           {clubLogo ? (
             <Image
@@ -170,7 +173,7 @@ export default function DashboardShell() {
           </Text>
         </View>
 
-        <View className="relative z-50" style={{ elevation: 50 }}>
+        <View className="relative z-50" style={{ elevation: 60, zIndex: 60 }}>
           <Pressable
             onPress={() => setProfileMenuOpen((prev) => !prev)}
             className="h-10 w-10 rounded-full overflow-hidden border border-white/10 bg-white/5"
@@ -184,7 +187,7 @@ export default function DashboardShell() {
           {profileMenuOpen && (
             <View
               className="absolute right-0 mt-3 w-48 rounded-2xl border border-white/10 bg-[#0B152E] py-2 shadow-xl z-50"
-              style={{ elevation: 50 }}
+              style={{ elevation: 60, zIndex: 60 }}
             >
               <Pressable
                 onPress={() => handleMenuAction('inicio')}
@@ -264,6 +267,7 @@ export default function DashboardShell() {
           className="flex-1 px-6"
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
+          pointerEvents={profileMenuOpen ? 'box-none' : 'auto'}
         >
           {!!err && <Text className="text-red-400 text-center my-2">{err}</Text>}
           <ScreenComponent {...screenProps} />
