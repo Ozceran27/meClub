@@ -34,6 +34,9 @@ meClub/android-build/
 
 # ---- Backups / DB / Archivos grandes temporales ----
 *.sql
+# Allow checked-in database migrations
+!backend/sql/
+!backend/sql/*.sql
 *.dump
 *.bak
 dump-*.sql
