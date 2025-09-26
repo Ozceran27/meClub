@@ -7,10 +7,16 @@ import { View } from 'react-native';
  * Adds background, padding, rounded corners and shadow. Extra Tailwind
  * classes can be provided via `className` to further customize the card.
  */
-export default function Card({ className = '', children, ...rest }) {
+export default function Card({ className = '', children, style, ...rest }) {
+  const combinedStyle = [
+    { overflow: 'visible' },
+    style,
+  ].filter(Boolean);
+
   return (
     <View
       className={`bg-[#0F172A]/90 rounded-2xl p-5 shadow-card ${className}`}
+      style={combinedStyle}
       {...rest}
     >
       {children}
