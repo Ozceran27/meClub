@@ -1,7 +1,7 @@
 // src/features/auth/useAuth.js
 import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
-import { api } from '../../lib/api';
+import { api, resolveAssetUrl } from '../../lib/api';
 import { tokenKey, getItem, setItem, delItem } from '../../lib/storage';
 import { navigationRef } from '../../navigation/navigationRef';
 
@@ -12,7 +12,18 @@ export const useAuth = () => {
   return ctx;
 };
 
-const userKey  = 'mc_user';
+const userKey = 'mc_user';
+
+const withDerivedUserFields = (data) => {
+  if (!data) return data;
+  const next = { ...data };
+  if ('foto_logo' in next) {
+    next.clubLogoUrl = resolveAssetUrl(next.foto_logo);
+  } else if (next.clubLogoUrl && next.foto_logo == null) {
+    next.clubLogoUrl = resolveAssetUrl(next.clubLogoUrl);
+  }
+  return next;
+};
 
 export function AuthProvider({ children }) {
   const [user,  setUser]  = useState(null);
@@ -24,7 +35,7 @@ export function AuthProvider({ children }) {
       try {
         const t = await getItem(tokenKey);
         const u = await getItem(userKey);
-        if (t && u) setUser(JSON.parse(u));
+        if (t && u) setUser(withDerivedUserFields(JSON.parse(u)));
       } finally {
         setReady(true);
       }
@@ -38,10 +49,10 @@ export function AuthProvider({ children }) {
     const { token, usuario, club } = data || {};
     if (!token || !usuario) throw new Error('Respuesta de login inválida');
     // Enriquecemos el usuario con info del club si aplica
-    const userData = {
+    const userData = withDerivedUserFields({
       ...usuario,
       ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
-    };
+    });
 
     await setItem(tokenKey, token);
     await setItem(userKey, JSON.stringify(userData));
@@ -110,7 +121,7 @@ export function AuthProvider({ children }) {
     let nextUser = null;
     setUser((prev) => {
       const base = prev ? { ...prev } : {};
-      nextUser = { ...base, ...(updates || {}) };
+      nextUser = withDerivedUserFields({ ...base, ...(updates || {}) });
       return nextUser;
     });
     if (nextUser) {

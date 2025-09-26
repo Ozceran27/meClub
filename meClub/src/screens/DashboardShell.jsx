@@ -147,7 +147,7 @@ export default function DashboardShell() {
   const ScreenComponent = screenMap[activeKey] || (() => null);
   const screenProps = { summary, firstName, today, go };
 
-  const clubLogo = user?.foto_logo;
+  const clubLogo = user?.clubLogoUrl || user?.foto_logo;
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
@@ -179,7 +179,7 @@ export default function DashboardShell() {
             className="h-10 w-10 rounded-full overflow-hidden border border-white/10 bg-white/5"
           >
             <Image
-              source={{ uri: user?.avatar || user?.foto_logo || 'https://i.pravatar.cc/100?img=12' }}
+              source={{ uri: user?.avatar || user?.clubLogoUrl || 'https://i.pravatar.cc/100?img=12' }}
               className="h-full w-full"
               resizeMode="cover"
             />

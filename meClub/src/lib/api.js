@@ -2,18 +2,39 @@ import { tokenKey, getItem } from './storage';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3006/api';
 
+let API_ORIGIN = '';
+try {
+  const parsed = new URL(BASE);
+  API_ORIGIN = parsed.origin;
+} catch (err) {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    try {
+      const fallback = new URL(BASE, window.location.origin);
+      API_ORIGIN = fallback.origin;
+    } catch {
+      API_ORIGIN = window.location.origin;
+    }
+  }
+}
+
 async function request(path, { method = 'GET', body, headers, auth = true } = {}) {
   const token = auth ? await getItem(tokenKey) : null;
   let res;
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const baseHeaders = {
+    ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(headers || {}),
+  };
+
+  if (!isFormData && !('Content-Type' in baseHeaders)) {
+    baseHeaders['Content-Type'] = 'application/json';
+  }
+
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(headers || {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
+      headers: baseHeaders,
+      body: isFormData ? body : body != null ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new Error('Network unavailable');
@@ -35,6 +56,16 @@ export const api = {
   put: (p, b, opts) => request(p, { method: 'PUT', body: b, ...(opts || {}) }),
   patch: (p, b, opts) => request(p, { method: 'PATCH', body: b, ...(opts || {}) }),
   del: (p, opts) => request(p, { method: 'DELETE', ...(opts || {}) }),
+};
+
+export const resolveAssetUrl = (assetPath) => {
+  if (!assetPath) return '';
+  const str = String(assetPath);
+  if (/^https?:\/\//i.test(str)) {
+    return str;
+  }
+  if (!API_ORIGIN) return str;
+  return `${API_ORIGIN.replace(/\/$/, '')}/${str.replace(/^\/+/, '')}`;
 };
 
 export const authApi = {
@@ -62,6 +93,51 @@ export async function getClubProfile() {
 export async function updateClubProfile(payload) {
   const response = await api.patch('/clubes/mis-datos', payload);
   return extractClub(response);
+}
+
+export async function uploadClubLogo(file) {
+  if (!file) {
+    throw new Error('Debés seleccionar una imagen');
+  }
+
+  if (typeof FormData === 'undefined') {
+    throw new Error('La plataforma no soporta uploads');
+  }
+
+  const buildFormData = () => {
+    if (typeof FormData !== 'undefined' && file instanceof FormData) {
+      return file;
+    }
+
+    const formData = new FormData();
+
+    if (typeof File !== 'undefined' && file instanceof File) {
+      formData.append('logo', file);
+      return formData;
+    }
+
+    const candidate = file && typeof file === 'object' ? file : null;
+    const uri = candidate?.uri || candidate?.url || candidate?.path;
+    if (!uri) {
+      throw new Error('Imagen inválida');
+    }
+    const name =
+      candidate?.name || candidate?.fileName || uri.split('/').pop() || `logo-${Date.now()}`;
+    const type = candidate?.type || 'image/jpeg';
+
+    formData.append('logo', {
+      uri,
+      name,
+      type,
+    });
+
+    return formData;
+  };
+
+  const formData = buildFormData();
+  const response = await api.post('/clubes/mis-datos/logo', formData);
+  const club = extractClub(response);
+  return club?.foto_logo ?? null;
 }
 
 export async function listProvinces() {
