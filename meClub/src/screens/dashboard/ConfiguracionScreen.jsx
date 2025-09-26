@@ -159,7 +159,7 @@ export default function ConfiguracionScreen({ go }) {
 
           <View>
             <Text className="text-white/70 text-sm mb-2">Provincia</Text>
-            <View className="relative">
+            <View className="relative z-50" style={{ elevation: 50 }}>
               <Pressable
                 onPress={() => setShowProvinceMenu((prev) => !prev)}
                 className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
@@ -172,7 +172,10 @@ export default function ConfiguracionScreen({ go }) {
                 />
               </Pressable>
               {showProvinceMenu && (
-                <View className="absolute left-0 right-0 top-[110%] z-10 rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg">
+                <View
+                  className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-50"
+                  style={{ elevation: 50 }}
+                >
                   <ScrollView style={{ maxHeight: 200 }}>
                     {(provinces || []).map((prov) => (
                       <Pressable

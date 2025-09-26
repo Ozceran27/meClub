@@ -170,7 +170,7 @@ export default function DashboardShell() {
           </Text>
         </View>
 
-        <View className="relative">
+        <View className="relative z-50" style={{ elevation: 50 }}>
           <Pressable
             onPress={() => setProfileMenuOpen((prev) => !prev)}
             className="h-10 w-10 rounded-full overflow-hidden border border-white/10 bg-white/5"
@@ -182,7 +182,10 @@ export default function DashboardShell() {
             />
           </Pressable>
           {profileMenuOpen && (
-            <View className="absolute right-0 mt-3 w-48 rounded-2xl border border-white/10 bg-[#0B152E] py-2 shadow-xl">
+            <View
+              className="absolute right-0 mt-3 w-48 rounded-2xl border border-white/10 bg-[#0B152E] py-2 shadow-xl z-50"
+              style={{ elevation: 50 }}
+            >
               <Pressable
                 onPress={() => handleMenuAction('inicio')}
                 className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
