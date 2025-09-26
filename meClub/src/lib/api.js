@@ -42,19 +42,31 @@ export const authApi = {
   reset: (token, password) => api.post('/auth/reset', { token, password }),
 };
 
+function extractClub(payload) {
+  if (!payload || typeof payload !== 'object') return {};
+  const club = payload.club ?? payload.data ?? payload;
+  return club && typeof club === 'object' ? club : {};
+}
+
+function extractProvinces(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const provinces = payload.provincias ?? payload.data ?? payload;
+  return Array.isArray(provinces) ? provinces : [];
+}
+
 export async function getClubProfile() {
-  const { data } = await api.get('/clubes/mis-datos');
-  return data;
+  const response = await api.get('/clubes/mis-datos');
+  return extractClub(response);
 }
 
 export async function updateClubProfile(payload) {
-  const { data } = await api.patch('/clubes/mis-datos', payload);
-  return data;
+  const response = await api.patch('/clubes/mis-datos', payload);
+  return extractClub(response);
 }
 
 export async function listProvinces() {
-  const { data } = await api.get('/provincias');
-  return data ?? [];
+  const response = await api.get('/provincias');
+  return extractProvinces(response);
 }
 
 export async function getClubSummary({ clubId }) {

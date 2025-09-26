@@ -7,6 +7,13 @@ import { useAuth } from '../../features/auth/useAuth';
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
 
+const buildFormState = (source = {}, fallback = {}) => ({
+  nombre: source?.nombre ?? fallback?.nombre ?? '',
+  descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
+  foto_logo: source?.foto_logo ?? fallback?.foto_logo ?? '',
+  provincia_id: source?.provincia_id ?? fallback?.provincia_id ?? null,
+});
+
 export default function ConfiguracionScreen({ go }) {
   const { updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -14,12 +21,7 @@ export default function ConfiguracionScreen({ go }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showProvinceMenu, setShowProvinceMenu] = useState(false);
-  const [form, setForm] = useState({
-    nombre: '',
-    descripcion: '',
-    foto_logo: '',
-    provincia_id: null,
-  });
+  const [form, setForm] = useState(() => buildFormState());
   const [provinces, setProvinces] = useState([]);
 
   useEffect(() => {
@@ -31,14 +33,7 @@ export default function ConfiguracionScreen({ go }) {
         if (Array.isArray(provincesRes)) {
           setProvinces(provincesRes);
         }
-        if (clubRes) {
-          setForm({
-            nombre: clubRes.nombre || '',
-            descripcion: clubRes.descripcion || '',
-            foto_logo: clubRes.foto_logo || '',
-            provincia_id: clubRes.provincia_id || null,
-          });
-        }
+        setForm(buildFormState(clubRes));
         setError('');
       } catch (err) {
         if (alive) setError(err?.message || 'No se pudieron cargar los datos');
@@ -73,18 +68,11 @@ export default function ConfiguracionScreen({ go }) {
         provincia_id: form.provincia_id ? Number(form.provincia_id) : null,
       };
       const updated = await updateClubProfile(payload);
-      if (updated) {
-        setForm((prev) => ({
-          ...prev,
-          nombre: updated.nombre ?? prev.nombre,
-          descripcion: updated.descripcion ?? prev.descripcion,
-          foto_logo: updated.foto_logo ?? prev.foto_logo,
-          provincia_id: updated.provincia_id ?? prev.provincia_id,
-        }));
-      }
+      const nextFormState = buildFormState(updated, { ...form, ...payload });
+      setForm(nextFormState);
       await updateUser({
-        clubNombre: payload.nombre,
-        foto_logo: payload.foto_logo,
+        clubNombre: nextFormState.nombre,
+        foto_logo: nextFormState.foto_logo,
       });
       setSuccess('Datos guardados correctamente');
       setShowProvinceMenu(false);
