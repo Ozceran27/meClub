@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  ScrollView,
+  Image,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getClubProfile, updateClubProfile, listProvinces } from '../../lib/api';
+import * as ImagePicker from 'expo-image-picker';
+import { getClubProfile, updateClubProfile, listProvinces, uploadClubLogo, resolveAssetUrl } from '../../lib/api';
 import { useAuth } from '../../features/auth/useAuth';
 
 const FIELD_STYLES =
@@ -23,6 +33,8 @@ export default function ConfiguracionScreen({ go }) {
   const [showProvinceMenu, setShowProvinceMenu] = useState(false);
   const [form, setForm] = useState(() => buildFormState());
   const [provinces, setProvinces] = useState([]);
+  const [logoAsset, setLogoAsset] = useState(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -34,6 +46,8 @@ export default function ConfiguracionScreen({ go }) {
           setProvinces(provincesRes);
         }
         setForm(buildFormState(clubRes));
+        setLogoAsset(null);
+        setRemoveLogo(false);
         setError('');
       } catch (err) {
         if (alive) setError(err?.message || 'No se pudieron cargar los datos');
@@ -56,19 +70,71 @@ export default function ConfiguracionScreen({ go }) {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const logoPreviewUri = useMemo(() => {
+    if (logoAsset?.uri) return logoAsset.uri;
+    return form.foto_logo ? resolveAssetUrl(form.foto_logo) : '';
+  }, [logoAsset, form.foto_logo]);
+
+  const handlePickLogo = async () => {
+    try {
+      setError('');
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Necesitamos permisos para acceder a tu galería');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (asset) {
+        setLogoAsset(asset);
+        setRemoveLogo(false);
+      }
+    } catch (err) {
+      setError(err?.message || 'No pudimos abrir la galería');
+    }
+  };
+
+  const handleClearLogo = () => {
+    setLogoAsset(null);
+    setRemoveLogo(true);
+    setForm((prev) => ({ ...prev, foto_logo: '' }));
+  };
+
   const handleSubmit = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
     try {
+      let nextLogoPath = form.foto_logo || null;
+      if (logoAsset) {
+        nextLogoPath = await uploadClubLogo(logoAsset);
+        setLogoAsset(null);
+      }
+
       const payload = {
         nombre: form.nombre,
         descripcion: form.descripcion,
-        foto_logo: form.foto_logo,
         provincia_id: form.provincia_id ? Number(form.provincia_id) : null,
       };
+      if (removeLogo) {
+        payload.foto_logo = null;
+      }
       const updated = await updateClubProfile(payload);
-      const nextFormState = buildFormState(updated, { ...form, ...payload });
+      const nextFormState = buildFormState(updated, {
+        ...form,
+        ...payload,
+        foto_logo: removeLogo ? null : nextLogoPath ?? updated?.foto_logo ?? null,
+      });
       setForm(nextFormState);
       await updateUser({
         clubNombre: nextFormState.nombre,
@@ -76,6 +142,7 @@ export default function ConfiguracionScreen({ go }) {
       });
       setSuccess('Datos guardados correctamente');
       setShowProvinceMenu(false);
+      setRemoveLogo(false);
     } catch (err) {
       setError(err?.message || 'Hubo un problema al guardar');
     } finally {
@@ -134,15 +201,39 @@ export default function ConfiguracionScreen({ go }) {
           </View>
 
           <View>
-            <Text className="text-white/70 text-sm mb-2">Logo (URL)</Text>
-            <TextInput
-              value={form.foto_logo}
-              onChangeText={(text) => handleChange('foto_logo', text)}
-              placeholder="https://..."
-              placeholderTextColor="#94A3B8"
-              className={FIELD_STYLES}
-              autoCapitalize="none"
-            />
+            <Text className="text-white/70 text-sm mb-2">Logo</Text>
+            <View className="flex-row items-center gap-4">
+              <View className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 overflow-hidden items-center justify-center">
+                {logoPreviewUri ? (
+                  <Image source={{ uri: logoPreviewUri }} className="h-full w-full" resizeMode="cover" />
+                ) : (
+                  <Ionicons name="image-outline" size={28} color="#94A3B8" />
+                )}
+              </View>
+              <View className="flex-1 gap-2">
+                <Pressable
+                  onPress={handlePickLogo}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10"
+                  disabled={saving}
+                >
+                  <Text className="text-white/80 text-sm font-medium">
+                    {logoPreviewUri ? 'Cambiar logo' : 'Seleccionar logo'}
+                  </Text>
+                </Pressable>
+                {logoPreviewUri && (
+                  <Pressable
+                    onPress={handleClearLogo}
+                    className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 hover:bg-white/10"
+                    disabled={saving}
+                  >
+                    <Text className="text-red-200 text-xs font-medium">Quitar logo</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+            <Text className="text-white/40 text-xs mt-2">
+              Formatos PNG, JPG o WEBP. Tamaño máximo 2MB.
+            </Text>
           </View>
 
           <View>

@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { removeLogoByStoredPath } = require('../utils/logoStorage');
 
 const ClubesModel = {
   crearClub: async ({
@@ -49,12 +50,15 @@ const ClubesModel = {
     return rows[0] || null;
   },
 
-  actualizarPorId: async (club_id, {
-    nombre,
-    descripcion,
-    foto_logo,
-    provincia_id,
-  } = {}) => {
+  actualizarPorId: async (
+    club_id,
+    { nombre, descripcion, foto_logo, provincia_id } = {}
+  ) => {
+    const existente = await ClubesModel.obtenerClubPorId(club_id);
+    if (!existente) {
+      throw new Error('Club no encontrado');
+    }
+
     const updates = [];
     const values = [];
 
@@ -92,7 +96,7 @@ const ClubesModel = {
     }
 
     if (updates.length === 0) {
-      return ClubesModel.obtenerClubPorId(club_id);
+      return existente;
     }
 
     const sql = `UPDATE clubes SET ${updates.join(', ')} WHERE club_id = ?`;
@@ -100,7 +104,13 @@ const ClubesModel = {
 
     await db.query(sql, values);
 
-    return ClubesModel.obtenerClubPorId(club_id);
+    const actualizado = await ClubesModel.obtenerClubPorId(club_id);
+
+    if (foto_logo !== undefined && existente.foto_logo && existente.foto_logo !== actualizado.foto_logo) {
+      await removeLogoByStoredPath(existente.foto_logo);
+    }
+
+    return actualizado;
   },
 
   obtenerResumen: async (club_id) => {

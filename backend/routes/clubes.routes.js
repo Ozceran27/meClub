@@ -4,6 +4,8 @@ const router = express.Router();
 const verifyToken = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/roles.middleware');
 const loadClub = require('../middleware/club.middleware');
+const { buildSingleUploadMiddleware } = require('../middleware/logoUpload.middleware');
+const { buildLogoPublicPath, removeLogoByFilename } = require('../utils/logoStorage');
 
 const ClubesModel = require('../models/clubes.model');
 const CanchasModel = require('../models/canchas.model');
@@ -15,9 +17,34 @@ const ProvinciasModel = require('../models/provincias.model');
 // Aplica middlewares de autenticación/rol y carga de club
 router.use(['/mis-datos', '/mis-canchas', '/canchas', '/mis-horarios', '/mis-tarifas'], verifyToken, requireRole('club'), loadClub);
 
+const uploadClubLogo = buildSingleUploadMiddleware('logo');
+
 // ---------------- Mis datos
 router.get('/mis-datos', (req, res) => {
   res.json(req.club);
+});
+
+router.post('/mis-datos/logo', uploadClubLogo, async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ mensaje: 'Debe adjuntar un archivo "logo"' });
+    }
+
+    const publicPath = buildLogoPublicPath(req.file.filename);
+    const clubActualizado = await ClubesModel.actualizarPorId(req.club.club_id, {
+      foto_logo: publicPath,
+    });
+
+    req.club = clubActualizado;
+
+    return res.json({ mensaje: 'Logo actualizado', club: clubActualizado });
+  } catch (err) {
+    if (req.file) {
+      await removeLogoByFilename(req.file.filename);
+    }
+    console.error(err);
+    return res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
 });
 
 router.patch('/mis-datos', async (req, res) => {

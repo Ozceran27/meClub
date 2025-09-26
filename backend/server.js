@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const logger = require('./utils/logger');
+const { logosDir, logosPublicPath } = require('./utils/logoStorage');
 const app = express();
 const PORT = process.env.PORT || 3006;
 const PasswordResetsModel = require('./models/passwordResets.model');
@@ -9,6 +10,7 @@ const PasswordResetsModel = require('./models/passwordResets.model');
 // MIDDLEWARES ------------------------------------------------------------------------------------
 app.use(cors());
 app.use(express.json());
+app.use(logosPublicPath, express.static(logosDir));
 const authRoutes = require('./routes/auth.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
 const clubesRoutes = require('./routes/clubes.routes');

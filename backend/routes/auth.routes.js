@@ -2,10 +2,14 @@ const express = require('express');
 const { check } = require('express-validator');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
+const { buildSingleUploadMiddleware } = require('../middleware/logoUpload.middleware');
+
+const uploadRegisterLogo = buildSingleUploadMiddleware('logo');
 
 // Registro de usuario
 router.post(
   '/register',
+  uploadRegisterLogo,
   [
     check('nombre').notEmpty().withMessage('Nombre requerido'),
     check('apellido').notEmpty().withMessage('Apellido requerido'),
