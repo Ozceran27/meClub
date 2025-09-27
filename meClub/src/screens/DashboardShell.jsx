@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Image } from 'react-native';
+import { View, Text, Pressable, ScrollView, Image, Platform } from 'react-native';
 import { useNavigation, useTheme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors as mcColors } from '../theme/tokens';
@@ -148,6 +148,11 @@ export default function DashboardShell() {
   const screenProps = { summary, firstName, today, go };
 
   const clubLogo = user?.clubLogoUrl || user?.foto_logo;
+  const scrollPointerEvents = profileMenuOpen ? 'box-none' : 'auto';
+  const scrollViewProps =
+    Platform.OS === 'web'
+      ? { style: { pointerEvents: scrollPointerEvents === 'box-none' ? 'none' : 'auto' } }
+      : { pointerEvents: scrollPointerEvents };
 
   return (
     <View className="flex-1 bg-[#0A0F1D]">
@@ -267,7 +272,7 @@ export default function DashboardShell() {
           className="flex-1 px-6"
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
-          pointerEvents={profileMenuOpen ? 'box-none' : 'auto'}
+          {...scrollViewProps}
         >
           {!!err && <Text className="text-red-400 text-center my-2">{err}</Text>}
           <ScreenComponent {...screenProps} />
