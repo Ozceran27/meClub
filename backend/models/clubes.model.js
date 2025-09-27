@@ -74,6 +74,11 @@ const ClubesModel = {
       }
 
       const trimmed = value.trim();
+      if (trimmed === '') {
+        updates.push(`${fieldName} = NULL`);
+        return;
+      }
+
       updates.push(`${fieldName} = ?`);
       values.push(trimmed);
     };
