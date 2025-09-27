@@ -72,7 +72,7 @@ export default function ConfiguracionScreen({ go }) {
 
   const logoPreviewUri = useMemo(() => {
     if (logoAsset?.uri) return logoAsset.uri;
-    return form.foto_logo ? resolveAssetUrl(form.foto_logo) : '';
+    return form.foto_logo ? resolveAssetUrl(form.foto_logo) : null;
   }, [logoAsset, form.foto_logo]);
 
   const handlePickLogo = async () => {
@@ -150,6 +150,8 @@ export default function ConfiguracionScreen({ go }) {
     }
   };
 
+  const hasFeedback = Boolean(error) || Boolean(success);
+
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center py-20">
@@ -220,7 +222,7 @@ export default function ConfiguracionScreen({ go }) {
                     {logoPreviewUri ? 'Cambiar logo' : 'Seleccionar logo'}
                   </Text>
                 </Pressable>
-                {logoPreviewUri && (
+                {Boolean(logoPreviewUri) && (
                   <Pressable
                     onPress={handleClearLogo}
                     className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 hover:bg-white/10"
@@ -279,7 +281,7 @@ export default function ConfiguracionScreen({ go }) {
           </View>
         </View>
 
-        {(error || success) && (
+        {hasFeedback && (
           <View className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
             {!!error && <Text className="text-red-300 text-sm">{error}</Text>}
             {!!success && <Text className="text-emerald-300 text-sm">{success}</Text>}
