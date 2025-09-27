@@ -71,6 +71,36 @@ describe('ClubesModel.actualizarPorId', () => {
     expect(resultado).toEqual(expectedClub);
   });
 
+  it('convierte cadenas vacías a NULL', async () => {
+    const expectedClub = {
+      club_id: 3,
+      nombre: 'Nombre original',
+      descripcion: null,
+      foto_logo: null,
+      provincia_id: 3,
+    };
+
+    mockQuery
+      .mockResolvedValueOnce([[{ club_id: 3, foto_logo: 'anterior.png' }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[expectedClub]]);
+
+    const resultado = await ClubesModel.actualizarPorId(3, {
+      nombre: 'Nombre original',
+      descripcion: '   ',
+      foto_logo: '',
+      provincia_id: 3,
+    });
+
+    expect(mockQuery).toHaveBeenNthCalledWith(
+      2,
+      'UPDATE clubes SET nombre = ?, descripcion = NULL, foto_logo = NULL, provincia_id = ? WHERE club_id = ?',
+      ['Nombre original', 3, 3]
+    );
+
+    expect(resultado).toEqual(expectedClub);
+  });
+
   it('lanza error si provincia_id no es numérico', async () => {
     mockQuery.mockResolvedValueOnce([[{ club_id: 1 }]]);
 
