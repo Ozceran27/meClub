@@ -12,23 +12,26 @@ describe('ClubesModel.actualizarPorId', () => {
   });
 
   it('construye el UPDATE correctamente y devuelve el club actualizado', async () => {
-    const expectedClub = {
-      club_id: 1,
-      nombre: 'Club Trim',
-      descripcion: 'Descripcion',
-      foto_logo: 'logo.png',
-      provincia_id: 5,
-    };
-
+    const pngHeader = Buffer.from('89504e470d0a1a0a', 'hex');
     mockQuery
-      .mockResolvedValueOnce([[{ club_id: 1, foto_logo: 'old.png' }]])
+      .mockResolvedValueOnce([[{ club_id: 1, foto_logo: Buffer.from('/uploads/logos/old.png') }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([[expectedClub]]);
+      .mockResolvedValueOnce([
+        [
+          {
+            club_id: 1,
+            nombre: 'Club Trim',
+            descripcion: 'Descripcion',
+            foto_logo: pngHeader,
+            provincia_id: 5,
+          },
+        ],
+      ]);
 
     const resultado = await ClubesModel.actualizarPorId(1, {
       nombre: '  Club Trim  ',
       descripcion: 'Descripcion ',
-      foto_logo: 'logo.png',
+      foto_logo: Buffer.from('nueva-imagen'),
       provincia_id: '5',
     });
 
@@ -36,11 +39,17 @@ describe('ClubesModel.actualizarPorId', () => {
     expect(mockQuery).toHaveBeenNthCalledWith(
       2,
       'UPDATE clubes SET nombre = ?, descripcion = ?, foto_logo = ?, provincia_id = ? WHERE club_id = ?',
-      ['Club Trim', 'Descripcion', 'logo.png', 5, 1]
+      ['Club Trim', 'Descripcion', expect.any(Buffer), 5, 1]
     );
     expect(mockQuery).toHaveBeenNthCalledWith(3, 'SELECT * FROM clubes WHERE club_id = ?', [1]);
 
-    expect(resultado).toEqual(expectedClub);
+    expect(resultado).toEqual({
+      club_id: 1,
+      nombre: 'Club Trim',
+      descripcion: 'Descripcion',
+      foto_logo: 'data:image/png;base64,iVBORw0KGgo=',
+      provincia_id: 5,
+    });
   });
 
   it('permite setear provincia_id en NULL y omite campos no enviados', async () => {

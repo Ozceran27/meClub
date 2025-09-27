@@ -6,7 +6,7 @@ const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
 const PasswordResetsModel = require('../models/passwordResets.model');
 const logger = require('../utils/logger');
-const { buildLogoPublicPath, removeLogoByFilename } = require('../utils/logoStorage');
+const { prepareLogoValue } = require('../utils/logoStorage');
 
 const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -22,14 +22,11 @@ exports.register = async (req, res) => {
     nombre_club, descripcion_club, foto_logo, nivel_id
   } = req.body;
 
-  const uploadedLogoPath = req.file ? buildLogoPublicPath(req.file.filename) : null;
+  const uploadedLogoBuffer = req.file ? req.file.buffer : null;
 
   try {
     const usuarioExistente = await UsuariosModel.buscarPorEmail(email);
     if (usuarioExistente.length > 0) {
-      if (req.file) {
-        await removeLogoByFilename(req.file.filename);
-      }
       return res.status(400).json({ mensaje: 'El email ya está registrado' });
     }
 
@@ -51,10 +48,10 @@ exports.register = async (req, res) => {
         descripcion: descripcion_club || null,
         usuario_id: nuevoUsuario.usuario_id,
         nivel_id: isNaN(nivel) ? 1 : nivel,
-        foto_logo: uploadedLogoPath || foto_logo || null,
+        foto_logo:
+          uploadedLogoBuffer ??
+          (foto_logo !== undefined ? prepareLogoValue(foto_logo).value : null),
       });
-    } else if (req.file) {
-      await removeLogoByFilename(req.file.filename);
     }
 
     if (!process.env.JWT_SECRET) {
@@ -82,9 +79,6 @@ exports.register = async (req, res) => {
       club: clubInfo,
     });
   } catch (error) {
-    if (req.file) {
-      await removeLogoByFilename(req.file.filename);
-    }
     logger.error('Error en registro:', error);
     res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
   }
