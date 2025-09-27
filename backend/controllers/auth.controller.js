@@ -11,6 +11,31 @@ const { prepareLogoValue } = require('../utils/logoStorage');
 const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
+const mapClubResponse = (club) => {
+  if (!club) return null;
+  const {
+    club_id,
+    nombre,
+    descripcion = null,
+    nivel_id = null,
+    foto_logo = null,
+    foto_portada = null,
+    provincia_id = null,
+    localidad_id = null,
+  } = club;
+
+  return {
+    club_id,
+    nombre,
+    descripcion,
+    nivel_id,
+    foto_logo,
+    foto_portada,
+    provincia_id,
+    localidad_id,
+  };
+};
+
 exports.register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -68,9 +93,7 @@ exports.register = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    const clubInfo = clubCreado
-      ? { club_id: clubCreado.club_id, nombre: clubCreado.nombre }
-      : null;
+    const clubInfo = mapClubResponse(clubCreado);
 
     res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
@@ -119,7 +142,7 @@ exports.login = async (req, res) => {
       try {
         const club = await ClubesModel.obtenerClubPorPropietario(usuario.usuario_id);
         if (club) {
-          clubInfo = { club_id: club.club_id, nombre: club.nombre };
+          clubInfo = mapClubResponse(club);
         }
       } catch (err) {
         logger.error('Error obteniendo club del usuario', err);
@@ -138,7 +161,12 @@ exports.login = async (req, res) => {
       },
     };
 
-    if (clubInfo) respuesta.club = clubInfo;
+    if (clubInfo) {
+      respuesta.club = clubInfo;
+      respuesta.usuario.foto_logo = clubInfo.foto_logo ?? null;
+    } else if (!('foto_logo' in respuesta.usuario)) {
+      respuesta.usuario.foto_logo = null;
+    }
 
     res.json(respuesta);
   } catch (error) {
