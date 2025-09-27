@@ -61,6 +61,9 @@ export const api = {
 export const resolveAssetUrl = (assetPath) => {
   if (!assetPath) return '';
   const str = String(assetPath);
+  if (/^(?:data|blob|file):/i.test(str)) {
+    return str;
+  }
   if (/^https?:\/\//i.test(str)) {
     return str;
   }

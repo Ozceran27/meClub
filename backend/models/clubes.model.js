@@ -1,5 +1,13 @@
 const db = require('../config/db');
-const { removeLogoByStoredPath } = require('../utils/logoStorage');
+const { normalizeLogoValue, prepareLogoValue } = require('../utils/logoStorage');
+
+const mapClubRow = (row) => {
+  if (!row || typeof row !== 'object') return row;
+  return {
+    ...row,
+    foto_logo: normalizeLogoValue(row.foto_logo),
+  };
+};
 
 const ClubesModel = {
   crearClub: async ({
@@ -12,29 +20,39 @@ const ClubesModel = {
     provincia_id = null,
     localidad_id = null,
   }) => {
+    const { value: logoValue } = prepareLogoValue(foto_logo === undefined ? null : foto_logo);
     const [result] = await db.query(
       `INSERT INTO clubes
        (nombre, descripcion, usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, descripcion || null, usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id]
+      [
+        nombre,
+        descripcion || null,
+        usuario_id,
+        nivel_id,
+        logoValue,
+        foto_portada,
+        provincia_id,
+        localidad_id,
+      ]
     );
 
-    return {
+    return mapClubRow({
       club_id: result.insertId,
       nombre,
       descripcion: descripcion || null,
       usuario_id,
       nivel_id,
-      foto_logo,
+      foto_logo: logoValue,
       foto_portada,
       provincia_id,
       localidad_id,
-    };
+    });
   },
 
   obtenerClubPorPropietario: async (usuario_id) => {
     const [rows] = await db.query('SELECT * FROM clubes WHERE usuario_id = ? LIMIT 1', [usuario_id]);
-    return rows[0] || null;
+    return mapClubRow(rows[0] || null);
   },
 
   obtenerMisCanchas: async (club_id) => {
@@ -47,7 +65,7 @@ const ClubesModel = {
 
   obtenerClubPorId: async (club_id) => {
     const [rows] = await db.query(`SELECT * FROM clubes WHERE club_id = ?`, [club_id]);
-    return rows[0] || null;
+    return mapClubRow(rows[0] || null);
   },
 
   actualizarPorId: async (
@@ -85,7 +103,18 @@ const ClubesModel = {
 
     handleStringField('nombre', nombre);
     handleStringField('descripcion', descripcion);
-    handleStringField('foto_logo', foto_logo);
+
+    if (foto_logo !== undefined) {
+      const { value: logoValue, shouldUpdate } = prepareLogoValue(foto_logo);
+      if (shouldUpdate) {
+        if (logoValue === null) {
+          updates.push('foto_logo = NULL');
+        } else {
+          updates.push('foto_logo = ?');
+          values.push(logoValue);
+        }
+      }
+    }
 
     if (provincia_id !== undefined) {
       if (provincia_id === null || provincia_id === '') {
@@ -110,10 +139,6 @@ const ClubesModel = {
     await db.query(sql, values);
 
     const actualizado = await ClubesModel.obtenerClubPorId(club_id);
-
-    if (foto_logo !== undefined && existente.foto_logo && existente.foto_logo !== actualizado.foto_logo) {
-      await removeLogoByStoredPath(existente.foto_logo);
-    }
 
     return actualizado;
   },

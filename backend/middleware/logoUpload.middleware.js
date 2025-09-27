@@ -1,18 +1,6 @@
 const multer = require('multer');
-const path = require('path');
-const crypto = require('crypto');
-const { logosDir } = require('../utils/logoStorage');
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, logosDir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const name = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
-    cb(null, name);
-  },
-});
+const storage = multer.memoryStorage();
 
 const ALLOWED_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
@@ -55,4 +43,5 @@ const buildSingleUploadMiddleware = (fieldName = 'logo') => (req, res, next) => 
 module.exports = {
   buildSingleUploadMiddleware,
   upload,
+  ALLOWED_MIME_TYPES,
 };
