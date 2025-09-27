@@ -104,7 +104,7 @@ export async function uploadClubLogo(file) {
     throw new Error('La plataforma no soporta uploads');
   }
 
-  const buildFormData = () => {
+  const buildFormData = async () => {
     if (typeof FormData !== 'undefined' && file instanceof FormData) {
       return file;
     }
@@ -117,12 +117,14 @@ export async function uploadClubLogo(file) {
     }
 
     const candidate = file && typeof file === 'object' ? file : null;
-    const uri = candidate?.uri || candidate?.url || candidate?.path;
-    if (!uri) {
-      throw new Error('Imagen inválida');
-    }
+    const nestedFile = candidate?.file || null;
+    const uri = candidate?.uri || candidate?.url || candidate?.path || nestedFile?.uri;
     const name =
-      candidate?.name || candidate?.fileName || uri.split('/').pop() || `logo-${Date.now()}`;
+      candidate?.name ||
+      candidate?.fileName ||
+      nestedFile?.name ||
+      (uri ? uri.split('/').pop() : null) ||
+      `logo-${Date.now()}`;
 
     const resolveMimeType = () => {
       const normalize = (value) => {
@@ -156,23 +158,60 @@ export async function uploadClubLogo(file) {
       const candidateType =
         normalize(candidate?.mimeType) ||
         normalize(candidate?.type) ||
-        normalize(candidate?.fileType);
+        normalize(candidate?.fileType) ||
+        normalize(nestedFile?.type) ||
+        normalize(nestedFile?.mimeType);
 
       return candidateType || 'image/jpeg';
     };
 
     const type = resolveMimeType();
 
-    formData.append('logo', {
-      uri,
-      name,
-      type,
-    });
+    if (nestedFile) {
+      if (typeof File !== 'undefined' && nestedFile instanceof File) {
+        const typedFile =
+          type && nestedFile.type !== type
+            ? new File([nestedFile], nestedFile.name || name, { type })
+            : nestedFile;
+        formData.append('logo', typedFile);
+      } else {
+        formData.append('logo', nestedFile);
+      }
+      return formData;
+    }
+
+    if (!uri) {
+      throw new Error('Imagen inválida');
+    }
+
+    let blob;
+    try {
+      const res = await fetch(uri);
+      if (!res?.ok) {
+        throw new Error('No se pudo leer la imagen');
+      }
+      blob = await res.blob();
+    } catch {
+      throw new Error('No se pudo leer la imagen');
+    }
+
+    const fallbackType = type || blob.type || 'application/octet-stream';
+
+    if (typeof File !== 'undefined') {
+      const fileFromBlob = new File([blob], name, { type: fallbackType });
+      formData.append('logo', fileFromBlob);
+    } else {
+      const typedBlob =
+        blob.type === fallbackType || !blob.slice
+          ? blob
+          : blob.slice(0, blob.size, fallbackType);
+      formData.append('logo', typedBlob, name);
+    }
 
     return formData;
   };
 
-  const formData = buildFormData();
+  const formData = await buildFormData();
   const response = await api.post('/clubes/mis-datos/logo', formData);
   const club = extractClub(response);
   return club?.foto_logo ?? null;
