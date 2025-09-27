@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
     // Enriquecemos el usuario con info del club si aplica
     const userData = withDerivedUserFields({
       ...usuario,
+      foto_logo: club?.foto_logo ?? usuario?.foto_logo ?? null,
       ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
     });
 
