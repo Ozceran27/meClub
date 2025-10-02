@@ -18,6 +18,7 @@ const deportesRoutes = require('./routes/deportes.routes');
 const nivelesRoutes = require('./routes/niveles.routes');
 const reservasRoutes = require('./routes/reservas.routes');
 const provinciasRoutes = require('./routes/provincias.routes');
+const catalogoRoutes = require('./routes/catalogo.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/clubes', clubesRoutes);
@@ -25,6 +26,7 @@ app.use('/api/deportes', deportesRoutes);
 app.use('/api/niveles', nivelesRoutes);
 app.use('/api/reservas', reservasRoutes);
 app.use('/api/provincias', provinciasRoutes);
+app.use('/api/catalogo', catalogoRoutes);
 
 // INFO API -----------------------------------------------------------------------------------------
 app.get('/', (req, res) => {
