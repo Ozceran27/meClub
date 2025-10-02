@@ -11,18 +11,204 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { getClubProfile, updateClubProfile, listProvinces, uploadClubLogo, resolveAssetUrl } from '../../lib/api';
+import {
+  getClubProfile,
+  updateClubProfile,
+  listProvinces,
+  uploadClubLogo,
+  resolveAssetUrl,
+  listLocalities,
+  getClubServices,
+  updateClubServices,
+  listAvailableServices,
+  getClubTaxes,
+  updateClubTaxes,
+  getClubSchedule,
+  updateClubSchedule,
+} from '../../lib/api';
 import { useAuth } from '../../features/auth/useAuth';
+import MapPicker from '../../components/MapPicker';
 
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
 
-const buildFormState = (source = {}, fallback = {}) => ({
-  nombre: source?.nombre ?? fallback?.nombre ?? '',
-  descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
-  foto_logo: source?.foto_logo ?? fallback?.foto_logo ?? '',
-  provincia_id: source?.provincia_id ?? fallback?.provincia_id ?? null,
-});
+const DAYS = [
+  { key: 'monday', label: 'Lunes' },
+  { key: 'tuesday', label: 'Martes' },
+  { key: 'wednesday', label: 'Miércoles' },
+  { key: 'thursday', label: 'Jueves' },
+  { key: 'friday', label: 'Viernes' },
+  { key: 'saturday', label: 'Sábado' },
+  { key: 'sunday', label: 'Domingo' },
+];
+
+const STATUS_LABELS = {
+  profile: 'Perfil',
+  schedule: 'Horarios',
+  services: 'Servicios',
+  taxes: 'Impuestos',
+};
+
+const parseMaybeNumber = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
+let clientIdCounter = 0;
+const createClientId = () => {
+  clientIdCounter += 1;
+  return `tmp-${Date.now()}-${clientIdCounter}`;
+};
+
+const createEmptySchedule = () =>
+  DAYS.reduce((acc, day) => {
+    acc[day.key] = { enabled: false, ranges: [] };
+    return acc;
+  }, {});
+
+const normalizeCatalogServices = (items) => {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      const id = item?.id ?? item?.value ?? item?.key ?? item?.servicio_id ?? item?.codigo;
+      if (id === null || id === undefined) return null;
+      return {
+        id: String(id),
+        nombre: item?.nombre ?? item?.name ?? 'Servicio sin nombre',
+        descripcion: item?.descripcion ?? item?.description ?? '',
+      };
+    })
+    .filter(Boolean);
+};
+
+const normalizeServices = (services) => {
+  if (!Array.isArray(services)) return [];
+  return services
+    .map((service) => {
+      if (service === null || service === undefined) return null;
+      if (typeof service === 'object') {
+        const id = service?.id ?? service?.servicio_id ?? service?.codigo ?? service?.value;
+        return id === null || id === undefined ? null : String(id);
+      }
+      return String(service);
+    })
+    .filter(Boolean);
+};
+
+const normalizeTaxes = (taxes) => {
+  if (!Array.isArray(taxes)) return [];
+  return taxes.map((tax, index) => ({
+    id: tax?.id ?? tax?.impuesto_id ?? `tmp-${index}-${Date.now()}`,
+    nombre: tax?.nombre ?? tax?.name ?? '',
+    porcentaje:
+      tax?.porcentaje !== undefined && tax?.porcentaje !== null
+        ? String(tax.porcentaje)
+        : '',
+  }));
+};
+
+const extractRanges = (ranges) => {
+  if (!Array.isArray(ranges)) return [];
+  return ranges
+    .map((range) => {
+      const start = range?.desde ?? range?.inicio ?? range?.start ?? range?.from ?? '';
+      const end = range?.hasta ?? range?.fin ?? range?.end ?? range?.to ?? '';
+      if (!start || !end) return null;
+      return { start, end };
+    })
+    .filter(Boolean);
+};
+
+const normalizeSchedule = (schedule) => {
+  const base = createEmptySchedule();
+  if (!Array.isArray(schedule)) return base;
+  schedule.forEach((entry) => {
+    const key = entry?.dia ?? entry?.day ?? entry?.nombre ?? entry?.id;
+    if (!key) return;
+    const normalizedKey = String(key).toLowerCase();
+    if (!(normalizedKey in base)) return;
+    const ranges = extractRanges(entry?.horarios ?? entry?.rangos ?? entry?.slots);
+    base[normalizedKey] = {
+      enabled: entry?.habilitado ?? entry?.enabled ?? ranges.length > 0,
+      ranges,
+    };
+  });
+  return base;
+};
+
+const denormalizeSchedule = (schedule) => {
+  if (!schedule || typeof schedule !== 'object') return [];
+  return Object.entries(schedule).map(([key, value]) => ({
+    dia: key,
+    habilitado: Boolean(value?.enabled),
+    horarios: Array.isArray(value?.ranges)
+      ? value.ranges
+          .map((range) => ({
+            desde: range?.start,
+            hasta: range?.end,
+          }))
+          .filter((range) => range.desde && range.hasta)
+      : [],
+  }));
+};
+
+const sanitizeServicesForPayload = (services) => {
+  if (!Array.isArray(services)) return [];
+  return services
+    .map((id) => {
+      if (id === null || id === undefined) return null;
+      const numeric = Number(id);
+      return Number.isFinite(numeric) ? numeric : String(id);
+    })
+    .filter((value) => value !== null);
+};
+
+const sanitizeTaxesForPayload = (taxes) => {
+  if (!Array.isArray(taxes)) return [];
+  return taxes.map((tax) => {
+    const porcentaje = tax?.porcentaje ?? '';
+    const normalized = Number(String(porcentaje).replace(',', '.'));
+    const payload = {
+      nombre: tax?.nombre ?? '',
+      porcentaje: Number.isFinite(normalized) ? normalized : 0,
+    };
+    if (tax?.id && !String(tax.id).startsWith('tmp-')) {
+      payload.id = tax.id;
+    }
+    return payload;
+  });
+};
+
+const initialSaveStatus = Object.keys(STATUS_LABELS).reduce((acc, key) => {
+  acc[key] = { state: 'idle', message: '' };
+  return acc;
+}, {});
+
+const buildFormState = (source = {}, fallback = {}) => {
+  const servicios = normalizeServices(source?.servicios ?? fallback?.servicios ?? []);
+  const impuestos = normalizeTaxes(source?.impuestos ?? fallback?.impuestos ?? []);
+  const horarios = normalizeSchedule(source?.horarios ?? fallback?.horarios ?? []);
+  return {
+    nombre: source?.nombre ?? fallback?.nombre ?? '',
+    descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
+    foto_logo: source?.foto_logo ?? fallback?.foto_logo ?? '',
+    provincia_id: source?.provincia_id ?? fallback?.provincia_id ?? null,
+    localidad_id: source?.localidad_id ?? fallback?.localidad_id ?? null,
+    localidad_nombre:
+      source?.localidad_nombre ?? source?.localidad?.nombre ?? fallback?.localidad_nombre ?? '',
+    telefono_contacto:
+      source?.telefono_contacto ?? fallback?.telefono_contacto ?? '',
+    email_contacto: source?.email_contacto ?? fallback?.email_contacto ?? '',
+    direccion: source?.direccion ?? fallback?.direccion ?? '',
+    latitud: parseMaybeNumber(source?.latitud ?? fallback?.latitud ?? null),
+    longitud: parseMaybeNumber(source?.longitud ?? fallback?.longitud ?? null),
+    google_place_id: source?.google_place_id ?? fallback?.google_place_id ?? '',
+    servicios,
+    impuestos,
+    horarios,
+  };
+};
 
 export default function ConfiguracionScreen({ go }) {
   const { updateUser } = useAuth();
@@ -31,21 +217,53 @@ export default function ConfiguracionScreen({ go }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showProvinceMenu, setShowProvinceMenu] = useState(false);
+  const [showLocalityMenu, setShowLocalityMenu] = useState(false);
   const [form, setForm] = useState(() => buildFormState());
   const [provinces, setProvinces] = useState([]);
+  const [localities, setLocalities] = useState([]);
+  const [localityQuery, setLocalityQuery] = useState('');
+  const [localitiesLoading, setLocalitiesLoading] = useState(false);
+  const [localityError, setLocalityError] = useState('');
+  const [availableServices, setAvailableServices] = useState([]);
   const [logoAsset, setLogoAsset] = useState(null);
   const [removeLogo, setRemoveLogo] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(initialSaveStatus);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const [clubRes, provincesRes] = await Promise.all([getClubProfile(), listProvinces()]);
+        const [
+          clubRes,
+          provincesRes,
+          servicesRes,
+          taxesRes,
+          scheduleRes,
+          catalogRes,
+        ] = await Promise.all([
+          getClubProfile(),
+          listProvinces(),
+          getClubServices(),
+          getClubTaxes(),
+          getClubSchedule(),
+          listAvailableServices(),
+        ]);
         if (!alive) return;
         if (Array.isArray(provincesRes)) {
           setProvinces(provincesRes);
         }
-        setForm(buildFormState(clubRes));
+        setAvailableServices(normalizeCatalogServices(catalogRes));
+        setForm(
+          buildFormState(
+            {
+              ...clubRes,
+              servicios: normalizeServices(servicesRes),
+              impuestos: normalizeTaxes(taxesRes),
+              horarios: normalizeSchedule(scheduleRes),
+            },
+            clubRes,
+          ),
+        );
         setLogoAsset(null);
         setRemoveLogo(false);
         setError('');
@@ -60,14 +278,198 @@ export default function ConfiguracionScreen({ go }) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (!form.provincia_id) {
+      setLocalities([]);
+      setLocalityError('');
+      setLocalitiesLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+    setLocalitiesLoading(true);
+    setLocalityError('');
+    (async () => {
+      try {
+        const list = await listLocalities(form.provincia_id, localityQuery);
+        if (!active) return;
+        setLocalities(list);
+      } catch (err) {
+        if (active) {
+          setLocalities([]);
+          setLocalityError(err?.message || 'No pudimos cargar las localidades');
+        }
+      } finally {
+        if (active) setLocalitiesLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [form.provincia_id, localityQuery]);
+
   const provinceName = useMemo(() => {
     if (!form.provincia_id) return 'Seleccioná una provincia';
     const found = provinces?.find((p) => String(p.id) === String(form.provincia_id));
     return found ? found.nombre : 'Seleccioná una provincia';
   }, [form.provincia_id, provinces]);
 
+  const localityName = useMemo(() => {
+    if (form.localidad_nombre) return form.localidad_nombre;
+    if (!form.localidad_id) return 'Seleccioná una localidad';
+    const found = localities?.find((loc) => String(loc.id) === String(form.localidad_id));
+    if (found?.nombre) return found.nombre;
+    return 'Localidad seleccionada';
+  }, [form.localidad_id, form.localidad_nombre, localities]);
+
   const handleChange = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key === 'provincia_id') {
+        return {
+          ...prev,
+          provincia_id: value,
+          localidad_id: null,
+          localidad_nombre: '',
+        };
+      }
+      return { ...prev, [key]: value };
+    });
+    if (key === 'provincia_id') {
+      setLocalityQuery('');
+      setShowLocalityMenu(false);
+    }
+  };
+
+  const handleSelectLocality = (locality) => {
+    setForm((prev) => ({
+      ...prev,
+      localidad_id: locality?.id ?? null,
+      localidad_nombre: locality?.nombre ?? '',
+    }));
+    setShowLocalityMenu(false);
+  };
+
+  const handleToggleService = (serviceId) => {
+    setForm((prev) => {
+      const id = String(serviceId);
+      const current = new Set(prev.servicios || []);
+      if (current.has(id)) {
+        current.delete(id);
+      } else {
+        current.add(id);
+      }
+      return { ...prev, servicios: Array.from(current) };
+    });
+  };
+
+  const handleTaxChange = (id, field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      impuestos: (prev.impuestos || []).map((tax) =>
+        String(tax.id) === String(id) ? { ...tax, [field]: value } : tax,
+      ),
+    }));
+  };
+
+  const handleAddTax = () => {
+    const newTax = { id: createClientId(), nombre: '', porcentaje: '' };
+    setForm((prev) => ({ ...prev, impuestos: [...(prev.impuestos || []), newTax] }));
+  };
+
+  const handleRemoveTax = (id) => {
+    setForm((prev) => ({
+      ...prev,
+      impuestos: (prev.impuestos || []).filter((tax) => String(tax.id) !== String(id)),
+    }));
+  };
+
+  const handleScheduleToggle = (dayKey) => {
+    setForm((prev) => {
+      const nextDay = prev.horarios?.[dayKey] ?? { enabled: false, ranges: [] };
+      const toggled = !nextDay.enabled;
+      return {
+        ...prev,
+        horarios: {
+          ...prev.horarios,
+          [dayKey]: {
+            enabled: toggled,
+            ranges: toggled
+              ? nextDay.ranges && nextDay.ranges.length
+                ? nextDay.ranges
+                : [{ start: '08:00', end: '20:00' }]
+              : [],
+          },
+        },
+      };
+    });
+  };
+
+  const handleScheduleRangeChange = (dayKey, index, field, value) => {
+    setForm((prev) => {
+      const day = prev.horarios?.[dayKey] ?? { enabled: false, ranges: [] };
+      const ranges = [...(day.ranges || [])];
+      ranges[index] = { ...ranges[index], [field]: value };
+      return {
+        ...prev,
+        horarios: {
+          ...prev.horarios,
+          [dayKey]: { ...day, ranges },
+        },
+      };
+    });
+  };
+
+  const handleAddRange = (dayKey) => {
+    setForm((prev) => {
+      const day = prev.horarios?.[dayKey] ?? { enabled: false, ranges: [] };
+      return {
+        ...prev,
+        horarios: {
+          ...prev.horarios,
+          [dayKey]: {
+            ...day,
+            enabled: true,
+            ranges: [...(day.ranges || []), { start: '08:00', end: '20:00' }],
+          },
+        },
+      };
+    });
+  };
+
+  const handleRemoveRange = (dayKey, index) => {
+    setForm((prev) => {
+      const day = prev.horarios?.[dayKey] ?? { enabled: false, ranges: [] };
+      const ranges = (day.ranges || []).filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        horarios: {
+          ...prev.horarios,
+          [dayKey]: {
+            ...day,
+            ranges,
+            enabled: ranges.length > 0 ? day.enabled : false,
+          },
+        },
+      };
+    });
+  };
+
+  const handleMapChange = (value) => {
+    if (!value) return;
+    setForm((prev) => ({
+      ...prev,
+      latitud: parseMaybeNumber(value.latitude),
+      longitud: parseMaybeNumber(value.longitude),
+      google_place_id: value.google_place_id ?? prev.google_place_id ?? '',
+    }));
+  };
+
+  const updateStatus = (key, nextState) => {
+    setSaveStatus((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], ...nextState },
+    }));
   };
 
   const logoPreviewUri = useMemo(() => {
@@ -110,47 +512,127 @@ export default function ConfiguracionScreen({ go }) {
     setForm((prev) => ({ ...prev, foto_logo: '' }));
   };
 
+  const runOperation = (key, fn) => {
+    updateStatus(key, { state: 'pending', message: '' });
+    return fn()
+      .then((result) => {
+        updateStatus(key, { state: 'success', message: '' });
+        return { ok: true, result };
+      })
+      .catch((err) => {
+        updateStatus(key, { state: 'error', message: err?.message || 'Error inesperado' });
+        return { ok: false, error: err };
+      });
+  };
+
   const handleSubmit = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
-    try {
-      let nextLogoPath = form.foto_logo || null;
-      if (logoAsset) {
-        nextLogoPath = await uploadClubLogo(logoAsset);
-        setLogoAsset(null);
-      }
+    setSaveStatus(initialSaveStatus);
 
-      const payload = {
-        nombre: form.nombre,
-        descripcion: form.descripcion,
-        provincia_id: form.provincia_id ? Number(form.provincia_id) : null,
-      };
-      if (removeLogo) {
-        payload.foto_logo = null;
-      }
-      const updated = await updateClubProfile(payload);
-      const nextFormState = buildFormState(updated, {
-        ...form,
-        ...payload,
-        foto_logo: removeLogo ? null : nextLogoPath ?? updated?.foto_logo ?? null,
-      });
-      setForm(nextFormState);
-      await updateUser({
-        clubNombre: nextFormState.nombre,
-        foto_logo: nextFormState.foto_logo,
-      });
-      setSuccess('Datos guardados correctamente');
-      setShowProvinceMenu(false);
-      setRemoveLogo(false);
-    } catch (err) {
-      setError(err?.message || 'Hubo un problema al guardar');
-    } finally {
-      setSaving(false);
+    const operations = [];
+
+    operations.push(
+      runOperation('profile', async () => {
+        let nextLogoPath = form.foto_logo || null;
+        if (logoAsset) {
+          nextLogoPath = await uploadClubLogo(logoAsset);
+        }
+
+        const payload = {
+          nombre: form.nombre,
+          descripcion: form.descripcion,
+          provincia_id: form.provincia_id ? Number(form.provincia_id) : null,
+          localidad_id: form.localidad_id ? Number(form.localidad_id) : null,
+          telefono_contacto: form.telefono_contacto || null,
+          email_contacto: form.email_contacto || null,
+          direccion: form.direccion || null,
+          latitud: form.latitud != null ? Number(form.latitud) : null,
+          longitud: form.longitud != null ? Number(form.longitud) : null,
+          google_place_id: form.google_place_id || null,
+        };
+        if (removeLogo) {
+          payload.foto_logo = null;
+        }
+        const updated = await updateClubProfile(payload);
+        setForm((prev) => ({
+          ...prev,
+          nombre: updated?.nombre ?? payload.nombre ?? prev.nombre,
+          descripcion: updated?.descripcion ?? payload.descripcion ?? prev.descripcion,
+          provincia_id: updated?.provincia_id ?? payload.provincia_id ?? prev.provincia_id,
+          localidad_id: updated?.localidad_id ?? payload.localidad_id ?? prev.localidad_id,
+          localidad_nombre:
+            updated?.localidad_nombre ?? updated?.localidad?.nombre ?? prev.localidad_nombre,
+          telefono_contacto:
+            updated?.telefono_contacto ?? payload.telefono_contacto ?? prev.telefono_contacto,
+          email_contacto: updated?.email_contacto ?? payload.email_contacto ?? prev.email_contacto,
+          direccion: updated?.direccion ?? payload.direccion ?? prev.direccion,
+          latitud: parseMaybeNumber(updated?.latitud ?? payload.latitud ?? prev.latitud),
+          longitud: parseMaybeNumber(updated?.longitud ?? payload.longitud ?? prev.longitud),
+          google_place_id:
+            updated?.google_place_id ?? payload.google_place_id ?? prev.google_place_id,
+          foto_logo: removeLogo ? null : nextLogoPath ?? updated?.foto_logo ?? prev.foto_logo,
+        }));
+        setLogoAsset(null);
+        setRemoveLogo(false);
+        await updateUser({
+          clubNombre: updated?.nombre ?? payload.nombre,
+          foto_logo: removeLogo ? null : nextLogoPath ?? updated?.foto_logo ?? form.foto_logo,
+        });
+        return updated;
+      }),
+    );
+
+    operations.push(
+      runOperation('schedule', async () => {
+        const response = await updateClubSchedule(denormalizeSchedule(form.horarios));
+        setForm((prev) => ({
+          ...prev,
+          horarios: normalizeSchedule(response),
+        }));
+        return response;
+      }),
+    );
+
+    operations.push(
+      runOperation('services', async () => {
+        const response = await updateClubServices(sanitizeServicesForPayload(form.servicios));
+        setForm((prev) => ({
+          ...prev,
+          servicios: normalizeServices(response),
+        }));
+        return response;
+      }),
+    );
+
+    operations.push(
+      runOperation('taxes', async () => {
+        const response = await updateClubTaxes(sanitizeTaxesForPayload(form.impuestos));
+        setForm((prev) => ({
+          ...prev,
+          impuestos: normalizeTaxes(response),
+        }));
+        return response;
+      }),
+    );
+
+    const results = await Promise.all(operations);
+    const hasErrors = results.some((res) => !res.ok);
+    if (hasErrors) {
+      setError('Algunos cambios no pudieron guardarse. Revisá el detalle a continuación.');
+      setSuccess('');
+    } else {
+      setError('');
+      setSuccess('Todos los cambios se guardaron correctamente');
     }
+    setSaving(false);
   };
 
-  const hasFeedback = Boolean(error) || Boolean(success);
+  const hasFeedback =
+    Boolean(error) ||
+    Boolean(success) ||
+    Object.values(saveStatus).some((status) => status.state !== 'idle');
 
   if (loading) {
     return (
@@ -162,8 +644,8 @@ export default function ConfiguracionScreen({ go }) {
   }
 
   return (
-    <View className="py-6">
-      <View className="flex-row items-center justify-between">
+    <ScrollView className="py-6" contentContainerClassName="pb-32">
+      <View className="flex-row items-center justify-between px-4 md:px-0">
         <View>
           <Text className="text-white text-[32px] font-extrabold tracking-tight">Configuración</Text>
           <Text className="text-white/60 mt-1">Actualizá la información pública de tu club</Text>
@@ -176,7 +658,7 @@ export default function ConfiguracionScreen({ go }) {
         </Pressable>
       </View>
 
-      <View className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+      <View className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 mx-4 md:mx-0">
         <View className="gap-6">
           <View>
             <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
@@ -238,43 +720,354 @@ export default function ConfiguracionScreen({ go }) {
             </Text>
           </View>
 
-          <View>
-            <Text className="text-white/70 text-sm mb-2">Provincia</Text>
-            <View className="relative z-50" style={{ elevation: 50 }}>
-              <Pressable
-                onPress={() => setShowProvinceMenu((prev) => !prev)}
-                className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-              >
-                <Text className="text-white/90 text-base">{provinceName}</Text>
-                <Ionicons
-                  name={showProvinceMenu ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color="#E2E8F0"
-                />
-              </Pressable>
-              {showProvinceMenu && (
-                <View
-                  className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-50"
-                  style={{ elevation: 50 }}
+          <View className="grid gap-6 md:grid-cols-2">
+            <View>
+              <Text className="text-white/70 text-sm mb-2">Provincia</Text>
+              <View className="relative z-50" style={{ elevation: 50 }}>
+                <Pressable
+                  onPress={() => setShowProvinceMenu((prev) => !prev)}
+                  className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                 >
-                  <ScrollView style={{ maxHeight: 200 }}>
-                    {(provinces || []).map((prov) => (
+                  <Text className="text-white/90 text-base">{provinceName}</Text>
+                  <Ionicons
+                    name={showProvinceMenu ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#E2E8F0"
+                  />
+                </Pressable>
+                {showProvinceMenu && (
+                  <View
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-50"
+                    style={{ elevation: 50 }}
+                  >
+                    <ScrollView style={{ maxHeight: 240 }}>
+                      {(provinces || []).map((prov) => (
+                        <Pressable
+                          key={prov.id}
+                          onPress={() => {
+                            handleChange('provincia_id', prov.id);
+                            setShowProvinceMenu(false);
+                          }}
+                          className={`px-4 py-3 ${
+                            String(prov.id) === String(form.provincia_id)
+                              ? 'bg-white/10'
+                              : 'bg-transparent'
+                          } hover:bg-white/10`}
+                        >
+                          <Text className="text-white/90 text-base">{prov.nombre}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View>
+              <Text className="text-white/70 text-sm mb-2">Localidad</Text>
+              <View className="relative z-40" style={{ elevation: 40 }}>
+                <Pressable
+                  onPress={() => {
+                    if (!form.provincia_id) return;
+                    setShowLocalityMenu((prev) => !prev);
+                  }}
+                  className={`flex-row items-center justify-between rounded-2xl border border-white/10 px-4 py-3 ${
+                    form.provincia_id ? 'bg-white/5' : 'bg-white/10'
+                  }`}
+                >
+                  <Text className="text-white/90 text-base">
+                    {form.provincia_id ? localityName : 'Seleccioná primero una provincia'}
+                  </Text>
+                  <Ionicons
+                    name={showLocalityMenu ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#E2E8F0"
+                  />
+                </Pressable>
+                {showLocalityMenu && (
+                  <View
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-40"
+                    style={{ elevation: 40 }}
+                  >
+                    <View className="border-b border-white/5 px-4 py-3">
+                      <TextInput
+                        value={localityQuery}
+                        onChangeText={setLocalityQuery}
+                        placeholder="Buscar localidad"
+                        placeholderTextColor="#94A3B8"
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white"
+                      />
+                    </View>
+                    {localitiesLoading ? (
+                      <View className="flex-row items-center justify-center gap-2 px-4 py-4">
+                        <ActivityIndicator color="#F59E0B" />
+                        <Text className="text-white/70 text-sm">Cargando...</Text>
+                      </View>
+                    ) : (
+                      <ScrollView style={{ maxHeight: 240 }}>
+                        {(localities || []).map((loc) => (
+                          <Pressable
+                            key={loc.id}
+                            onPress={() => handleSelectLocality(loc)}
+                            className={`px-4 py-3 ${
+                              String(loc.id) === String(form.localidad_id)
+                                ? 'bg-white/10'
+                                : 'bg-transparent'
+                            } hover:bg-white/10`}
+                          >
+                            <Text className="text-white/90 text-base">{loc.nombre}</Text>
+                          </Pressable>
+                        ))}
+                        {(!localities || localities.length === 0) && (
+                          <View className="px-4 py-4">
+                            <Text className="text-white/60 text-sm">
+                              {localityError || 'No encontramos localidades para esta provincia'}
+                            </Text>
+                          </View>
+                        )}
+                      </ScrollView>
+                    )}
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View className="grid gap-6 md:grid-cols-2">
+            <View>
+              <Text className="text-white/70 text-sm mb-2">Teléfono de contacto</Text>
+              <TextInput
+                value={form.telefono_contacto}
+                onChangeText={(text) => handleChange('telefono_contacto', text)}
+                placeholder="Ej. +54 9 11 1234 5678"
+                placeholderTextColor="#94A3B8"
+                keyboardType="phone-pad"
+                className={FIELD_STYLES}
+              />
+            </View>
+            <View>
+              <Text className="text-white/70 text-sm mb-2">Email de contacto</Text>
+              <TextInput
+                value={form.email_contacto}
+                onChangeText={(text) => handleChange('email_contacto', text)}
+                placeholder="contacto@club.com"
+                placeholderTextColor="#94A3B8"
+                keyboardType="email-address"
+                className={FIELD_STYLES}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+
+          <View>
+            <Text className="text-white/70 text-sm mb-2">Dirección</Text>
+            <TextInput
+              value={form.direccion}
+              onChangeText={(text) => handleChange('direccion', text)}
+              placeholder="Ej. Av. Siempre Viva 123"
+              placeholderTextColor="#94A3B8"
+              className={FIELD_STYLES}
+            />
+          </View>
+
+          <View>
+            <Text className="text-white text-lg font-semibold">Ubicación en el mapa</Text>
+            <Text className="text-white/60 text-sm mt-1">
+              Seleccioná el punto exacto de tu club o usá tu ubicación actual para completar latitud y longitud.
+            </Text>
+            <MapPicker
+              latitude={form.latitud ?? undefined}
+              longitude={form.longitud ?? undefined}
+              googlePlaceId={form.google_place_id}
+              onChange={handleMapChange}
+              style={{ marginTop: 16 }}
+            />
+          </View>
+
+          <View className="border-t border-white/10 pt-6">
+            <Text className="text-white text-lg font-semibold">Horarios de atención</Text>
+            <Text className="text-white/60 text-sm mt-1">
+              Activá los días disponibles y definí los rangos horarios en los que tu club está abierto.
+            </Text>
+            <View className="mt-4 grid gap-4 lg:grid-cols-2">
+              {DAYS.map((day) => {
+                const dayConfig = form.horarios?.[day.key] ?? { enabled: false, ranges: [] };
+                return (
+                  <View
+                    key={day.key}
+                    className={`rounded-2xl border px-4 py-4 ${
+                      dayConfig.enabled ? 'border-mc-warn/60 bg-mc-warn/10' : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-white text-base font-semibold">{day.label}</Text>
                       <Pressable
-                        key={prov.id}
-                        onPress={() => {
-                          handleChange('provincia_id', prov.id);
-                          setShowProvinceMenu(false);
-                        }}
-                        className={`px-4 py-3 ${
-                          String(prov.id) === String(form.provincia_id)
-                            ? 'bg-white/10'
-                            : 'bg-transparent'
-                        } hover:bg-white/10`}
+                        onPress={() => handleScheduleToggle(day.key)}
+                        className={`rounded-full border px-3 py-1 text-sm ${
+                          dayConfig.enabled
+                            ? 'border-mc-warn bg-mc-warn text-slate-900'
+                            : 'border-white/20 bg-transparent'
+                        }`}
                       >
-                        <Text className="text-white/90 text-base">{prov.nombre}</Text>
+                        <Text
+                          className={
+                            dayConfig.enabled
+                              ? 'text-slate-900 text-xs font-semibold'
+                              : 'text-white/70 text-xs font-semibold'
+                          }
+                        >
+                          {dayConfig.enabled ? 'Activo' : 'Inactivo'}
+                        </Text>
                       </Pressable>
-                    ))}
-                  </ScrollView>
+                    </View>
+                    {dayConfig.enabled && (
+                      <View className="mt-3 gap-3">
+                        {(dayConfig.ranges || []).map((range, index) => (
+                          <View key={`${day.key}-${index}`} className="flex-row items-center gap-3">
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-xs mb-1">Desde</Text>
+                              <TextInput
+                                value={range?.start ?? ''}
+                                onChangeText={(text) =>
+                                  handleScheduleRangeChange(day.key, index, 'start', text)
+                                }
+                                placeholder="08:00"
+                                placeholderTextColor="#94A3B8"
+                                className={FIELD_STYLES}
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-xs mb-1">Hasta</Text>
+                              <TextInput
+                                value={range?.end ?? ''}
+                                onChangeText={(text) =>
+                                  handleScheduleRangeChange(day.key, index, 'end', text)
+                                }
+                                placeholder="20:00"
+                                placeholderTextColor="#94A3B8"
+                                className={FIELD_STYLES}
+                              />
+                            </View>
+                            <Pressable
+                              onPress={() => handleRemoveRange(day.key, index)}
+                              className="h-11 w-11 items-center justify-center rounded-2xl border border-red-400/40"
+                              accessibilityLabel={`Eliminar rango ${index + 1} de ${day.label}`}
+                            >
+                              <Ionicons name="trash-outline" size={18} color="#F87171" />
+                            </Pressable>
+                          </View>
+                        ))}
+                        <Pressable
+                          onPress={() => handleAddRange(day.key)}
+                          className="flex-row items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 px-4 py-3 hover:border-white/40"
+                        >
+                          <Ionicons name="add" size={18} color="#F59E0B" />
+                          <Text className="text-white/80 text-sm font-medium">Agregar rango</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <View className="border-t border-white/10 pt-6">
+            <Text className="text-white text-lg font-semibold">Impuestos y recargos</Text>
+            <Text className="text-white/60 text-sm mt-1">
+              Configurá los impuestos que se aplican a tus reservas (por ejemplo, IVA o percepciones).
+            </Text>
+            <View className="mt-4 gap-4">
+              {(form.impuestos || []).map((tax) => (
+                <View
+                  key={tax.id}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 md:px-6"
+                >
+                  <View className="flex-row items-start gap-4">
+                    <View className="flex-1 gap-3">
+                      <View>
+                        <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Nombre</Text>
+                        <TextInput
+                          value={tax.nombre}
+                          onChangeText={(text) => handleTaxChange(tax.id, 'nombre', text)}
+                          placeholder="Ej. IVA"
+                          placeholderTextColor="#94A3B8"
+                          className={FIELD_STYLES}
+                        />
+                      </View>
+                      <View>
+                        <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Porcentaje</Text>
+                        <TextInput
+                          value={tax.porcentaje}
+                          onChangeText={(text) => handleTaxChange(tax.id, 'porcentaje', text)}
+                          placeholder="21"
+                          placeholderTextColor="#94A3B8"
+                          keyboardType="decimal-pad"
+                          className={FIELD_STYLES}
+                        />
+                      </View>
+                    </View>
+                    <Pressable
+                      onPress={() => handleRemoveTax(tax.id)}
+                      className="h-10 w-10 items-center justify-center rounded-2xl border border-red-400/40"
+                      accessibilityLabel={`Eliminar impuesto ${tax.nombre}`}
+                    >
+                      <Ionicons name="close" size={18} color="#F87171" />
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+              <Pressable
+                onPress={handleAddTax}
+                className="flex-row items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 px-4 py-3 hover:border-white/40"
+              >
+                <Ionicons name="add-circle-outline" size={20} color="#F59E0B" />
+                <Text className="text-white/80 text-sm font-medium">Agregar impuesto</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View className="border-t border-white/10 pt-6">
+            <Text className="text-white text-lg font-semibold">Servicios adicionales</Text>
+            <Text className="text-white/60 text-sm mt-1">
+              Seleccioná los servicios que tu club ofrece para que los socios puedan encontrarlos fácilmente.
+            </Text>
+            <View className="mt-4 grid gap-3 md:grid-cols-2">
+              {(availableServices || []).map((service) => {
+                const selected = (form.servicios || []).some(
+                  (item) => String(item) === String(service.id),
+                );
+                return (
+                  <Pressable
+                    key={service.id}
+                    onPress={() => handleToggleService(service.id)}
+                    className={`rounded-2xl border px-4 py-4 text-left ${
+                      selected ? 'border-mc-warn/70 bg-mc-warn/10' : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <View className="flex-row items-center gap-3">
+                      <View
+                        className={`h-5 w-5 items-center justify-center rounded ${
+                          selected ? 'bg-mc-warn' : 'border border-white/30'
+                        }`}
+                      >
+                        {selected && <Ionicons name="checkmark" size={14} color="#1F2937" />}
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-base font-semibold">{service.nombre}</Text>
+                        {!!service.descripcion && (
+                          <Text className="text-white/60 text-xs mt-1">{service.descripcion}</Text>
+                        )}
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })}
+              {(!availableServices || availableServices.length === 0) && (
+                <View className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6">
+                  <Text className="text-white/60 text-sm">
+                    Todavía no hay servicios cargados en el catálogo. Contactá a soporte si necesitás sumar uno nuevo.
+                  </Text>
                 </View>
               )}
             </View>
@@ -282,9 +1075,39 @@ export default function ConfiguracionScreen({ go }) {
         </View>
 
         {hasFeedback && (
-          <View className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <View className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 md:px-6">
             {!!error && <Text className="text-red-300 text-sm">{error}</Text>}
             {!!success && <Text className="text-emerald-300 text-sm">{success}</Text>}
+            <View className="mt-2 gap-2">
+              {Object.entries(saveStatus).map(([key, status]) => {
+                if (status.state === 'idle') return null;
+                const label = STATUS_LABELS[key] ?? key;
+                if (status.state === 'pending') {
+                  return (
+                    <View key={key} className="flex-row items-center gap-2">
+                      <ActivityIndicator color="#F59E0B" size="small" />
+                      <Text className="text-white/80 text-sm">Guardando {label}...</Text>
+                    </View>
+                  );
+                }
+                if (status.state === 'success') {
+                  return (
+                    <View key={key} className="flex-row items-center gap-2">
+                      <Ionicons name="checkmark-circle" size={16} color="#34D399" />
+                      <Text className="text-emerald-200 text-sm">{label} guardado correctamente</Text>
+                    </View>
+                  );
+                }
+                return (
+                  <View key={key} className="flex-row items-center gap-2">
+                    <Ionicons name="alert-circle" size={16} color="#F87171" />
+                    <Text className="text-red-200 text-sm">
+                      {label}: {status.message || 'Hubo un problema'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
 
@@ -307,6 +1130,6 @@ export default function ConfiguracionScreen({ go }) {
           </Pressable>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }

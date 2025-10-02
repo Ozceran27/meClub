@@ -88,6 +88,33 @@ function extractProvinces(payload) {
   return Array.isArray(provinces) ? provinces : [];
 }
 
+function extractLocalities(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const localities = payload.localidades ?? payload.data ?? payload;
+  return Array.isArray(localities) ? localities : [];
+}
+
+function extractServices(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const services = payload.servicios ?? payload.data ?? payload;
+  if (Array.isArray(services)) {
+    return services;
+  }
+  return [];
+}
+
+function extractTaxes(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const taxes = payload.impuestos ?? payload.data ?? payload;
+  return Array.isArray(taxes) ? taxes : [];
+}
+
+function extractSchedule(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const schedule = payload.horarios ?? payload.data ?? payload;
+  return Array.isArray(schedule) ? schedule : [];
+}
+
 export async function getClubProfile() {
   const response = await api.get('/clubes/mis-datos');
   return extractClub(response);
@@ -96,6 +123,55 @@ export async function getClubProfile() {
 export async function updateClubProfile(payload) {
   const response = await api.patch('/clubes/mis-datos', payload);
   return extractClub(response);
+}
+
+export async function listLocalities(provinciaId, query) {
+  if (!provinciaId) return [];
+  const params = new URLSearchParams();
+  params.set('provincia_id', provinciaId);
+  if (query) {
+    params.set('q', query);
+  }
+  const response = await api.get(`/geo/localidades?${params.toString()}`);
+  return extractLocalities(response);
+}
+
+export async function getClubServices() {
+  const response = await api.get('/clubes/mis-servicios');
+  return extractServices(response);
+}
+
+export async function updateClubServices(servicios) {
+  const payload = { servicios };
+  const response = await api.put('/clubes/mis-servicios', payload);
+  return extractServices(response);
+}
+
+export async function listAvailableServices() {
+  const response = await api.get('/catalogo/servicios');
+  return extractServices(response);
+}
+
+export async function getClubTaxes() {
+  const response = await api.get('/clubes/mis-impuestos');
+  return extractTaxes(response);
+}
+
+export async function updateClubTaxes(impuestos) {
+  const payload = { impuestos };
+  const response = await api.put('/clubes/mis-impuestos', payload);
+  return extractTaxes(response);
+}
+
+export async function getClubSchedule() {
+  const response = await api.get('/clubes/mis-horarios');
+  return extractSchedule(response);
+}
+
+export async function updateClubSchedule(horarios) {
+  const payload = { horarios };
+  const response = await api.put('/clubes/mis-horarios', payload);
+  return extractSchedule(response);
 }
 
 export async function uploadClubLogo(file) {
