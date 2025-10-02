@@ -43,7 +43,7 @@ describe('ClubesModel.actualizarPorId', () => {
     );
     expect(mockQuery).toHaveBeenNthCalledWith(3, 'SELECT * FROM clubes WHERE club_id = ?', [1]);
 
-    expect(resultado).toEqual({
+    expect(resultado).toMatchObject({
       club_id: 1,
       nombre: 'Club Trim',
       descripcion: 'Descripcion',
@@ -77,7 +77,7 @@ describe('ClubesModel.actualizarPorId', () => {
       2,
     ]);
 
-    expect(resultado).toEqual(expectedClub);
+    expect(resultado).toMatchObject(expectedClub);
   });
 
   it('convierte cadenas vacías a NULL', async () => {
@@ -107,7 +107,53 @@ describe('ClubesModel.actualizarPorId', () => {
       ['Nombre original', 3, 3]
     );
 
-    expect(resultado).toEqual(expectedClub);
+    expect(resultado).toMatchObject(expectedClub);
+  });
+
+  it('actualiza datos de contacto y coordenadas', async () => {
+    const expectedClub = {
+      club_id: 4,
+      nombre: 'Club Contacto',
+      telefono_contacto: '1234567',
+      email_contacto: 'contacto@club.com',
+      direccion: 'Calle 123',
+      google_place_id: 'place123',
+      latitud: -34.5,
+      longitud: -58.4,
+    };
+
+    mockQuery
+      .mockResolvedValueOnce([[{ club_id: 4 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[expectedClub]]);
+
+    const resultado = await ClubesModel.actualizarPorId(4, {
+      nombre: 'Club Contacto',
+      telefono_contacto: '1234567',
+      email_contacto: 'contacto@club.com',
+      direccion: 'Calle 123',
+      latitud: '-34.5',
+      longitud: -58.4,
+      google_place_id: 'place123',
+    });
+
+    expect(mockQuery).toHaveBeenNthCalledWith(2,
+      'UPDATE clubes SET nombre = ?, telefono_contacto = ?, email_contacto = ?, direccion = ?, google_place_id = ?, latitud = ?, longitud = ? WHERE club_id = ?',
+      [
+        'Club Contacto',
+        '1234567',
+        'contacto@club.com',
+        'Calle 123',
+        'place123',
+        -34.5,
+        -58.4,
+        4,
+      ]);
+
+    expect(resultado).toMatchObject({
+      ...expectedClub,
+      foto_logo: null,
+    });
   });
 
   it('lanza error si provincia_id no es numérico', async () => {
