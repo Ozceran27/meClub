@@ -10,5 +10,8 @@
   "devDependencies": {
     "concurrently": "^9.1.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "expo-location": "^19.0.7",
+    "react-native-maps": "^1.26.14"
+  }
 }
