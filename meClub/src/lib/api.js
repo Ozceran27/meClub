@@ -187,9 +187,9 @@ export async function getClubSchedule() {
   return extractSchedule(response);
 }
 
-export async function updateClubSchedule(horarios) {
-  const payload = { horarios };
-  const response = await api.put('/clubes/mis-horarios', payload);
+export async function updateClubSchedule(items) {
+  const payload = { items: Array.isArray(items) ? items : [] };
+  const response = await api.patch('/clubes/mis-horarios', payload);
   return extractSchedule(response);
 }
 

@@ -42,6 +42,16 @@ const DAYS = [
   { key: 'sunday', label: 'Domingo' },
 ];
 
+const DAY_NUMBER_TO_KEY = DAYS.reduce((acc, day, index) => {
+  acc[index + 1] = day.key;
+  return acc;
+}, {});
+
+const DAY_KEY_TO_NUMBER = DAYS.reduce((acc, day, index) => {
+  acc[day.key] = index + 1;
+  return acc;
+}, {});
+
 const STATUS_LABELS = {
   profile: 'Perfil',
   schedule: 'Horarios',
@@ -125,13 +135,43 @@ const normalizeSchedule = (schedule) => {
   const base = createEmptySchedule();
   if (!Array.isArray(schedule)) return base;
   schedule.forEach((entry) => {
-    const key = entry?.dia ?? entry?.day ?? entry?.nombre ?? entry?.id;
-    if (!key) return;
-    const normalizedKey = String(key).toLowerCase();
-    if (!(normalizedKey in base)) return;
-    const ranges = extractRanges(entry?.horarios ?? entry?.rangos ?? entry?.slots);
+    let normalizedKey;
+
+    const dayNumber =
+      entry?.dia_semana ?? entry?.dia_num ?? entry?.diaNumero ?? entry?.numero ?? null;
+    if (dayNumber !== null && dayNumber !== undefined) {
+      const numeric = Number(dayNumber);
+      if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 7) {
+        normalizedKey = DAY_NUMBER_TO_KEY[numeric];
+      }
+    }
+
+    if (!normalizedKey) {
+      const rawKey =
+        (typeof entry?.dia === 'string' && entry.dia) ||
+        (typeof entry?.day === 'string' && entry.day) ||
+        (typeof entry?.nombre === 'string' && entry.nombre) ||
+        entry?.key ||
+        entry?.id;
+      if (!rawKey) return;
+      const lowerKey = String(rawKey).toLowerCase();
+      if (!(lowerKey in base)) return;
+      normalizedKey = lowerKey;
+    }
+
+    const start = entry?.abre ?? entry?.desde ?? entry?.inicio ?? entry?.start ?? entry?.from;
+    const end = entry?.cierra ?? entry?.hasta ?? entry?.fin ?? entry?.end ?? entry?.to;
+
+    let ranges = [];
+    if (start && end) {
+      ranges = [{ start, end }];
+    } else {
+      ranges = extractRanges(entry?.horarios ?? entry?.rangos ?? entry?.slots);
+    }
+
     base[normalizedKey] = {
-      enabled: entry?.habilitado ?? entry?.enabled ?? ranges.length > 0,
+      enabled:
+        entry?.activo ?? entry?.habilitado ?? entry?.enabled ?? (ranges.length > 0),
       ranges,
     };
   });
@@ -140,18 +180,20 @@ const normalizeSchedule = (schedule) => {
 
 const denormalizeSchedule = (schedule) => {
   if (!schedule || typeof schedule !== 'object') return [];
-  return Object.entries(schedule).map(([key, value]) => ({
-    dia: key,
-    habilitado: Boolean(value?.enabled),
-    horarios: Array.isArray(value?.ranges)
-      ? value.ranges
-          .map((range) => ({
-            desde: range?.start,
-            hasta: range?.end,
-          }))
-          .filter((range) => range.desde && range.hasta)
-      : [],
-  }));
+
+  return DAYS.map((day) => {
+    const value = schedule?.[day.key] ?? {};
+    const ranges = Array.isArray(value?.ranges) ? value.ranges : [];
+    const firstRange = ranges.find((range) => range?.start && range?.end) || null;
+    const hasValidRange = Boolean(firstRange);
+
+    return {
+      dia_semana: DAY_KEY_TO_NUMBER[day.key],
+      abre: hasValidRange ? firstRange.start : null,
+      cierra: hasValidRange ? firstRange.end : null,
+      activo: Boolean(value?.enabled) && hasValidRange,
+    };
+  }).filter((item) => item.abre && item.cierra);
 };
 
 const sanitizeServicesForPayload = (services) => {
@@ -383,6 +425,7 @@ export default function ConfiguracionScreen({ go }) {
     setForm((prev) => {
       const nextDay = prev.horarios?.[dayKey] ?? { enabled: false, ranges: [] };
       const toggled = !nextDay.enabled;
+      const preservedRanges = Array.isArray(nextDay.ranges) ? nextDay.ranges : [];
       return {
         ...prev,
         horarios: {
@@ -390,10 +433,10 @@ export default function ConfiguracionScreen({ go }) {
           [dayKey]: {
             enabled: toggled,
             ranges: toggled
-              ? nextDay.ranges && nextDay.ranges.length
-                ? nextDay.ranges
+              ? preservedRanges.length
+                ? preservedRanges
                 : [{ start: '08:00', end: '20:00' }]
-              : [],
+              : preservedRanges,
           },
         },
       };
@@ -581,7 +624,8 @@ export default function ConfiguracionScreen({ go }) {
 
     operations.push(
       runOperation('schedule', async () => {
-        const response = await updateClubSchedule(denormalizeSchedule(form.horarios));
+        const items = denormalizeSchedule(form.horarios);
+        const response = await updateClubSchedule(items);
         setForm((prev) => ({
           ...prev,
           horarios: normalizeSchedule(response),
