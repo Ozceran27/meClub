@@ -117,6 +117,12 @@ CREATE TABLE `clubes` (
   `usuario_id` int NOT NULL,
   `nombre` varchar(100) NOT NULL,
   `descripcion` text,
+  `telefono_contacto` varchar(25) DEFAULT NULL,
+  `email_contacto` varchar(150) DEFAULT NULL,
+  `direccion` varchar(255) DEFAULT NULL,
+  `latitud` decimal(10,7) DEFAULT NULL,
+  `longitud` decimal(10,7) DEFAULT NULL,
+  `google_place_id` varchar(255) DEFAULT NULL,
   `nivel_id` int NOT NULL DEFAULT '1',
   `foto_logo` longblob,
   `foto_portada` longblob,
@@ -126,8 +132,10 @@ CREATE TABLE `clubes` (
   PRIMARY KEY (`club_id`),
   KEY `usuario_id` (`usuario_id`),
   KEY `fk_clubes_nivel` (`nivel_id`),
+  KEY `idx_clubes_localidad` (`localidad_id`),
   CONSTRAINT `clubes_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `clubes_ibfk_2` FOREIGN KEY (`nivel_id`) REFERENCES `niveles` (`nivel_id`),
+  CONSTRAINT `fk_clubes_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidades` (`localidad_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_clubes_nivel` FOREIGN KEY (`nivel_id`) REFERENCES `niveles` (`nivel_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -138,7 +146,7 @@ CREATE TABLE `clubes` (
 
 LOCK TABLES `clubes` WRITE;
 /*!40000 ALTER TABLE `clubes` DISABLE KEYS */;
-INSERT INTO `clubes` VALUES (1,6,'Club Centro','Mi primer club',1,NULL,NULL,NULL,NULL,'2025-08-07 21:00:39'),(2,8,'Club AtlÃ©tico Admin','Club de prueba para el Admin',1,_binary '‰PNG\r\n\Z\n\0\0\0\rIHDR\0\0h\0\0h\0\0\0M;‘\ç\0\0\0ZPLTE\0\0\0HhIg|UY\\VY\\VX[TWYUXZUWYTVY`be`ceJMOUXZaceJLNJLN%Ž\Ó$Ž\Ô$\Õ\"\Ô3œ\ß$\Ö4œ\à\Ë‚\Ë5\à1š\Þ„\Î\Ë¤Þž\0\0\0\ZtRNS\0!3Ld}«\Ä\×\îÞ–ÿÿ\ò Cq«\Î\ê\î¬R\åAx\0\0IDATx\Ú\ìÁ\0\0\0\0€ ý©©\0\0\0\0\0\0\0\0`v\ìB\ÉqhÍˆ\é\ÂDÿÿ›\çE\'Ui[Ñ²¬>X¦W³-e®BD\Ì\â-\ÌD\Í\ä3C,¤\Ò\ÆX\ëœ\÷>„Ÿãœµ\Éh¥7\ñKe’\ëlÿ\Ýdv“ygžŒ’¢q—\Z[\ßC\è\Þ\Û%-\Ûp?†\ÜCh mj\Ø9!©o‘14\ÆÖ²Y†¥q\0@#lg7O ¬€2€.±n!0\Ë:Ûššm\Z(c\è|kÑ¬_B*AeŸh[…t\Ã\\\Ý\Æ\Z7³D8¼$\ÆùS\Z\ë$iÂaCž¯w6£”’R¼DJ¥^ qž\Û Ô˜1\ñ\Ë\ZƒŸ^þ»³r2)‡{>Å²f5Z\ÍÁ%½)\"¡t§=ZÖŠ\ó-²QÀxXÛ¸8B­§CM\Ã\ÌÁ\'Œ<zÙ•\Äù\ðTS\ë\æ\çQf\ê\Ä>¡’›u\õ¨‡˜ƒÿ´\õ«\çÓ¥&™˜P.¶¶q€ZVL-LÀ•¡}þ\Å\à\n‰FT\Ê\Ì\Ú3}\Ù\"%bj®óª›Y\Ð\×.`u}’6À\Î\à\ÜK\ó\â5\ÌD,®æ¸ª\'Q\Î!\ëQ1-–\Ë\åj½\Ùl»\ìv»ý~¿\ír8¬W\Ý”u0\Î\ë¯jR2Ó˜\Ðb¹\ÚtºÇ«œÎ—«\ì;\ñ\ÕrÁ\Å\ÔNSÕ­1\Îül\Ü\è\óeÿ\Ì\Ýi3<RšW\ÜlŠ˜©G\ÆÐ·yÁ¦\êJûƒ”+`\æ\åºGF\Ð{½\äÁmÖ¼\Æûj\r§hP¹G\Å\Ð8/Ö˜\Z\õ\Çn\r—\Ùk\è@@Bck\Â\ßVýÁuµ\î\Ã\Åj\ZA\ã\ì«¾mF\Ô\Õ\\C’T0\Ì\0ºx¬\åýSqžÄŸg—\Î/\ñ0c\è\ñ±FmM ª£¦\nAXÎ¼ÃŒ \ó³E\r\Â:¢K\õß¾:\ãr^@fŸ=¤i\Å?}ZI˜¹ú\ãS­\ì\ß=E­QÌŒ¡\ó³\Ôú#É¿¸\ÜÇ­™Ë¡\ñT\×\Ò¸5À¯\"ÿg\çP…0Ž;1Æ¨4¯\Û\í\Â\öþ\×\\ \0C\×?°\ã›Ps„_\å\ËLš	0\ï„f\ê@\õG]ù!˜\Za“¹\0\ónh\Þ‹@«XM~p\Ã=m\÷\0R~‘\ã~h^¶©c¦ü¨<5d…\ö\Ä\Zúq¿–z\óƒ\÷§>l\ïÀl\ÍH\Û/t\Õ\Æÿµ˜…\Â\Ùš×­\Õ\Õ\â\éøˆKgg{hŽjh\Êýþÿ\ÒÂ¡3l‚\ëR\Ãš£z…¢\Ú\'µ\03n‚\Z\ÇBs~ˆ\Þ_©\å³Bƒ6AH\rch\Î(ª….\ó©\Ö\ð\Íù\ó\âgFZ˜(6H\r#hn¥x`1Ê‘Ê‰o“P:C‡r4\ç\Ç\nùÁSté´–Y™nu|\ä\núþ¸o5Å™\çŒ_\õú1çˆ¥³hü_QøVfH~Ž?¾Ï·ŸŸ+\çŒ!œ¡tvýø›bPQM¯8åœŸ<ý^r^4™9…†6A\×\ÐÜ”‡\ôB\Ík0€\Æ=JgO\Ð\\T\ÓUW\Ð#´¨Jg\ÐjSj\Ð0Cj8€¦ü\0\êÁ\ô\Ù¥³_h\Îž±‡\æN\rÿ\Ðw\È\Ì8z\Z¡!…\Ôp\ÍùÁStË@3±H\rO\ÐÜ¿\ð#ùb\Í/=p‡\âš\õ(­\óe1n†ÿ‘¡Õ‡k1®¡ùª\r[w½Â¶ù¢§q˜S×Šz\ØÂ¹*h>?\ÅQ¯8Y|\Ñ	>d8>ªšÿ¿\å%!½Z²‚\î¾e†p6€v@\Ý)\èl\ÍÌ•B\ó*/1‡ffO\Ð\ö\Ô\éx\è\0\ÌAs€„\ã¡<\ò\0]m\Ð|…]ì¡›ù\èP =©š¯ n9\ö\Zºy\'t¿\ñÁ\r˜+…\æ\ÏúiMÐ³%t‰\âÊ¡yæ¹ˆ!t\Ð++\×\ÍÖ«´\ô•!\ê‡\æu\è\Þ\ì‹þúL\è/ªfÐ³\ô	t\Ö\Ð\'t¶ƒU\Ø}&tQÛ—†N»¡»m\è\æ„6„\Î/ZA‡AAwû¡§M\è¦üþD\è;@/û¡£‚\Ã	­ /vÐ­\ê?Zu†­†Ž»¡[=\Ð\0}1„¾}\"\ôMA\ÇEA·ûgVF­~·\äœK®\ë0Ci\çÿ±S\'\ÝÿFß´opfV€JZ\ÂA@‘”‘t¶­ÿ@¿H~Š	:½ø±\Ð[–z¾ yýˆúù\n\Zžu\ô>\Z\ÆM\'CC\ÐGDÐ‡Á\ÉnYÁA\ó\ÅA!\r \Ô\Ñ\0\Z\ê;ç ¹¼\ë:AOšÂƒÞ %\íÜ“ªœ\ñ@_v-©\Õw{DÐ»Yy\'Xvxm_\Þq«\Äe‡\Ð\öU‡¸\ìx\Äý„ª\ã+Kfe‡Â\æ¾%\É0ƒ‡\Í	<\É0ƒ\×x «A‡h(ˆ†1@ƒwJ\ôV)2\è\Ë S4„>A\ÛCŽ†œXüƒ\æ¼2I†‰%…\Ý\Òk^\é•8±\ÍyePI\éh Ë¼\"¥•Œt4\Ð\Õ4¯H\ßp\Ì*\Ñ@—W(WLŽYg,\Ð\ÝW©“‘†\ê?\Z\èl\ô¬.“¨ú\Ï\Í=hn£ÁF\Û\é‡K\Ð\öîŽ«x~wD\Í\î\î+«Ï¤ü{\Ð\ì\îÀF›ø»T\"\æ’\ô[½fÁ§@Û»;±¿k‘@7x\Ô\ñ;©×Œh;\"~Rw\×\ô\ð	‡\ðP ø· ¸;#\Û\á4›Ž\Ü\ôJ¶#h®”\Ö$sÛ±Gúy\Õnb:ø\ô´þ@s\Ó1|A¥\äÀv\0hW¦C\Z¨\í¨a@s\Ó1H\ö¶£\Ä]¸\é\è7\é,A@\ó+¥U=gž›_Ð¼3˜Ž3Á6\Ô\Ã3hÞ…\Ðt†\ð\Z4\ðQ\'eØ†©Dý*\ÑÀ»‡\ð²¡g\Ð\×N»0\é\Æm\ètKPF/\ê;\Óm\Ã Ÿ\â]x\ã6\ôºR.\Õw\òF\ð\Î /\êH·¬\Î\óMMi‹\0ºe\èHWIv\Û\ðs€\ÏhŽ+ƒ\å.”&\é +\Ä\èH»5¥ˆ´#\Ð,\Ñt¤æ‘¥¹\ÍO: ®\ØDi— \í%šï†Ÿ ÒŽ@³DC\\1ˆ, \Ò~A³D\ê?iC‘vš]\ô\ng,{‘\Ö\Ã;\è§@¢¿¥E:\ï I\ô,yi\íC¢Y¤¡\îH\Íh\î¢7”hûºC‡7\Ð|.A¢;‹4\Ô\Å7\è]4¸\è\Î\"ý-0x\î@·º\è¯AF³\Â\áPg \Ù\ÜmPtŠ4h‡;\Ðl\îY\Í/\í§_\Ð\×\æ\îo’\Õ\ä2x¿ Ÿ	®X[–\Ù|Ó£ƒ\êt¥‡«\ìfú\ß+\í§W\Ðš»Yf“†Oh\ð\Ò\ÃhVŽ\Ì]\÷I+…\Ã\êt¥\ænM2œ\Ã\á\é4+\Ç\"\ËI;\ôp	š•\ão”å¤\Úÿ\ê4+7w\öÚ±ŸA_;+‡\íL\ì;|€f\å\Ð\n±\Ðd2jG\ñº rdÁ\ØkG\óºuPŽ\îÚ¡\Ã\èC\ä9&YO\Þ\èýn9€f\åA9\Ìf¡¾#7o \Û+\Î”\Ã0³@Wª\ê\rt4¤ –\Ú1B\÷\0ú*Ð‚r˜j\Ç\"ˆ\á@?\Óý\ÊÁÚ‘ÁJ¿%hþ \ó=\Çm]\é\ë\ðýA·LW\Ù5é–™\ÈJWO +˜h¸­\Ì\ðAVz?ý€¾v2\Ñ_ƒ\î™\ôM\ë0~@J°\n¿“nš‰\×\á\é4¯B6\Ñ\öVz”¥\ïš½\ÝD&\Ú\ÞJS+]¼€.¸\n\Ý7\ã\'¥\Ã\Ü|€n™R\á×¨g\ÅtX}€®‚T&\ÚnÒ¡eo@·N+°\n\r\×!•¥ª@WÁiV¡e:$‡·Ÿ\ïú\ÚÁ\ÛÁ*4M‡\ä\ðt¼?\èC\à\í\îK…ÿ¨¹\\Gb \Ã-9çœ€¹ÿ9g-x[‹\ò~$«Jm^\ð\Ò\ð\ô0 V\ìv‡_s.M\ÃC\ÒƒV\Ð]¢\Ðe©’¾¾­ \év?½`hA\Ò\ãV\Ðó®‚¶\á\ô \ô¡_·³\á)\éQA+\è}‡?\ßh5sxa<´zjM·û\ñOI\ß\Æ}C\Ð+ý†%=*\è\'‚fXÉ’t>\è|A+i‹G}\Ú=tA\Ðy’.\×1A_\é\Ð:L\Ò\å1\"\èOa(D\Ð’^LL-Ã€vV™:E\Ò\ë\Â\Ô2\èû*h%M\Å´Õ® \è Io*o \Ð\ï[»\ËA\Ð’\özXcþ.…:E\Ò\Ûy8h“p¶\Ør°\Ä\ãy\Ú$\\E	Ú½\ônn\æƒvÉ±\Ø\÷\ßCû˜†Šç·‡ù ¯W»\ó²+`¯‡V¼r\ô½M\Â3—\Â8Iof˜G8hc¶9q)Lø\Ú<,4\\\Ð6“\ðPB8—Ù–<\Ä<\Ò@k.9|§›5µ¬+\æZ\ã¨\ë˜jg\Åc>\Ä<’@k<‡¦Ú¥\å¡\æ1\Ý\ÒA\ß&\îWqI\èq\îK\ë#\ô§R¡IÂ˜\ßW~™\Ç3\ô\ã 	“$Ý®<¶\ó‰1\ô\ãˆK\Â6ª1:^h›c]\ã@—y›‡­\ê#´­q„ae\Ú\æq}‚Ö ‘\Æa™\æ¬E›Nmƒ®›\È\nm™f\çA›\0Í•—IT\èp\óXLb\nhƒ\Ð\å\è©QJªy\Ø\ñ¦\Ë#\r\ô§\Ò\ìBÃ\ñ\Ù.±^\n\0\Í*‰fG\ãH6múú\n\0M²„\Îlžµø;^H\÷-gšQ%\Ø<¶´\é¦z¼@S8h\Ð\ì8²;žÄ©\ÜR@\ß\ÊÄ•»w\ò¯|\Ù\ôºP\ò@\ßA\Èr4t\Ó\ñ\Ä\ò\0ýþTƒ0¿\Ùi\Ó\ì¦\Ù/\õý©\á\íW\âLˆ.]A.\á­M3!Bºh83¦Þ“G\0ª¤{þ\×p¦p„7h/ˆ\Ì\â\î\0Z=[86\ô@múøU—\n¤\0\Z\Î½Ý\æÿ–;Jšþh9»‚6\rÄ¤{€þÏ®y\à8Apf¨lipÿÿ\çÅ¹À‚—:\'@4\ë	…Þž¦\Ö\ð\Ün\ðRY\ÖÁ4\ö\ô\ËEžqG\è#\ÓMdZ/}\ç&\ò\ÜY \Õ™®c\Óû\ó+E_\öJ\ÏKz¦ÿ\ß\â\Ô\Ó/M\ÏÏµ€e½\Åùwv\çW‰¾\ìž1ì–Š60­±\é\ÓkDŸÒžY.Ú®x1\óž.š³Nž[•E›þH™¶\Ã\ÓDsnÐ³\ÏÃ¦\Øt«<‰O3ˆýŒ‡J†¦Q\Ô\Ï\Íz¦\ç\Îd\ñX\Ó&‚oL\Ï}A=‹Myy¦ig2a}<A4j\ßE\áy\Ñ˜\îL\ïN\Ï}\ÚÁs \ç ’«i|]\ÇÎ»O4kÃ©ú„\ç\Ì\Úc¨%Q\÷ˆfm8\õ˜«gš\æ vv\Ç;D3\Î;\Î\çû™+ãƒ¡¾Ct2\Î\Ö\Â\ód’\ê¦q\ê;D#\Î8ƒ{\æw§¯\ÅÁü¸K\ôi¯jœÁM«’\ê¦?/j\Õ\í\á|Ÿ\è\Ëa+@\Û1S\ÏDšžL¨\Úûcžh¶†\n\Óž•\\©‡.j!¶?\Í\Í\Ö0ù´6œ±VÉ—\ÊMG\õ\Ð=«5XN_K\Îh\èi\Ú\×G¼?\Îi\Ñ\Ü\ZD±6?ü\ÊfPƒ¡V!\n\Õ\Ír&ÚŒ\ô\Ü\ÉkW\õd–jŠ¦f^Á·™ü$\èkM¨†hhVZ\÷Œ\óØ¨¼Z\õ³C\r\Õ43\ÎùŸÁ\ôwS65S}8&úr@š\Ñ\Î\ïT\Ï|s~TWTo}WC\ô\å´\ßê•¿›nCÍ›\Ö\ä-\àÛ…_\ôˆŠyƒ¸h\ï“+­\íŒW\Ê\Ö\"U\ënr\Ñf¯f \rŽ j\ãM\ëƒýAlw8ý}9v&W\ÐúGk”\Úp|}\Äû\ÃU\Ù~sý\å»\å­8 \ò­¯\r•7Eý\ñ1´AþÀºF1£œ\Éf\n\ò¾¨\â&Ru\Zj.Wf¦\ÕÝª©¹Ä™x¨\ïP\rÍ¥Ÿ™¨z¶!­ ¹Ä™Mù’ ž¨™q.X;\\S\Ý\Õ&	\Ìw3\ÓÛ¹EW\ÝG\r‚\Î\è]3[£’ûƒªk†‘h‚6\Þd5´lk­ÿ„™ŒIaFU³Bþqm‘\åˆ\ñ³qX\ÐM=¸®ME4D–¡¹”s\Õ*ºŠè®i»1²Œ¨RH\Õ\0fŸ ¹¨Nˆ‹\æÿ¢j‡[D\Ø&…ª“¢\ñ²)\Ì\Â\ên5_\ô¦+»ùž	2\Ì=N\åx*¡\éW)Ñ›\Ò@«vø\×ul¹„ùqm=ýp\rÑ›qªM\nuý\'\×n¹Ÿ\êRO¨k«\Únµú%z\ìÚ’\å\ç¹\ÖP·\Ý0vm‰\ò\ÓQ5û\Ú}\0\0À\0\0\ò·\Å~!$¹†g\0\0\0\0\0\0\0\0X&\0\éŠ­\Ö0\ò\0\0\0\0IEND®B`‚',NULL,13,NULL,'2025-08-08 04:44:55');
+INSERT INTO `clubes` VALUES (1,6,'Club Centro','Mi primer club',NULL,NULL,NULL,NULL,NULL,NULL,1,NULL,NULL,NULL,NULL,'2025-08-07 21:00:39'),(2,8,'Club AtlÃ©tico Admin','Club de prueba para el Admin',NULL,NULL,NULL,NULL,NULL,NULL,1,_binary '‰PNG\r\n\Z\n\0\0\0\rIHDR\0\0h\0\0h\0\0\0M;‘\ç\0\0\0ZPLTE\0\0\0HhIg|UY\\VY\\VX[TWYUXZUWYTVY`be`ceJMOUXZaceJLNJLN%Ž\Ó$Ž\Ô$\Õ\"\Ô3œ\ß$\Ö4œ\à\Ë‚\Ë5\à1š\Þ„\Î\Ë¤Þž\0\0\0\ZtRNS\0!3Ld}«\Ä\×\îÞ–ÿÿ\ò Cq«\Î\ê\î¬R\åAx\0\0IDATx\Ú\ìÁ\0\0\0\0€ ý©©\0\0\0\0\0\0\0\0`v\ìB\ÉqhÍˆ\é\ÂDÿÿ›\çE\'Ui[Ñ²¬>X¦W³-e®BD\Ì\â-\ÌD\Í\ä3C,¤\Ò\ÆX\ëœ\÷>„Ÿãœµ\Éh¥7\ñKe’\ëlÿ\Ýdv“ygžŒ’¢q—\Z[\ßC\è\Þ\Û%-\Ûp?†\ÜCh mj\Ø9!©o‘14\ÆÖ²Y†¥q\0@#lg7O ¬€2€.±n!0\Ë:Ûššm\Z(c\è|kÑ¬_B*AeŸh[…t\Ã\\\Ý\Æ\Z7³D8¼$\ÆùS\Z\ë$iÂaCž¯w6£”’R¼DJ¥^ qž\Û Ô˜1\ñ\Ë\ZƒŸ^þ»³r2)‡{>Å²f5Z\ÍÁ%½)\"¡t§=ZÖŠ\ó-²QÀxXÛ¸8B­§CM\Ã\ÌÁ\'Œ<zÙ•\Äù\ðTS\ë\æ\çQf\ê\Ä>¡’›u\õ¨‡˜ƒÿ´\õ«\çÓ¥&™˜P.¶¶q€ZVL-LÀ•¡}þ\Å\à\n‰FT\Ê\Ì\Ú3}\Ù\"%bj®óª›Y\Ð\×.`u}’6À\Î\à\ÜK\ó\â5\ÌD,®æ¸ª\'Q\Î!\ëQ1-–\Ë\åj½\Ùl»\ìv»ý~¿\ír8¬W\Ý”u0\Î\ë¯jR2Ó˜\Ðb¹\ÚtºÇ«œÎ—«\ì;\ñ\ÕrÁ\Å\ÔNSÕ­1\Îül\Ü\è\óeÿ\Ì\Ýi3<RšW\ÜlŠ˜©G\ÆÐ·yÁ¦\êJûƒ”+`\æ\åºGF\Ð{½\äÁmÖ¼\Æûj\r§hP¹G\Å\Ð8/Ö˜\Z\õ\Çn\r—\Ùk\è@@Bck\Â\ßVýÁuµ\î\Ã\Åj\ZA\ã\ì«¾mF\Ô\Õ\\C’T0\Ì\0ºx¬\åýSqžÄŸg—\Î/\ñ0c\è\ñ±FmM ª£¦\nAXÎ¼ÃŒ \ó³E\r\Â:¢K\õß¾:\ãr^@fŸ=¤i\Å?}ZI˜¹ú\ãS­\ì\ß=E­QÌŒ¡\ó³\Ôú#É¿¸\ÜÇ­™Ë¡\ñT\×\Ò¸5À¯\"ÿg\çP…0Ž;1Æ¨4¯\Û\í\Â\öþ\×\\ \0C\×?°\ã›Ps„_\å\ËLš	0\ï„f\ê@\õG]ù!˜\Za“¹\0\ónh\Þ‹@«XM~p\Ã=m\÷\0R~‘\ã~h^¶©c¦ü¨<5d…\ö\Ä\Zúq¿–z\óƒ\÷§>l\ïÀl\ÍH\Û/t\Õ\Æÿµ˜…\Â\Ùš×­\Õ\Õ\â\éøˆKgg{hŽjh\Êýþÿ\ÒÂ¡3l‚\ëR\Ãš£z…¢\Ú\'µ\03n‚\Z\ÇBs~ˆ\Þ_©\å³Bƒ6AH\rch\Î(ª….\ó©\Ö\ð\Íù\ó\âgFZ˜(6H\r#hn¥x`1Ê‘Ê‰o“P:C‡r4\ç\Ç\nùÁSté´–Y™nu|\ä\núþ¸o5Å™\çŒ_\õú1çˆ¥³hü_QøVfH~Ž?¾Ï·ŸŸ+\çŒ!œ¡tvýø›bPQM¯8åœŸ<ý^r^4™9…†6A\×\ÐÜ”‡\ôB\Ík0€\Æ=JgO\Ð\\T\ÓUW\Ð#´¨Jg\ÐjSj\Ð0Cj8€¦ü\0\êÁ\ô\Ù¥³_h\Îž±‡\æN\rÿ\Ðw\È\Ì8z\Z¡!…\Ôp\ÍùÁStË@3±H\rO\ÐÜ¿\ð#ùb\Í/=p‡\âš\õ(­\óe1n†ÿ‘¡Õ‡k1®¡ùª\r[w½Â¶ù¢§q˜S×Šz\ØÂ¹*h>?\ÅQ¯8Y|\Ñ	>d8>ªšÿ¿\å%!½Z²‚\î¾e†p6€v@\Ý)\èl\ÍÌ•B\ó*/1‡ffO\Ð\ö\Ô\éx\è\0\ÌAs€„\ã¡<\ò\0]m\Ð|…]ì¡›ù\èP =©š¯ n9\ö\Zºy\'t¿\ñÁ\r˜+…\æ\ÏúiMÐ³%t‰\âÊ¡yæ¹ˆ!t\Ð++\×\ÍÖ«´\ô•!\ê‡\æu\è\Þ\ì‹þúL\è/ªfÐ³\ô	t\Ö\Ð\'t¶ƒU\Ø}&tQÛ—†N»¡»m\è\æ„6„\Î/ZA‡AAwû¡§M\è¦üþD\è;@/û¡£‚\Ã	­ /vÐ­\ê?Zu†­†Ž»¡[=\Ð\0}1„¾}\"\ôMA\ÇEA·ûgVF­~·\äœK®\ë0Ci\çÿ±S\'\ÝÿFß´opfV€JZ\ÂA@‘”‘t¶­ÿ@¿H~Š	:½ø±\Ð[–z¾ yýˆúù\n\Zžu\ô>\Z\ÆM\'CC\ÐGDÐ‡Á\ÉnYÁA\ó\ÅA!\r \Ô\Ñ\0\Z\ê;ç ¹¼\ë:AOšÂƒÞ %\íÜ“ªœ\ñ@_v-©\Õw{DÐ»Yy\'Xvxm_\Þq«\Äe‡\Ð\öU‡¸\ìx\Äý„ª\ã+Kfe‡Â\æ¾%\É0ƒ‡\Í	<\É0ƒ\×x «A‡h(ˆ†1@ƒwJ\ôV)2\è\Ë S4„>A\ÛCŽ†œXüƒ\æ¼2I†‰%…\Ý\Òk^\é•8±\ÍyePI\éh Ë¼\"¥•Œt4\Ð\Õ4¯H\ßp\Ì*\Ñ@—W(WLŽYg,\Ð\ÝW©“‘†\ê?\Z\èl\ô¬.“¨ú\Ï\Í=hn£ÁF\Û\é‡K\Ð\öîŽ«x~wD\Í\î\î+«Ï¤ü{\Ð\ì\îÀF›ø»T\"\æ’\ô[½fÁ§@Û»;±¿k‘@7x\Ô\ñ;©×Œh;\"~Rw\×\ô\ð	‡\ðP ø· ¸;#\Û\á4›Ž\Ü\ôJ¶#h®”\Ö$sÛ±Gúy\Õnb:ø\ô´þ@s\Ó1|A¥\äÀv\0hW¦C\Z¨\í¨a@s\Ó1H\ö¶£\Ä]¸\é\è7\é,A@\ó+¥U=gž›_Ð¼3˜Ž3Á6\Ô\Ã3hÞ…\Ðt†\ð\Z4\ðQ\'eØ†©Dý*\ÑÀ»‡\ð²¡g\Ð\×N»0\é\Æm\ètKPF/\ê;\Óm\Ã Ÿ\â]x\ã6\ôºR.\Õw\òF\ð\Î /\êH·¬\Î\óMMi‹\0ºe\èHWIv\Û\ðs€\ÏhŽ+ƒ\å.”&\é +\Ä\èH»5¥ˆ´#\Ð,\Ñt¤æ‘¥¹\ÍO: ®\ØDi— \í%šï†Ÿ ÒŽ@³DC\\1ˆ, \Ò~A³D\ê?iC‘vš]\ô\ng,{‘\Ö\Ã;\è§@¢¿¥E:\ï I\ô,yi\íC¢Y¤¡\îH\Íh\î¢7”hûºC‡7\Ð|.A¢;‹4\Ô\Å7\è]4¸\è\Î\"ý-0x\î@·º\è¯AF³\Â\áPg \Ù\ÜmPtŠ4h‡;\Ðl\îY\Í/\í§_\Ð\×\æ\îo’\Õ\ä2x¿ Ÿ	®X[–\Ù|Ó£ƒ\êt¥‡«\ìfú\ß+\í§W\Ðš»Yf“†Oh\ð\Ò\ÃhVŽ\Ì]\÷I+…\Ã\êt¥\ænM2œ\Ã\á\é4+\Ç\"\ËI;\ôp	š•\ão”å¤\Úÿ\ê4+7w\öÚ±ŸA_;+‡\íL\ì;|€f\å\Ð\n±\Ðd2jG\ñº rdÁ\ØkG\óºuPŽ\îÚ¡\Ã\èC\ä9&YO\Þ\èýn9€f\åA9\Ìf¡¾#7o \Û+\Î”\Ã0³@Wª\ê\rt4¤ –\Ú1B\÷\0ú*Ð‚r˜j\Ç\"ˆ\á@?\Óý\ÊÁÚ‘ÁJ¿%hþ \ó=\Çm]\é\ë\ðýA·LW\Ù5é–™\ÈJWO +˜h¸­\Ì\ðAVz?ý€¾v2\Ñ_ƒ\î™\ôM\ë0~@J°\n¿“nš‰\×\á\é4¯B6\Ñ\öVz”¥\ïš½\ÝD&\Ú\ÞJS+]¼€.¸\n\Ý7\ã\'¥\Ã\Ü|€n™R\á×¨g\ÅtX}€®‚T&\ÚnÒ¡eo@·N+°\n\r\×!•¥ª@WÁiV¡e:$‡·Ÿ\ïú\ÚÁ\ÛÁ*4M‡\ä\ðt¼?\èC\à\í\îK…ÿ¨¹\\Gb \Ã-9çœ€¹ÿ9g-x[‹\ò~$«Jm^\ð\Ò\ð\ô0 V\ìv‡_s.M\ÃC\ÒƒV\Ð]¢\Ðe©’¾¾­ \év?½`hA\Ò\ãV\Ðó®‚¶\á\ô \ô¡_·³\á)\éQA+\è}‡?\ßh5sxa<´zjM·û\ñOI\ß\Æ}C\Ð+ý†%=*\è\'‚fXÉ’t>\è|A+i‹G}\Ú=tA\Ðy’.\×1A_\é\Ð:L\Ò\å1\"\èOa(D\Ð’^LL-Ã€vV™:E\Ò\ë\Â\Ô2\èû*h%M\Å´Õ® \è Io*o \Ð\ï[»\ËA\Ð’\özXcþ.…:E\Ò\Ûy8h“p¶\Ør°\Ä\ãy\Ú$\\E	Ú½\ônn\æƒvÉ±\Ø\÷\ßCû˜†Šç·‡ù ¯W»\ó²+`¯‡V¼r\ô½M\Â3—\Â8Iof˜G8hc¶9q)Lø\Ú<,4\\\Ð6“\ðPB8—Ù–<\Ä<\Ò@k.9|§›5µ¬+\æZ\ã¨\ë˜jg\Åc>\Ä<’@k<‡¦Ú¥\å¡\æ1\Ý\ÒA\ß&\îWqI\èq\îK\ë#\ô§R¡IÂ˜\ßW~™\Ç3\ô\ã 	“$Ý®<¶\ó‰1\ô\ãˆK\Â6ª1:^h›c]\ã@—y›‡­\ê#´­q„ae\Ú\æq}‚Ö ‘\Æa™\æ¬E›Nmƒ®›\È\nm™f\çA›\0Í•—IT\èp\óXLb\nhƒ\Ð\å\è©QJªy\Ø\ñ¦\Ë#\r\ô§\Ò\ìBÃ\ñ\Ù.±^\n\0\Í*‰fG\ãH6múú\n\0M²„\Îlžµø;^H\÷-gšQ%\Ø<¶´\é¦z¼@S8h\Ð\ì8²;žÄ©\ÜR@\ß\ÊÄ•»w\ò¯|\Ù\ôºP\ò@\ßA\Èr4t\Ó\ñ\Ä\ò\0ýþTƒ0¿\Ùi\Ó\ì¦\Ù/\õý©\á\íW\âLˆ.]A.\á­M3!Bºh83¦Þ“G\0ª¤{þ\×p¦p„7h/ˆ\Ì\â\î\0Z=[86\ô@múøU—\n¤\0\Z\Î½Ý\æÿ–;Jšþh9»‚6\rÄ¤{€þÏ®y\à8Apf¨lipÿÿ\çÅ¹À‚—:\'@4\ë	…Þž¦\Ö\ð\Ün\ðRY\ÖÁ4\ö\ô\ËEžqG\è#\ÓMdZ/}\ç&\ò\ÜY \Õ™®c\Óû\ó+E_\öJ\ÏKz¦ÿ\ß\â\Ô\Ó/M\ÏÏµ€e½\Åùwv\çW‰¾\ìž1ì–Š60­±\é\ÓkDŸÒžY.Ú®x1\óž.š³Nž[•E›þH™¶\Ã\ÓDsnÐ³\ÏÃ¦\Øt«<‰O3ˆýŒ‡J†¦Q\Ô\Ï\Íz¦\ç\Îd\ñX\Ó&‚oL\Ï}A=‹Myy¦ig2a}<A4j\ßE\áy\Ñ˜\îL\ïN\Ï}\ÚÁs \ç ’«i|]\ÇÎ»O4kÃ©ú„\ç\Ì\Úc¨%Q\÷ˆfm8\õ˜«gš\æ vv\Ç;D3\Î;\Î\çû™+ãƒ¡¾Ct2\Î\Ö\Â\ód’\ê¦q\ê;D#\Î8ƒ{\æw§¯\ÅÁü¸K\ôi¯jœÁM«’\ê¦?/j\Õ\í\á|Ÿ\è\Ëa+@\Û1S\ÏDšžL¨\Úûcžh¶†\n\Óž•\\©‡.j!¶?\Í\Í\Ö0ù´6œ±VÉ—\ÊMG\õ\Ð=«5XN_K\Îh\èi\Ú\×G¼?\Îi\Ñ\Ü\ZD±6?ü\ÊfPƒ¡V!\n\Õ\Ír&ÚŒ\ô\Ü\ÉkW\õd–jŠ¦f^Á·™ü$\èkM¨†hhVZ\÷Œ\óØ¨¼Z\õ³C\r\Õ43\ÎùŸÁ\ôwS65S}8&úr@š\Ñ\Î\ïT\Ï|s~TWTo}WC\ô\å´\ßê•¿›nCÍ›\Ö\ä-\àÛ…_\ôˆŠyƒ¸h\ï“+­\íŒW\Ê\Ö\"U\ënr\Ñf¯f \rŽ j\ãM\ëƒýAlw8ý}9v&W\ÐúGk”\Úp|}\Äû\ÃU\Ù~sý\å»\å­8 \ò­¯\r•7Eý\ñ1´AþÀºF1£œ\Éf\n\ò¾¨\â&Ru\Zj.Wf¦\ÕÝª©¹Ä™x¨\ïP\rÍ¥Ÿ™¨z¶!­ ¹Ä™Mù’ ž¨™q.X;\\S\Ý\Õ&	\Ìw3\ÓÛ¹EW\ÝG\r‚\Î\è]3[£’ûƒªk†‘h‚6\Þd5´lk­ÿ„™ŒIaFU³Bþqm‘\åˆ\ñ³qX\ÐM=¸®ME4D–¡¹”s\Õ*ºŠè®i»1²Œ¨RH\Õ\0fŸ ¹¨Nˆ‹\æÿ¢j‡[D\Ø&…ª“¢\ñ²)\Ì\Â\ên5_\ô¦+»ùž	2\Ì=N\åx*¡\éW)Ñ›\Ò@«vø\×ul¹„ùqm=ýp\rÑ›qªM\nuý\'\×n¹Ÿ\êRO¨k«\Únµú%z\ìÚ’\å\ç¹\ÖP·\Ý0vm‰\ò\ÓQ5û\Ú}\0\0À\0\0\ò·\Å~!$¹†g\0\0\0\0\0\0\0\0X&\0\éŠ­\Ö0\ò\0\0\0\0IEND®B`‚',NULL,13,NULL,'2025-08-08 04:44:55');
 /*!40000 ALTER TABLE `clubes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -173,6 +181,65 @@ INSERT INTO `clubes_horario` VALUES (1,2,1,'08:00:00','23:00:00',1),(2,2,2,'08:0
 UNLOCK TABLES;
 
 --
+-- Table structure for table `clubes_impuestos`
+--
+
+DROP TABLE IF EXISTS `clubes_impuestos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `clubes_impuestos` (
+  `impuesto_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `club_id` int NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `porcentaje` decimal(5,2) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`impuesto_id`),
+  UNIQUE KEY `uq_clubes_impuestos_nombre` (`club_id`,`nombre`),
+  CONSTRAINT `fk_clubesimpuestos_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `clubes_impuestos`
+--
+
+LOCK TABLES `clubes_impuestos` WRITE;
+/*!40000 ALTER TABLE `clubes_impuestos` DISABLE KEYS */;
+/*!40000 ALTER TABLE `clubes_impuestos` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `clubes_servicios`
+--
+
+DROP TABLE IF EXISTS `clubes_servicios`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `clubes_servicios` (
+  `club_id` int NOT NULL,
+  `servicio_id` int unsigned NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`club_id`,`servicio_id`),
+  KEY `fk_clubesservicios_servicio` (`servicio_id`),
+  CONSTRAINT `fk_clubesservicios_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_clubesservicios_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`servicio_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `clubes_servicios`
+--
+
+LOCK TABLES `clubes_servicios` WRITE;
+/*!40000 ALTER TABLE `clubes_servicios` DISABLE KEYS */;
+/*!40000 ALTER TABLE `clubes_servicios` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `clubs_usuarios`
 --
 
@@ -190,8 +257,10 @@ CREATE TABLE `clubs_usuarios` (
   `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`club_id`,`usuario_id`),
   KEY `usuario_id` (`usuario_id`),
+  KEY `idx_clubsusuarios_localidad` (`localidad_id`),
   CONSTRAINT `clubs_usuarios_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
-  CONSTRAINT `clubs_usuarios_ibfk_2` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`)
+  CONSTRAINT `clubs_usuarios_ibfk_2` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
+  CONSTRAINT `fk_clubsusuarios_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidades` (`localidad_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -285,6 +354,35 @@ CREATE TABLE `grabaciones` (
 LOCK TABLES `grabaciones` WRITE;
 /*!40000 ALTER TABLE `grabaciones` DISABLE KEYS */;
 /*!40000 ALTER TABLE `grabaciones` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `localidades`
+--
+
+DROP TABLE IF EXISTS `localidades`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `localidades` (
+  `localidad_id` int NOT NULL AUTO_INCREMENT,
+  `provincia_id` int NOT NULL,
+  `nombre` varchar(150) NOT NULL,
+  `codigo_postal` varchar(15) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`localidad_id`),
+  KEY `idx_localidades_provincia` (`provincia_id`),
+  CONSTRAINT `fk_localidades_provincia` FOREIGN KEY (`provincia_id`) REFERENCES `provincia` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `localidades`
+--
+
+LOCK TABLES `localidades` WRITE;
+/*!40000 ALTER TABLE `localidades` DISABLE KEYS */;
+/*!40000 ALTER TABLE `localidades` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -435,6 +533,34 @@ INSERT INTO `reservas` VALUES (1,1,1,'2025-08-10','20:00:00','21:00:00','cancela
 UNLOCK TABLES;
 
 --
+-- Table structure for table `servicios`
+--
+
+DROP TABLE IF EXISTS `servicios`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `servicios` (
+  `servicio_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `slug` varchar(60) NOT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `icono` varchar(120) DEFAULT NULL,
+  PRIMARY KEY (`servicio_id`),
+  UNIQUE KEY `uq_servicios_slug` (`slug`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `servicios`
+--
+
+LOCK TABLES `servicios` WRITE;
+/*!40000 ALTER TABLE `servicios` DISABLE KEYS */;
+INSERT INTO `servicios` VALUES (1,'restaurant','Restaurant','Servicio de restaurante dentro del club',NULL),(2,'bar','Bar','Bar o confiterÃ­a',NULL),(3,'pileta','Pileta','Piscina climatizada o al aire libre',NULL),(4,'espacios-verdes','Espacios verdes','Ãreas verdes o parques',NULL),(5,'parrillas','Parrillas','Sector con parrillas',NULL),(6,'cabanas','CabaÃ±as','Alojamiento en cabaÃ±as',NULL),(7,'salon-eventos','SalÃ³n de eventos','SalÃ³n multifunciÃ³n',NULL),(8,'gimnasio','Gimnasio','Ãrea de gimnasio',NULL);
+/*!40000 ALTER TABLE `servicios` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `tarifas_club`
 --
 
@@ -485,7 +611,9 @@ CREATE TABLE `usuarios` (
   `puntos` int DEFAULT '0',
   `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`usuario_id`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `email` (`email`),
+  KEY `idx_usuarios_localidad` (`localidad_id`),
+  CONSTRAINT `fk_usuarios_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidades` (`localidad_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -512,4 +640,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-09-27 21:22:20
+-- Dump completed on 2025-10-02 12:35:44

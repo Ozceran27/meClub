@@ -26,7 +26,7 @@ app.use('/api/niveles', nivelesRoutes);
 app.use('/api/reservas', reservasRoutes);
 app.use('/api/provincias', provinciasRoutes);
 
-// INFO API ------------------------------------------------------------------------------------------
+// INFO API -----------------------------------------------------------------------------------------
 app.get('/', (req, res) => {
   res.send('API de meClub funcionando correctamente.');
 });
