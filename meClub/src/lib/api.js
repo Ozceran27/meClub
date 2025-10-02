@@ -159,9 +159,9 @@ export async function getClubServices() {
   return extractServices(response);
 }
 
-export async function updateClubServices(servicios) {
-  const payload = { servicios };
-  const response = await api.put('/clubes/mis-servicios', payload);
+export async function updateClubServices(servicioIds) {
+  const payload = { servicio_ids: Array.isArray(servicioIds) ? servicioIds : [] };
+  const response = await api.patch('/clubes/mis-servicios', payload);
   return extractServices(response);
 }
 
