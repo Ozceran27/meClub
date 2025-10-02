@@ -88,12 +88,13 @@ const normalizeServices = (services) => {
     .map((service) => {
       if (service === null || service === undefined) return null;
       if (typeof service === 'object') {
+        if (service?.seleccionado === false) return null;
         const id = service?.id ?? service?.servicio_id ?? service?.codigo ?? service?.value;
         return id === null || id === undefined ? null : String(id);
       }
       return String(service);
     })
-    .filter(Boolean);
+    .filter((value) => value !== null && value !== undefined && value !== '');
 };
 
 const normalizeTaxes = (taxes) => {
@@ -156,10 +157,20 @@ const denormalizeSchedule = (schedule) => {
 const sanitizeServicesForPayload = (services) => {
   if (!Array.isArray(services)) return [];
   return services
-    .map((id) => {
-      if (id === null || id === undefined) return null;
-      const numeric = Number(id);
-      return Number.isFinite(numeric) ? numeric : String(id);
+    .map((item) => {
+      if (item === null || item === undefined) return null;
+      let value = item;
+      if (typeof value === 'object') {
+        const id = value?.id ?? value?.servicio_id ?? value?.codigo ?? value?.value;
+        if (id === null || id === undefined) return null;
+        value = id;
+      }
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+      const str = String(value).trim();
+      return str ? str : null;
     })
     .filter((value) => value !== null);
 };
