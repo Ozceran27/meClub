@@ -12,9 +12,26 @@ const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ReservasModel = require('../models/reservas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ProvinciasModel = require('../models/provincias.model');
+const LocalidadesModel = require('../models/localidades.model');
+const ServiciosModel = require('../models/servicios.model');
+const ClubesServiciosModel = require('../models/clubesServicios.model');
+const ClubesImpuestosModel = require('../models/clubesImpuestos.model');
 
 // Aplica middlewares de autenticación/rol y carga de club
-router.use(['/mis-datos', '/mis-canchas', '/canchas', '/mis-horarios', '/mis-tarifas'], verifyToken, requireRole('club'), loadClub);
+router.use(
+  [
+    '/mis-datos',
+    '/mis-canchas',
+    '/canchas',
+    '/mis-horarios',
+    '/mis-tarifas',
+    '/mis-servicios',
+    '/mis-impuestos',
+  ],
+  verifyToken,
+  requireRole('club'),
+  loadClub
+);
 
 const uploadClubLogo = buildSingleUploadMiddleware('logo');
 
@@ -44,7 +61,19 @@ router.post('/mis-datos/logo', uploadClubLogo, async (req, res) => {
 
 router.patch('/mis-datos', async (req, res) => {
   try {
-    const { nombre, descripcion, foto_logo, provincia_id } = req.body || {};
+    const {
+      nombre,
+      descripcion,
+      foto_logo,
+      provincia_id,
+      localidad_id,
+      telefono_contacto,
+      email_contacto,
+      direccion,
+      latitud,
+      longitud,
+      google_place_id,
+    } = req.body || {};
 
     if (typeof nombre !== 'string' || nombre.trim() === '') {
       return res.status(400).json({ mensaje: 'El nombre es obligatorio' });
@@ -69,6 +98,126 @@ router.patch('/mis-datos', async (req, res) => {
       }
     }
 
+    let localidadIdValue = localidad_id;
+    if (localidad_id !== undefined) {
+      if (localidad_id === null || localidad_id === '') {
+        localidadIdValue = null;
+      } else {
+        const localidadNumerica = Number(localidad_id);
+        if (!Number.isInteger(localidadNumerica)) {
+          return res.status(400).json({ mensaje: 'localidad_id inválido' });
+        }
+
+        const localidadExiste = await LocalidadesModel.existe(localidadNumerica);
+        if (!localidadExiste) {
+          return res.status(400).json({ mensaje: 'La localidad especificada no existe' });
+        }
+
+        localidadIdValue = localidadNumerica;
+      }
+    }
+
+    const parseOptionalString = (value, fieldName) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      if (typeof value !== 'string') {
+        throw new Error(`${fieldName} debe ser una cadena o null`);
+      }
+      const trimmed = value.trim();
+      return trimmed === '' ? null : trimmed;
+    };
+
+    let telefonoValue;
+    try {
+      telefonoValue = parseOptionalString(telefono_contacto, 'telefono_contacto');
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+    if (telefonoValue !== undefined && telefonoValue !== null) {
+      const phoneRegex = /^[+()0-9\s-]{6,25}$/;
+      if (!phoneRegex.test(telefonoValue)) {
+        return res.status(400).json({ mensaje: 'telefono_contacto inválido' });
+      }
+    }
+
+    let emailValue;
+    try {
+      emailValue = parseOptionalString(email_contacto, 'email_contacto');
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+    if (emailValue !== undefined && emailValue !== null) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailValue)) {
+        return res.status(400).json({ mensaje: 'email_contacto inválido' });
+      }
+    }
+
+    let direccionValue;
+    try {
+      direccionValue = parseOptionalString(direccion, 'direccion');
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+
+    let placeIdValue;
+    try {
+      placeIdValue = parseOptionalString(google_place_id, 'google_place_id');
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+
+    const parseCoordinate = (value, fieldName, min, max) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      if (typeof value === 'string' && value.trim() === '') return null;
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        throw new Error(`${fieldName} inválida`);
+      }
+      if (numeric < min || numeric > max) {
+        throw new Error(`${fieldName} fuera de rango`);
+      }
+      return numeric;
+    };
+
+    let latitudValue;
+    let longitudValue;
+    try {
+      latitudValue = parseCoordinate(latitud, 'latitud', -90, 90);
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+    try {
+      longitudValue = parseCoordinate(longitud, 'longitud', -180, 180);
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+
+    if (localidadIdValue !== undefined && localidadIdValue !== null) {
+      let provinciaParaValidar = req.club.provincia_id;
+      if (provincia_id !== undefined) {
+        provinciaParaValidar = provinciaIdValue;
+      }
+
+      if (provinciaParaValidar === null || provinciaParaValidar === undefined) {
+        return res
+          .status(400)
+          .json({ mensaje: 'Debe especificar una provincia para asociar la localidad' });
+      }
+
+      const pertenece = await LocalidadesModel.perteneceAProvincia(
+        localidadIdValue,
+        provinciaParaValidar
+      );
+
+      if (!pertenece) {
+        return res
+          .status(400)
+          .json({ mensaje: 'La localidad no pertenece a la provincia indicada' });
+      }
+    }
+
     const payload = {
       nombre,
     };
@@ -76,12 +225,152 @@ router.patch('/mis-datos', async (req, res) => {
     if (descripcion !== undefined) payload.descripcion = descripcion;
     if (foto_logo !== undefined) payload.foto_logo = foto_logo;
     if (provincia_id !== undefined) payload.provincia_id = provinciaIdValue;
+    if (localidad_id !== undefined) payload.localidad_id = localidadIdValue;
+    if (telefono_contacto !== undefined) payload.telefono_contacto = telefonoValue;
+    if (email_contacto !== undefined) payload.email_contacto = emailValue;
+    if (direccion !== undefined) payload.direccion = direccionValue;
+    if (latitud !== undefined) payload.latitud = latitudValue;
+    if (longitud !== undefined) payload.longitud = longitudValue;
+    if (google_place_id !== undefined) payload.google_place_id = placeIdValue;
 
     const clubActualizado = await ClubesModel.actualizarPorId(req.club.club_id, payload);
 
     req.club = clubActualizado;
 
     res.json({ mensaje: 'Datos del club actualizados', club: clubActualizado });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis servicios
+router.get('/mis-servicios', async (req, res) => {
+  try {
+    const [disponibles, seleccionados] = await Promise.all([
+      ServiciosModel.listarDisponibles(),
+      ClubesServiciosModel.listarSeleccionados(req.club.club_id),
+    ]);
+
+    const seleccionadosSet = new Set(seleccionados.map((item) => item.servicio_id));
+
+    const servicios = disponibles.map((servicio) => ({
+      ...servicio,
+      seleccionado: seleccionadosSet.has(servicio.servicio_id),
+    }));
+
+    res.json({ club_id: req.club.club_id, servicios });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+router.patch('/mis-servicios', async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.servicio_ids) ? req.body.servicio_ids : null;
+    if (!ids) {
+      return res.status(400).json({ mensaje: 'Debe enviar servicio_ids como arreglo' });
+    }
+
+    const normalizados = [];
+    for (const id of ids) {
+      const numero = Number(id);
+      if (!Number.isInteger(numero) || numero <= 0) {
+        return res.status(400).json({ mensaje: 'Todos los servicio_ids deben ser enteros positivos' });
+      }
+      normalizados.push(numero);
+    }
+
+    const set = new Set(normalizados);
+    if (set.size !== normalizados.length) {
+      return res.status(400).json({ mensaje: 'servicio_ids contiene duplicados' });
+    }
+
+    const disponibles = await ServiciosModel.listarDisponibles();
+    const disponiblesSet = new Set(disponibles.map((s) => s.servicio_id));
+
+    for (const servicioId of normalizados) {
+      if (!disponiblesSet.has(servicioId)) {
+        return res.status(400).json({ mensaje: `Servicio ${servicioId} inválido` });
+      }
+    }
+
+    const seleccionados = await ClubesServiciosModel.reemplazarSeleccion(
+      req.club.club_id,
+      normalizados
+    );
+
+    res.json({ mensaje: 'Servicios actualizados', servicios: seleccionados });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis impuestos
+router.get('/mis-impuestos', async (req, res) => {
+  try {
+    const impuestos = await ClubesImpuestosModel.listarSeleccionados(req.club.club_id);
+    res.json({ club_id: req.club.club_id, impuestos });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+router.patch('/mis-impuestos', async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : null;
+    if (!items) {
+      return res.status(400).json({ mensaje: 'Debe enviar items como arreglo' });
+    }
+
+    const normalizados = [];
+    const nombresSet = new Set();
+
+    for (const item of items) {
+      const nombre = typeof item?.nombre === 'string' ? item.nombre.trim() : '';
+      if (!nombre) {
+        return res.status(400).json({ mensaje: 'Cada impuesto debe tener un nombre' });
+      }
+
+      const nombreKey = nombre.toLowerCase();
+      if (nombresSet.has(nombreKey)) {
+        return res.status(400).json({ mensaje: 'Los nombres de impuestos no pueden repetirse' });
+      }
+      nombresSet.add(nombreKey);
+
+      const porcentajeNumber = Number(item?.porcentaje);
+      if (!Number.isFinite(porcentajeNumber)) {
+        return res.status(400).json({ mensaje: 'El porcentaje debe ser numérico' });
+      }
+      if (porcentajeNumber < 0 || porcentajeNumber > 100) {
+        return res.status(400).json({ mensaje: 'El porcentaje debe estar entre 0 y 100' });
+      }
+
+      let descripcion = null;
+      if (item?.descripcion !== undefined && item.descripcion !== null) {
+        if (typeof item.descripcion !== 'string') {
+          return res.status(400).json({ mensaje: 'La descripción debe ser una cadena' });
+        }
+        const trimmed = item.descripcion.trim();
+        descripcion = trimmed === '' ? null : trimmed;
+      }
+
+      normalizados.push({
+        nombre,
+        porcentaje: Number(porcentajeNumber.toFixed(2)),
+        descripcion,
+      });
+    }
+
+    const impuestos = await ClubesImpuestosModel.reemplazarSeleccion(
+      req.club.club_id,
+      normalizados
+    );
+
+    res.json({ mensaje: 'Impuestos actualizados', impuestos });
   } catch (err) {
     console.error(err);
     res.status(500).json({ mensaje: 'Error interno del servidor' });

@@ -1,12 +1,68 @@
 const db = require('../config/db');
 const { normalizeLogoValue, prepareLogoValue } = require('../utils/logoStorage');
 
+const toNullableNumber = (value) => {
+  if (value === undefined || value === null) return null;
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? asNumber : null;
+};
+
 const mapClubRow = (row) => {
   if (!row || typeof row !== 'object') return row;
+
   return {
     ...row,
     foto_logo: normalizeLogoValue(row.foto_logo),
+    latitud: row.latitud === null ? null : toNullableNumber(row.latitud),
+    longitud: row.longitud === null ? null : toNullableNumber(row.longitud),
+    telefono_contacto:
+      row.telefono_contacto === undefined ? null : row.telefono_contacto || null,
+    email_contacto:
+      row.email_contacto === undefined ? null : row.email_contacto || null,
+    direccion: row.direccion === undefined ? null : row.direccion || null,
+    google_place_id:
+      row.google_place_id === undefined ? null : row.google_place_id || null,
   };
+};
+
+const normalizeNullableTrimmedString = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} debe ser una cadena o null`);
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return null;
+  }
+
+  return trimmed;
+};
+
+const normalizeNullableInteger = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric)) {
+    throw new Error(`${fieldName} debe ser numérico o null`);
+  }
+
+  return numeric;
+};
+
+const normalizeNullableFloat = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`${fieldName} debe ser numérico o null`);
+  }
+
+  return numeric;
 };
 
 const ClubesModel = {
@@ -19,34 +75,63 @@ const ClubesModel = {
     foto_portada = null,
     provincia_id = null,
     localidad_id = null,
+    telefono_contacto = null,
+    email_contacto = null,
+    direccion = null,
+    latitud = null,
+    longitud = null,
+    google_place_id = null,
   }) => {
     const { value: logoValue } = prepareLogoValue(foto_logo === undefined ? null : foto_logo);
+    const descripcionValue = normalizeNullableTrimmedString(descripcion, 'descripcion');
+    const telefonoValue = normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto');
+    const emailValue = normalizeNullableTrimmedString(email_contacto, 'email_contacto');
+    const direccionValue = normalizeNullableTrimmedString(direccion, 'direccion');
+    const latitudValue = normalizeNullableFloat(latitud, 'latitud');
+    const longitudValue = normalizeNullableFloat(longitud, 'longitud');
+    const provinciaValue = normalizeNullableInteger(provincia_id, 'provincia_id');
+    const localidadValue = normalizeNullableInteger(localidad_id, 'localidad_id');
+    const placeIdValue = normalizeNullableTrimmedString(google_place_id, 'google_place_id');
+
     const [result] = await db.query(
       `INSERT INTO clubes
-       (nombre, descripcion, usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (nombre, descripcion, telefono_contacto, email_contacto, direccion, latitud, longitud, google_place_id,
+        usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre,
-        descripcion || null,
+        descripcionValue,
+        telefonoValue,
+        emailValue,
+        direccionValue,
+        latitudValue,
+        longitudValue,
+        placeIdValue,
         usuario_id,
         nivel_id,
         logoValue,
         foto_portada,
-        provincia_id,
-        localidad_id,
+        provinciaValue,
+        localidadValue,
       ]
     );
 
     return mapClubRow({
       club_id: result.insertId,
       nombre,
-      descripcion: descripcion || null,
+      descripcion: descripcionValue,
       usuario_id,
       nivel_id,
       foto_logo: logoValue,
       foto_portada,
-      provincia_id,
-      localidad_id,
+      provincia_id: provinciaValue,
+      localidad_id: localidadValue,
+      telefono_contacto: telefonoValue,
+      email_contacto: emailValue,
+      direccion: direccionValue,
+      latitud: latitudValue,
+      longitud: longitudValue,
+      google_place_id: placeIdValue,
     });
   },
 
@@ -70,7 +155,19 @@ const ClubesModel = {
 
   actualizarPorId: async (
     club_id,
-    { nombre, descripcion, foto_logo, provincia_id } = {}
+    {
+      nombre,
+      descripcion,
+      foto_logo,
+      provincia_id,
+      localidad_id,
+      telefono_contacto,
+      email_contacto,
+      direccion,
+      latitud,
+      longitud,
+      google_place_id,
+    } = {}
   ) => {
     const existente = await ClubesModel.obtenerClubPorId(club_id);
     if (!existente) {
@@ -80,29 +177,25 @@ const ClubesModel = {
     const updates = [];
     const values = [];
 
-    const handleStringField = (fieldName, value) => {
-      if (value === undefined) return;
-      if (value === null) {
+    const setField = (fieldName, normalizedValue) => {
+      if (normalizedValue === undefined) return;
+      if (normalizedValue === null) {
         updates.push(`${fieldName} = NULL`);
-        return;
+      } else {
+        updates.push(`${fieldName} = ?`);
+        values.push(normalizedValue);
       }
-
-      if (typeof value !== 'string') {
-        throw new Error(`${fieldName} debe ser una cadena o null`);
-      }
-
-      const trimmed = value.trim();
-      if (trimmed === '') {
-        updates.push(`${fieldName} = NULL`);
-        return;
-      }
-
-      updates.push(`${fieldName} = ?`);
-      values.push(trimmed);
     };
 
-    handleStringField('nombre', nombre);
-    handleStringField('descripcion', descripcion);
+    setField('nombre', normalizeNullableTrimmedString(nombre, 'nombre'));
+    setField('descripcion', normalizeNullableTrimmedString(descripcion, 'descripcion'));
+    setField(
+      'telefono_contacto',
+      normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto')
+    );
+    setField('email_contacto', normalizeNullableTrimmedString(email_contacto, 'email_contacto'));
+    setField('direccion', normalizeNullableTrimmedString(direccion, 'direccion'));
+    setField('google_place_id', normalizeNullableTrimmedString(google_place_id, 'google_place_id'));
 
     if (foto_logo !== undefined) {
       const { value: logoValue, shouldUpdate } = prepareLogoValue(foto_logo);
@@ -116,18 +209,10 @@ const ClubesModel = {
       }
     }
 
-    if (provincia_id !== undefined) {
-      if (provincia_id === null || provincia_id === '') {
-        updates.push('provincia_id = NULL');
-      } else {
-        const provinciaNumber = Number(provincia_id);
-        if (!Number.isInteger(provinciaNumber)) {
-          throw new Error('provincia_id debe ser numérico o null');
-        }
-        updates.push('provincia_id = ?');
-        values.push(provinciaNumber);
-      }
-    }
+    setField('provincia_id', normalizeNullableInteger(provincia_id, 'provincia_id'));
+    setField('localidad_id', normalizeNullableInteger(localidad_id, 'localidad_id'));
+    setField('latitud', normalizeNullableFloat(latitud, 'latitud'));
+    setField('longitud', normalizeNullableFloat(longitud, 'longitud'));
 
     if (updates.length === 0) {
       return existente;
@@ -181,7 +266,6 @@ const ClubesModel = {
 
     return { courtsAvailable, reservasHoy, reservasSemana, economiaMes };
   },
-
 };
 
 module.exports = ClubesModel;

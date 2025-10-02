@@ -115,7 +115,7 @@ describe('register controller', () => {
       email: 'club@example.com',
       rol: 'club',
     });
-    expect(jsonBody.club).toEqual({ club_id: 10, nombre: 'Club Test' });
+    expect(jsonBody.club).toMatchObject({ club_id: 10, nombre: 'Club Test' });
   });
 });
 
