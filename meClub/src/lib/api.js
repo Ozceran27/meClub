@@ -90,8 +90,23 @@ function extractProvinces(payload) {
 
 function extractLocalities(payload) {
   if (!payload || typeof payload !== 'object') return [];
-  const localities = payload.localidades ?? payload.data ?? payload;
-  return Array.isArray(localities) ? localities : [];
+  const candidates = [
+    payload.localidades,
+    payload.data?.localidades,
+    payload.data,
+    payload,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+    if (candidate && typeof candidate === 'object' && Array.isArray(candidate.localidades)) {
+      return candidate.localidades;
+    }
+  }
+
+  return [];
 }
 
 function extractServices(payload) {
@@ -128,11 +143,14 @@ export async function updateClubProfile(payload) {
 export async function listLocalities(provinciaId, query) {
   if (!provinciaId) return [];
   const params = new URLSearchParams();
-  params.set('provincia_id', provinciaId);
   if (query) {
     params.set('q', query);
   }
-  const response = await api.get(`/geo/localidades?${params.toString()}`);
+  const search = params.toString();
+  const path = `/provincias/${encodeURIComponent(provinciaId)}/localidades${
+    search ? `?${search}` : ''
+  }`;
+  const response = await api.get(path);
   return extractLocalities(response);
 }
 
