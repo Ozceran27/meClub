@@ -1,4 +1,5 @@
 import { tokenKey, getItem } from './storage';
+import { sanitizeTaxesForPayload } from '../utils/taxes';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3006/api';
 
@@ -176,8 +177,8 @@ export async function getClubTaxes() {
 }
 
 export async function updateClubTaxes(impuestos) {
-  const payload = { impuestos };
-  const response = await api.put('/clubes/mis-impuestos', payload);
+  const items = sanitizeTaxesForPayload(impuestos);
+  const response = await api.patch('/clubes/mis-impuestos', { items });
   return extractTaxes(response);
 }
 
