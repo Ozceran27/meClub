@@ -14,14 +14,18 @@
       "backgroundColor": "#0e131f"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Necesitamos acceder a tu ubicación para fijar la posición del club en el mapa."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0e131f"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "web": {
       "bundler": "metro",
@@ -31,7 +35,14 @@
       "apiBaseUrl": "http://localhost:3006/api"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Necesitamos acceder a tu ubicación para fijar la posición del club en el mapa.",
+          "isIosBackgroundLocationEnabled": false
+        }
+      ]
     ]
   }
 }
