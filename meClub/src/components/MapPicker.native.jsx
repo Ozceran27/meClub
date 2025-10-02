@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 
@@ -146,11 +146,6 @@ export default function MapPicker({
         </Pressable>
       </View>
       {!!mapError && <Text className="text-red-300 text-xs">{mapError}</Text>}
-      {Platform.OS === 'web' && (
-        <Text className="text-white/30 text-[11px]">
-          En la versión web la precisión del mapa puede variar según tu navegador.
-        </Text>
-      )}
     </View>
   );
 }
