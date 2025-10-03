@@ -737,7 +737,7 @@ export default function ConfiguracionScreen({ go }) {
               onChange={handleMapChange}
               style={{ marginTop: 16 }}
             >
-              <View className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/20 p-4">
+              <View className="flex flex-col gap-3">
                 <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Dirección</Text>
                 <View className="flex flex-col gap-3">
                   <View className="flex flex-col gap-2">

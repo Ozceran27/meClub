@@ -226,10 +226,10 @@ export default function MapPicker({
         </View>
         {!!mapError && <Text className="px-4 pb-4 text-red-300 text-xs">{mapError}</Text>}
       </View>
-      <View className="flex w-full flex-col gap-4 lg:w-1/2">
-        {children}
-        <View className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/20 p-4">
-          <View className="gap-2">
+      <View className="flex w-full flex-col lg:w-1/2">
+        <View className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-black/20 p-4">
+          {children}
+          <View className="flex flex-col gap-2">
             <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Ubicación seleccionada</Text>
             <View className="flex flex-col gap-2">
               <View className="flex flex-col gap-1">
