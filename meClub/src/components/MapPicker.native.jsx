@@ -31,6 +31,7 @@ export default function MapPicker({
   googlePlaceId,
   onChange,
   style,
+  children,
 }) {
   const mapRef = useRef(null);
   const [isRequestingLocation, setIsRequestingLocation] = useState(false);
@@ -120,6 +121,7 @@ export default function MapPicker({
           {hasCoordinate && <Marker coordinate={{ latitude, longitude }} />}
         </MapView>
       </View>
+      {children}
       <View className="flex-row flex-wrap items-center justify-between gap-3">
         <View>
           <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Ubicación seleccionada</Text>

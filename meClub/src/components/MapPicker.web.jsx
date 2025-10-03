@@ -25,6 +25,7 @@ export default function MapPicker({
   googlePlaceId,
   onChange,
   style,
+  children,
 }) {
   const [isRequestingLocation, setIsRequestingLocation] = useState(false);
   const [mapError, setMapError] = useState('');
@@ -170,8 +171,8 @@ export default function MapPicker({
   }, [emitChange, pendingLatitude, pendingLongitude]);
 
   return (
-    <View style={style} className="gap-3">
-      <View className="h-64 w-full overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+    <View style={style} className="flex flex-col gap-4 lg:flex-row">
+      <View className="h-64 w-full overflow-hidden rounded-3xl border border-white/10 bg-black/20 lg:w-1/2">
         {mapLoadError || !googleMapsApiKey ? (
           <View className="flex-1 items-center justify-center gap-3 px-6 text-center">
             <Text className="text-white/70 text-sm font-medium">Mapa interactivo no disponible en este momento</Text>
@@ -204,59 +205,62 @@ export default function MapPicker({
           </GoogleMap>
         )}
       </View>
-      <View className="flex-row flex-wrap items-center justify-between gap-3">
-        <View className="gap-2">
-          <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Ubicación seleccionada</Text>
-          <View className="flex-row flex-wrap gap-2">
-            <View className="flex-1 min-w-[120px]">
-              <Text className="text-white/50 text-[11px]">Latitud</Text>
-              <TextInput
-                value={pendingLatitude}
-                onChangeText={setPendingLatitude}
-                keyboardType="numeric"
-                placeholder="-34.6037"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
-              />
+      <View className="flex w-full flex-col gap-4 lg:w-1/2">
+        {children}
+        <View className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/20 p-4">
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Ubicación seleccionada</Text>
+            <View className="flex flex-col gap-2">
+              <View className="flex flex-col gap-1">
+                <Text className="text-white/50 text-[11px]">Latitud</Text>
+                <TextInput
+                  value={pendingLatitude}
+                  onChangeText={setPendingLatitude}
+                  keyboardType="numeric"
+                  placeholder="-34.6037"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white"
+                />
+              </View>
+              <View className="flex flex-col gap-1">
+                <Text className="text-white/50 text-[11px]">Longitud</Text>
+                <TextInput
+                  value={pendingLongitude}
+                  onChangeText={setPendingLongitude}
+                  keyboardType="numeric"
+                  placeholder="-58.3816"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white"
+                />
+              </View>
             </View>
-            <View className="flex-1 min-w-[120px]">
-              <Text className="text-white/50 text-[11px]">Longitud</Text>
-              <TextInput
-                value={pendingLongitude}
-                onChangeText={setPendingLongitude}
-                keyboardType="numeric"
-                placeholder="-58.3816"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
-              />
-            </View>
+            {hasCoordinate ? (
+              <Text className="text-white/40 text-[11px]">Google place: {googlePlaceId ?? 'Sin información adicional'}</Text>
+            ) : (
+              <Text className="text-white/60 text-sm">Elegí un punto con los controles disponibles</Text>
+            )}
           </View>
-          {hasCoordinate ? (
-            <Text className="text-white/40 text-[11px]">Google place: {googlePlaceId ?? 'Sin información adicional'}</Text>
-          ) : (
-            <Text className="text-white/60 text-sm">Elegí un punto con los controles disponibles</Text>
-          )}
+          <View className="flex flex-col gap-2">
+            <Pressable
+              onPress={handleApplyManualCoordinates}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center hover:bg-white/10"
+            >
+              <Text className="text-white/80 text-sm font-medium">Aplicar coordenadas</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSelectCurrentLocation}
+              disabled={isRequestingLocation}
+              className={`flex-row items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 ${
+                isRequestingLocation ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              {isRequestingLocation && <ActivityIndicator color="#F59E0B" />}
+              <Text className="text-white/80 text-sm font-medium">Usar mi ubicación actual</Text>
+            </Pressable>
+          </View>
         </View>
-        <View className="gap-2">
-          <Pressable
-            onPress={handleApplyManualCoordinates}
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 hover:bg-white/10"
-          >
-            <Text className="text-white/80 text-sm font-medium">Aplicar coordenadas</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleSelectCurrentLocation}
-            disabled={isRequestingLocation}
-            className={`flex-row items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 ${
-              isRequestingLocation ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'
-            }`}
-          >
-            {isRequestingLocation && <ActivityIndicator color="#F59E0B" />}
-            <Text className="text-white/80 text-sm font-medium">Usar mi ubicación actual</Text>
-          </Pressable>
-        </View>
+        {!!mapError && <Text className="text-red-300 text-xs">{mapError}</Text>}
       </View>
-      {!!mapError && <Text className="text-red-300 text-xs">{mapError}</Text>}
     </View>
   );
 }
