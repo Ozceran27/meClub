@@ -206,6 +206,25 @@ export default function MapPicker({
             </GoogleMap>
           )}
         </View>
+        <View className="mt-4 flex flex-col gap-2 px-4 pb-4">
+          <Pressable
+            onPress={handleApplyManualCoordinates}
+            className="flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center hover:bg-white/10"
+          >
+            <Text className="text-white/80 text-center text-sm font-medium">Aplicar coordenadas</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleSelectCurrentLocation}
+            disabled={isRequestingLocation}
+            className={`flex-row items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 ${
+              isRequestingLocation ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'
+            }`}
+          >
+            {isRequestingLocation && <ActivityIndicator color="#F59E0B" />}
+            <Text className="text-white/80 text-center text-sm font-medium">Usar mi ubicación actual</Text>
+          </Pressable>
+        </View>
+        {!!mapError && <Text className="px-4 pb-4 text-red-300 text-xs">{mapError}</Text>}
       </View>
       <View className="flex w-full flex-col gap-4 lg:w-1/2">
         {children}
@@ -242,26 +261,7 @@ export default function MapPicker({
               <Text className="text-white/60 text-sm">Elegí un punto con los controles disponibles</Text>
             )}
           </View>
-          <View className="flex flex-col gap-2">
-            <Pressable
-              onPress={handleApplyManualCoordinates}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center hover:bg-white/10"
-            >
-              <Text className="text-white/80 text-sm font-medium">Aplicar coordenadas</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSelectCurrentLocation}
-              disabled={isRequestingLocation}
-              className={`flex-row items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-2 ${
-                isRequestingLocation ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10'
-              }`}
-            >
-              {isRequestingLocation && <ActivityIndicator color="#F59E0B" />}
-              <Text className="text-white/80 text-sm font-medium">Usar mi ubicación actual</Text>
-            </Pressable>
-          </View>
         </View>
-        {!!mapError && <Text className="text-red-300 text-xs">{mapError}</Text>}
       </View>
     </View>
   );
