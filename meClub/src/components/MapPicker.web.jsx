@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import * as Location from 'expo-location';
+import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 
 const buildPlaceId = (coordinate, address) => {
   if (!coordinate) return null;
@@ -26,18 +27,27 @@ export default function MapPicker({
   const [mapError, setMapError] = useState('');
   const [pendingLatitude, setPendingLatitude] = useState('');
   const [pendingLongitude, setPendingLongitude] = useState('');
+  const [mapLoadError, setMapLoadError] = useState('');
 
   const hasCoordinate = useMemo(
     () => typeof latitude === 'number' && typeof longitude === 'number',
     [latitude, longitude],
   );
 
+  const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-maps-script',
+    googleMapsApiKey: googleMapsApiKey ?? '',
+  });
+
   useEffect(() => {
-    if (hasCoordinate) {
-      setPendingLatitude(latitude.toFixed(5));
-      setPendingLongitude(longitude.toFixed(5));
+    if (loadError) {
+      setMapLoadError('No pudimos cargar Google Maps. Ingresá las coordenadas manualmente.');
+    } else if (isLoaded) {
+      setMapLoadError('');
     }
-  }, [hasCoordinate, latitude, longitude]);
+  }, [isLoaded, loadError]);
 
   const emitChange = useCallback(
     async (coordinate) => {
@@ -58,6 +68,32 @@ export default function MapPicker({
     },
     [googlePlaceId, onChange],
   );
+
+  const mapCenter = useMemo(
+    () => ({
+      lat: hasCoordinate ? latitude : -34.6037,
+      lng: hasCoordinate ? longitude : -58.3816,
+    }),
+    [hasCoordinate, latitude, longitude],
+  );
+
+  const handleMapEvent = useCallback(
+    (event) => {
+      const lat = event?.latLng?.lat();
+      const lng = event?.latLng?.lng();
+      if (typeof lat === 'number' && typeof lng === 'number') {
+        emitChange({ latitude: lat, longitude: lng });
+      }
+    },
+    [emitChange],
+  );
+
+  useEffect(() => {
+    if (hasCoordinate) {
+      setPendingLatitude(latitude.toFixed(5));
+      setPendingLongitude(longitude.toFixed(5));
+    }
+  }, [hasCoordinate, latitude, longitude]);
 
   const handleSelectCurrentLocation = useCallback(async () => {
     setIsRequestingLocation(true);
@@ -97,11 +133,29 @@ export default function MapPicker({
 
   return (
     <View style={style} className="gap-3">
-      <View className="h-64 w-full items-center justify-center gap-3 rounded-3xl border border-dashed border-white/10 bg-white/5 px-6 text-center">
-        <Text className="text-white/70 text-sm font-medium">Mapa interactivo no disponible en la versión web</Text>
-        <Text className="text-white/50 text-xs">
-          Ingresá coordenadas manualmente o usá tu ubicación actual para seleccionar un punto.
-        </Text>
+      <View className="h-64 w-full overflow-hidden rounded-3xl border border-white/10 bg-black/20">
+        {mapLoadError || !googleMapsApiKey ? (
+          <View className="flex-1 items-center justify-center gap-3 px-6 text-center">
+            <Text className="text-white/70 text-sm font-medium">Mapa interactivo no disponible en este momento</Text>
+            <Text className="text-white/50 text-xs">
+              {mapLoadError || 'Configurá la clave EXPO_PUBLIC_GOOGLE_MAPS_API_KEY para habilitar el mapa.'}
+            </Text>
+          </View>
+        ) : !isLoaded ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color="#F59E0B" />
+          </View>
+        ) : (
+          <GoogleMap
+            mapContainerStyle={{ width: '100%', height: '100%' }}
+            center={mapCenter}
+            zoom={hasCoordinate ? 14 : 4}
+            options={{ streetViewControl: false, mapTypeControl: false }}
+            onClick={handleMapEvent}
+          >
+            {hasCoordinate && <Marker position={mapCenter} draggable onDragEnd={handleMapEvent} />}
+          </GoogleMap>
+        )}
       </View>
       <View className="flex-row flex-wrap items-center justify-between gap-3">
         <View className="gap-2">
