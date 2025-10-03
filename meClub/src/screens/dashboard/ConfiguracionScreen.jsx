@@ -584,10 +584,10 @@ export default function ConfiguracionScreen({ go }) {
           <View className="grid gap-6 md:grid-cols-2">
             <View>
               <Text className="text-white/70 text-sm mb-2">Provincia</Text>
-              <View className="relative z-50" style={{ elevation: 50 }}>
+              <View className="relative z-60" style={{ elevation: 60 }}>
                 <Pressable
                   onPress={() => setShowProvinceMenu((prev) => !prev)}
-                  className="flex-row items-center justify-between rounded-2xl border border-mc-stroke bg-mc-surface px-4 py-3 transition-colors hover:bg-[#1b293e]"
+                  className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-[#0B152E] px-4 py-3 transition-colors hover:bg-white/10"
                 >
                   <Text className="text-white/90 text-base">{provinceName}</Text>
                   <Ionicons
@@ -598,10 +598,10 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showProvinceMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] overflow-hidden rounded-2xl border border-mc-stroke bg-mc-surface shadow-lg z-50"
-                    style={{ elevation: 50 }}
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-60"
+                    style={{ elevation: 60 }}
                   >
-                    <ScrollView style={{ maxHeight: 240, backgroundColor: '#131c29' }}>
+                    <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
                       {(provinces || []).map((prov) => {
                         const isSelected = String(prov.id) === String(form.provincia_id);
                         return (
@@ -612,8 +612,8 @@ export default function ConfiguracionScreen({ go }) {
                               setShowProvinceMenu(false);
                             }}
                             className={`px-4 py-3 transition-colors ${
-                              isSelected ? 'bg-[#1f2d44]' : 'bg-mc-surface'
-                            } hover:bg-[#1b283f]`}
+                              isSelected ? 'bg-white/10' : ''
+                            } hover:bg-white/10`}
                           >
                             <Text className="text-white/90 text-base">{prov.nombre}</Text>
                           </Pressable>
@@ -627,14 +627,16 @@ export default function ConfiguracionScreen({ go }) {
 
             <View>
               <Text className="text-white/70 text-sm mb-2">Localidad</Text>
-              <View className="relative z-40" style={{ elevation: 40 }}>
+              <View className="relative z-60" style={{ elevation: 60 }}>
                 <Pressable
                   onPress={() => {
                     if (!form.provincia_id) return;
                     setShowLocalityMenu((prev) => !prev);
                   }}
-                  className={`flex-row items-center justify-between rounded-2xl border border-mc-stroke px-4 py-3 transition-colors ${
-                    form.provincia_id ? 'bg-mc-surface hover:bg-[#1b293e]' : 'bg-[#1a2436]'
+                  className={`flex-row items-center justify-between rounded-2xl border px-4 py-3 transition-colors ${
+                    form.provincia_id
+                      ? 'border-white/10 bg-[#0B152E] hover:bg-white/10'
+                      : 'border-white/5 bg-[#121B33]'
                   }`}
                 >
                   <Text className="text-white/90 text-base">
@@ -648,16 +650,16 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showLocalityMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] overflow-hidden rounded-2xl border border-mc-stroke bg-mc-surface shadow-lg z-40"
-                    style={{ elevation: 40 }}
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-60"
+                    style={{ elevation: 60 }}
                   >
-                    <View className="border-b border-mc-stroke bg-[#121b2b] px-4 py-3">
+                    <View className="border-b border-white/10 bg-[#101C36] px-4 py-3">
                       <TextInput
                         value={localityQuery}
                         onChangeText={setLocalityQuery}
                         placeholder="Buscar localidad"
                         placeholderTextColor="#94A3B8"
-                        className="rounded-xl border border-mc-stroke bg-[#1b283f] px-3 py-2 text-white"
+                        className="rounded-xl border border-white/10 bg-[#16274A] px-3 py-2 text-white"
                       />
                     </View>
                     {localitiesLoading ? (
@@ -666,7 +668,7 @@ export default function ConfiguracionScreen({ go }) {
                         <Text className="text-white/70 text-sm">Cargando...</Text>
                       </View>
                     ) : (
-                      <ScrollView style={{ maxHeight: 240, backgroundColor: '#131c29' }}>
+                      <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
                         {(localities || []).map((loc) => {
                           const isSelected = String(loc.id) === String(form.localidad_id);
                           return (
@@ -674,8 +676,8 @@ export default function ConfiguracionScreen({ go }) {
                               key={loc.id}
                               onPress={() => handleSelectLocality(loc)}
                               className={`px-4 py-3 transition-colors ${
-                                isSelected ? 'bg-[#1f2d44]' : 'bg-mc-surface'
-                              } hover:bg-[#1b283f]`}
+                                isSelected ? 'bg-white/10' : ''
+                              } hover:bg-white/10`}
                             >
                               <Text className="text-white/90 text-base">{loc.nombre}</Text>
                             </Pressable>
