@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View, Platform } from 'react-native';
 import * as Location from 'expo-location';
-import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, useJsApiLoader } from '@react-google-maps/api';
 
 const GOOGLE_MAP_LIBRARIES = ['marker'];
 
@@ -39,12 +39,33 @@ export default function MapPicker({
   );
 
   const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const googleMapsMapId = process.env.EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID;
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-maps-script',
     googleMapsApiKey: googleMapsApiKey ?? '',
     libraries: GOOGLE_MAP_LIBRARIES,
   });
+
+  const mapOptions = useMemo(
+    () => ({
+      streetViewControl: false,
+      mapTypeControl: false,
+      ...(googleMapsMapId ? { mapId: googleMapsMapId } : {}),
+    }),
+    [googleMapsMapId],
+  );
+
+  const shouldUseAdvancedMarker = useMemo(
+    () =>
+      Boolean(
+        googleMapsMapId &&
+          isLoaded &&
+          typeof google !== 'undefined' &&
+          google?.maps?.marker?.AdvancedMarkerElement,
+      ),
+    [googleMapsMapId, isLoaded],
+  );
 
   useEffect(() => {
     if (loadError) {
@@ -167,13 +188,19 @@ export default function MapPicker({
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={mapCenter}
             zoom={hasCoordinate ? 14 : 4}
-            options={{ streetViewControl: false, mapTypeControl: false }}
+            options={mapOptions}
+            mapId={googleMapsMapId || undefined}
             onLoad={(map) => setMapInstance(map)}
             onUnmount={() => setMapInstance(null)}
           >
-            {hasCoordinate && mapInstance && (
-              <AdvancedMarker map={mapInstance} position={mapCenter} onDragEnd={handleMapEvent} />
-            )}
+            {hasCoordinate &&
+              (shouldUseAdvancedMarker ? (
+                mapInstance && (
+                  <AdvancedMarker map={mapInstance} position={mapCenter} onDragEnd={handleMapEvent} />
+                )
+              ) : (
+                <MarkerF position={mapCenter} draggable onDragEnd={handleMapEvent} />
+              ))}
           </GoogleMap>
         )}
       </View>
