@@ -683,7 +683,7 @@ export default function ConfiguracionScreen({ go }) {
   }
 
   return (
-    <ScrollView className="py-6" contentContainerClassName="pb-32">
+    <ScrollView className="py-6 bg-[#0B152E]" contentContainerClassName="pb-32">
       <View className="flex-row items-center justify-between px-4 md:px-0">
         <View>
           <Text className="text-white text-[32px] font-extrabold tracking-tight">Configuración</Text>
@@ -776,10 +776,10 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showProvinceMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-50"
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-lg z-50"
                     style={{ elevation: 50 }}
                   >
-                    <ScrollView style={{ maxHeight: 240 }}>
+                    <ScrollView style={{ maxHeight: 240, backgroundColor: '#0B152E' }}>
                       {(provinces || []).map((prov) => (
                         <Pressable
                           key={prov.id}
@@ -790,7 +790,7 @@ export default function ConfiguracionScreen({ go }) {
                           className={`px-4 py-3 ${
                             String(prov.id) === String(form.provincia_id)
                               ? 'bg-white/10'
-                              : 'bg-transparent'
+                              : 'bg-[#0B152E]'
                           } hover:bg-white/10`}
                         >
                           <Text className="text-white/90 text-base">{prov.nombre}</Text>
@@ -825,7 +825,7 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showLocalityMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-40"
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-lg z-40"
                     style={{ elevation: 40 }}
                   >
                     <View className="border-b border-white/5 px-4 py-3">
@@ -843,7 +843,7 @@ export default function ConfiguracionScreen({ go }) {
                         <Text className="text-white/70 text-sm">Cargando...</Text>
                       </View>
                     ) : (
-                      <ScrollView style={{ maxHeight: 240 }}>
+                      <ScrollView style={{ maxHeight: 240, backgroundColor: '#0B152E' }}>
                         {(localities || []).map((loc) => (
                           <Pressable
                             key={loc.id}
@@ -851,7 +851,7 @@ export default function ConfiguracionScreen({ go }) {
                             className={`px-4 py-3 ${
                               String(loc.id) === String(form.localidad_id)
                                 ? 'bg-white/10'
-                                : 'bg-transparent'
+                                : 'bg-[#0B152E]'
                             } hover:bg-white/10`}
                           >
                             <Text className="text-white/90 text-base">{loc.nombre}</Text>
