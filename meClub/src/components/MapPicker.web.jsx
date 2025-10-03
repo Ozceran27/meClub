@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 
@@ -99,6 +99,10 @@ export default function MapPicker({
     setIsRequestingLocation(true);
     setMapError('');
     try {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && !window.isSecureContext) {
+        setMapError('Necesitás abrir la app con HTTPS para usar tu ubicación actual.');
+        return;
+      }
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setMapError('Necesitamos permisos de ubicación para usar este atajo');
