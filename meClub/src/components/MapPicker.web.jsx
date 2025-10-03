@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+/* global google */
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View, Platform } from 'react-native';
 import * as Location from 'expo-location';
-import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 
 const buildPlaceId = (coordinate, address) => {
   if (!coordinate) return null;
@@ -28,6 +29,7 @@ export default function MapPicker({
   const [pendingLatitude, setPendingLatitude] = useState('');
   const [pendingLongitude, setPendingLongitude] = useState('');
   const [mapLoadError, setMapLoadError] = useState('');
+  const [mapInstance, setMapInstance] = useState(null);
 
   const hasCoordinate = useMemo(
     () => typeof latitude === 'number' && typeof longitude === 'number',
@@ -39,6 +41,7 @@ export default function MapPicker({
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-maps-script',
     googleMapsApiKey: googleMapsApiKey ?? '',
+    libraries: ['marker'],
   });
 
   useEffect(() => {
@@ -87,6 +90,14 @@ export default function MapPicker({
     },
     [emitChange],
   );
+
+  useEffect(() => {
+    if (!mapInstance) return undefined;
+    const clickListener = mapInstance.addListener('click', handleMapEvent);
+    return () => {
+      clickListener.remove();
+    };
+  }, [mapInstance, handleMapEvent]);
 
   useEffect(() => {
     if (hasCoordinate) {
@@ -155,9 +166,12 @@ export default function MapPicker({
             center={mapCenter}
             zoom={hasCoordinate ? 14 : 4}
             options={{ streetViewControl: false, mapTypeControl: false }}
-            onClick={handleMapEvent}
+            onLoad={(map) => setMapInstance(map)}
+            onUnmount={() => setMapInstance(null)}
           >
-            {hasCoordinate && <Marker position={mapCenter} draggable onDragEnd={handleMapEvent} />}
+            {hasCoordinate && mapInstance && (
+              <AdvancedMarker map={mapInstance} position={mapCenter} onDragEnd={handleMapEvent} />
+            )}
           </GoogleMap>
         )}
       </View>
@@ -216,4 +230,47 @@ export default function MapPicker({
       {!!mapError && <Text className="text-red-300 text-xs">{mapError}</Text>}
     </View>
   );
+}
+
+function AdvancedMarker({ map, position, onDragEnd }) {
+  const markerRef = useRef(null);
+
+  useEffect(() => {
+    if (!map || !position || !google?.maps?.marker?.AdvancedMarkerElement) return undefined;
+
+    let marker = markerRef.current;
+    if (!marker) {
+      marker = new google.maps.marker.AdvancedMarkerElement({
+        map,
+        position,
+        gmpDraggable: true,
+      });
+      markerRef.current = marker;
+    } else {
+      marker.position = position;
+      if (marker.map !== map) {
+        marker.map = map;
+      }
+    }
+
+    const dragListener = marker.addListener('dragend', (event) => {
+      onDragEnd?.(event);
+    });
+
+    return () => {
+      dragListener.remove();
+    };
+  }, [map, position, onDragEnd]);
+
+  useEffect(
+    () => () => {
+      if (markerRef.current) {
+        markerRef.current.map = null;
+        markerRef.current = null;
+      }
+    },
+    [],
+  );
+
+  return null;
 }
