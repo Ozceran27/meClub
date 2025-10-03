@@ -564,7 +564,7 @@ export default function ConfiguracionScreen({ go }) {
               <View className="relative z-50" style={{ elevation: 50 }}>
                 <Pressable
                   onPress={() => setShowProvinceMenu((prev) => !prev)}
-                  className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                  className="flex-row items-center justify-between rounded-2xl border border-mc-stroke bg-mc-surface px-4 py-3 transition-colors hover:bg-[#1b293e]"
                 >
                   <Text className="text-white/90 text-base">{provinceName}</Text>
                   <Ionicons
@@ -575,26 +575,27 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showProvinceMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-lg z-50"
+                    className="absolute left-0 right-0 top-[110%] overflow-hidden rounded-2xl border border-mc-stroke bg-mc-surface shadow-lg z-50"
                     style={{ elevation: 50 }}
                   >
-                    <ScrollView style={{ maxHeight: 240, backgroundColor: '#0B152E' }}>
-                      {(provinces || []).map((prov) => (
-                        <Pressable
-                          key={prov.id}
-                          onPress={() => {
-                            handleChange('provincia_id', prov.id);
-                            setShowProvinceMenu(false);
-                          }}
-                          className={`px-4 py-3 ${
-                            String(prov.id) === String(form.provincia_id)
-                              ? 'bg-white/10'
-                              : 'bg-[#0B152E]'
-                          } hover:bg-white/10`}
-                        >
-                          <Text className="text-white/90 text-base">{prov.nombre}</Text>
-                        </Pressable>
-                      ))}
+                    <ScrollView style={{ maxHeight: 240, backgroundColor: '#131c29' }}>
+                      {(provinces || []).map((prov) => {
+                        const isSelected = String(prov.id) === String(form.provincia_id);
+                        return (
+                          <Pressable
+                            key={prov.id}
+                            onPress={() => {
+                              handleChange('provincia_id', prov.id);
+                              setShowProvinceMenu(false);
+                            }}
+                            className={`px-4 py-3 transition-colors ${
+                              isSelected ? 'bg-[#1f2d44]' : 'bg-mc-surface'
+                            } hover:bg-[#1b283f]`}
+                          >
+                            <Text className="text-white/90 text-base">{prov.nombre}</Text>
+                          </Pressable>
+                        );
+                      })}
                     </ScrollView>
                   </View>
                 )}
@@ -609,8 +610,8 @@ export default function ConfiguracionScreen({ go }) {
                     if (!form.provincia_id) return;
                     setShowLocalityMenu((prev) => !prev);
                   }}
-                  className={`flex-row items-center justify-between rounded-2xl border border-white/10 px-4 py-3 ${
-                    form.provincia_id ? 'bg-white/5' : 'bg-white/10'
+                  className={`flex-row items-center justify-between rounded-2xl border border-mc-stroke px-4 py-3 transition-colors ${
+                    form.provincia_id ? 'bg-mc-surface hover:bg-[#1b293e]' : 'bg-[#1a2436]'
                   }`}
                 >
                   <Text className="text-white/90 text-base">
@@ -624,16 +625,16 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showLocalityMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-lg z-40"
+                    className="absolute left-0 right-0 top-[110%] overflow-hidden rounded-2xl border border-mc-stroke bg-mc-surface shadow-lg z-40"
                     style={{ elevation: 40 }}
                   >
-                    <View className="border-b border-white/5 px-4 py-3">
+                    <View className="border-b border-mc-stroke bg-[#121b2b] px-4 py-3">
                       <TextInput
                         value={localityQuery}
                         onChangeText={setLocalityQuery}
                         placeholder="Buscar localidad"
                         placeholderTextColor="#94A3B8"
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white"
+                        className="rounded-xl border border-mc-stroke bg-[#1b283f] px-3 py-2 text-white"
                       />
                     </View>
                     {localitiesLoading ? (
@@ -642,20 +643,21 @@ export default function ConfiguracionScreen({ go }) {
                         <Text className="text-white/70 text-sm">Cargando...</Text>
                       </View>
                     ) : (
-                      <ScrollView style={{ maxHeight: 240, backgroundColor: '#0B152E' }}>
-                        {(localities || []).map((loc) => (
-                          <Pressable
-                            key={loc.id}
-                            onPress={() => handleSelectLocality(loc)}
-                            className={`px-4 py-3 ${
-                              String(loc.id) === String(form.localidad_id)
-                                ? 'bg-white/10'
-                                : 'bg-[#0B152E]'
-                            } hover:bg-white/10`}
-                          >
-                            <Text className="text-white/90 text-base">{loc.nombre}</Text>
-                          </Pressable>
-                        ))}
+                      <ScrollView style={{ maxHeight: 240, backgroundColor: '#131c29' }}>
+                        {(localities || []).map((loc) => {
+                          const isSelected = String(loc.id) === String(form.localidad_id);
+                          return (
+                            <Pressable
+                              key={loc.id}
+                              onPress={() => handleSelectLocality(loc)}
+                              className={`px-4 py-3 transition-colors ${
+                                isSelected ? 'bg-[#1f2d44]' : 'bg-mc-surface'
+                              } hover:bg-[#1b283f]`}
+                            >
+                              <Text className="text-white/90 text-base">{loc.nombre}</Text>
+                            </Pressable>
+                          );
+                        })}
                         {(!localities || localities.length === 0) && (
                           <View className="px-4 py-4">
                             <Text className="text-white/60 text-sm">
