@@ -187,6 +187,36 @@ export const initialSaveStatus = Object.keys(STATUS_LABELS).reduce((acc, key) =>
   return acc;
 }, {});
 
+export const splitAddress = (value) => {
+  if (typeof value !== 'string') {
+    return { street: '', number: '' };
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { street: '', number: '' };
+  }
+
+  const parts = trimmed.split(/\s+/);
+  const last = parts[parts.length - 1];
+  if (last && /\d/.test(last)) {
+    return {
+      street: parts.slice(0, -1).join(' ').trim(),
+      number: last.trim(),
+    };
+  }
+
+  return { street: trimmed, number: '' };
+};
+
+export const composeAddress = (street, number) => {
+  const safeStreet = typeof street === 'string' ? street.trim() : '';
+  const safeNumber = typeof number === 'string' ? number.trim() : '';
+  if (safeStreet && safeNumber) {
+    return `${safeStreet} ${safeNumber}`;
+  }
+  return safeStreet || safeNumber || '';
+};
+
 export const buildFormState = (source = {}, fallback = {}) => {
   const servicios = normalizeServices(source?.servicios ?? fallback?.servicios ?? []);
   const impuestos = normalizeTaxes(source?.impuestos ?? fallback?.impuestos ?? []);
@@ -201,6 +231,9 @@ export const buildFormState = (source = {}, fallback = {}) => {
     horarios = createEmptySchedule();
   }
 
+  const direccion = source?.direccion ?? fallback?.direccion ?? '';
+  const { street: direccion_calle, number: direccion_numero } = splitAddress(direccion);
+
   return {
     nombre: source?.nombre ?? fallback?.nombre ?? '',
     descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
@@ -211,7 +244,9 @@ export const buildFormState = (source = {}, fallback = {}) => {
       source?.localidad_nombre ?? source?.localidad?.nombre ?? fallback?.localidad_nombre ?? '',
     telefono_contacto: source?.telefono_contacto ?? fallback?.telefono_contacto ?? '',
     email_contacto: source?.email_contacto ?? fallback?.email_contacto ?? '',
-    direccion: source?.direccion ?? fallback?.direccion ?? '',
+    direccion,
+    direccion_calle,
+    direccion_numero,
     latitud: parseMaybeNumber(source?.latitud ?? fallback?.latitud ?? null),
     longitud: parseMaybeNumber(source?.longitud ?? fallback?.longitud ?? null),
     google_place_id: source?.google_place_id ?? fallback?.google_place_id ?? '',

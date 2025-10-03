@@ -41,6 +41,8 @@ import {
   sanitizeServicesForPayload,
   initialSaveStatus,
   buildFormState,
+  composeAddress,
+  splitAddress,
 } from './configurationState';
 
 const FIELD_STYLES =
@@ -167,6 +169,16 @@ export default function ConfiguracionScreen({ go }) {
           provincia_id: value,
           localidad_id: null,
           localidad_nombre: '',
+        };
+      }
+      if (key === 'direccion_calle' || key === 'direccion_numero') {
+        const nextStreet = key === 'direccion_calle' ? value : prev.direccion_calle;
+        const nextNumber = key === 'direccion_numero' ? value : prev.direccion_numero;
+        return {
+          ...prev,
+          direccion_calle: nextStreet,
+          direccion_numero: nextNumber,
+          direccion: composeAddress(nextStreet, nextNumber),
         };
       }
       return { ...prev, [key]: value };
@@ -377,6 +389,8 @@ export default function ConfiguracionScreen({ go }) {
           nextLogoPath = await uploadClubLogo(logoAsset);
         }
 
+        const direccion = composeAddress(form.direccion_calle, form.direccion_numero);
+
         const payload = {
           nombre: form.nombre,
           descripcion: form.descripcion,
@@ -384,7 +398,7 @@ export default function ConfiguracionScreen({ go }) {
           localidad_id: form.localidad_id ? Number(form.localidad_id) : null,
           telefono_contacto: form.telefono_contacto || null,
           email_contacto: form.email_contacto || null,
-          direccion: form.direccion || null,
+          direccion: direccion || null,
           latitud: form.latitud != null ? Number(form.latitud) : null,
           longitud: form.longitud != null ? Number(form.longitud) : null,
           google_place_id: form.google_place_id || null,
@@ -405,6 +419,15 @@ export default function ConfiguracionScreen({ go }) {
             updated?.telefono_contacto ?? payload.telefono_contacto ?? prev.telefono_contacto,
           email_contacto: updated?.email_contacto ?? payload.email_contacto ?? prev.email_contacto,
           direccion: updated?.direccion ?? payload.direccion ?? prev.direccion,
+          ...(() => {
+            const nextDireccionValue =
+              updated?.direccion ?? payload.direccion ?? prev.direccion ?? '';
+            const { street, number } = splitAddress(nextDireccionValue || '');
+            return {
+              direccion_calle: street,
+              direccion_numero: number,
+            };
+          })(),
           latitud: parseMaybeNumber(updated?.latitud ?? payload.latitud ?? prev.latitud),
           longitud: parseMaybeNumber(updated?.longitud ?? payload.longitud ?? prev.longitud),
           google_place_id:
@@ -700,20 +723,10 @@ export default function ConfiguracionScreen({ go }) {
           </View>
 
           <View>
-            <Text className="text-white/70 text-sm mb-2">Dirección</Text>
-            <TextInput
-              value={form.direccion}
-              onChangeText={(text) => handleChange('direccion', text)}
-              placeholder="Ej. Av. Siempre Viva 123"
-              placeholderTextColor="#94A3B8"
-              className={FIELD_STYLES}
-            />
-          </View>
-
-          <View>
-            <Text className="text-white text-lg font-semibold">Ubicación en el mapa</Text>
+            <Text className="text-white text-lg font-semibold">Ubicación y dirección</Text>
             <Text className="text-white/60 text-sm mt-1">
               Seleccioná el punto exacto de tu club o usá tu ubicación actual para completar latitud y longitud.
+              También podés detallar la calle y el número para complementar la información.
             </Text>
             <MapPicker
               latitude={form.latitud ?? undefined}
@@ -721,7 +734,33 @@ export default function ConfiguracionScreen({ go }) {
               googlePlaceId={form.google_place_id}
               onChange={handleMapChange}
               style={{ marginTop: 16 }}
-            />
+            >
+              <View className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/20 p-4">
+                <Text className="text-white/70 text-xs uppercase tracking-[0.2em]">Dirección</Text>
+                <View className="flex flex-col gap-3">
+                  <View className="flex flex-col gap-2">
+                    <Text className="text-white/60 text-sm">Calle</Text>
+                    <TextInput
+                      value={form.direccion_calle}
+                      onChangeText={(text) => handleChange('direccion_calle', text)}
+                      placeholder="Ej. Av. Siempre Viva"
+                      placeholderTextColor="#94A3B8"
+                      className={FIELD_STYLES}
+                    />
+                  </View>
+                  <View className="flex flex-col gap-2">
+                    <Text className="text-white/60 text-sm">N°</Text>
+                    <TextInput
+                      value={form.direccion_numero}
+                      onChangeText={(text) => handleChange('direccion_numero', text)}
+                      placeholder="123"
+                      placeholderTextColor="#94A3B8"
+                      className={FIELD_STYLES}
+                    />
+                  </View>
+                </View>
+              </View>
+            </MapPicker>
           </View>
 
           <View className="border-t border-white/10 pt-6">
