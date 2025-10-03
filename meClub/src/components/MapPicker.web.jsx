@@ -171,39 +171,41 @@ export default function MapPicker({
   }, [emitChange, pendingLatitude, pendingLongitude]);
 
   return (
-    <View style={style} className="flex flex-col gap-4 lg:flex-row">
-      <View className="h-64 w-full overflow-hidden rounded-3xl border border-white/10 bg-black/20 lg:w-1/2">
-        {mapLoadError || !googleMapsApiKey ? (
-          <View className="flex-1 items-center justify-center gap-3 px-6 text-center">
-            <Text className="text-white/70 text-sm font-medium">Mapa interactivo no disponible en este momento</Text>
-            <Text className="text-white/50 text-xs">
-              {mapLoadError || 'Configurá la clave EXPO_PUBLIC_GOOGLE_MAPS_API_KEY para habilitar el mapa.'}
-            </Text>
-          </View>
-        ) : !isLoaded ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#F59E0B" />
-          </View>
-        ) : (
-          <GoogleMap
-            mapContainerStyle={{ width: '100%', height: '100%' }}
-            center={mapCenter}
-            zoom={hasCoordinate ? 14 : 4}
-            options={mapOptions}
-            mapId={googleMapsMapId || undefined}
-            onLoad={(map) => setMapInstance(map)}
-            onUnmount={() => setMapInstance(null)}
-          >
-            {hasCoordinate &&
-              (shouldUseAdvancedMarker ? (
-                mapInstance && (
-                  <AdvancedMarker map={mapInstance} position={mapCenter} onDragEnd={handleMapEvent} />
-                )
-              ) : (
-                <MarkerF position={mapCenter} draggable onDragEnd={handleMapEvent} />
-              ))}
-          </GoogleMap>
-        )}
+    <View style={style} className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <View className="flex w-full flex-1 flex-col overflow-hidden rounded-3xl border border-white/10 bg-black/20 lg:w-1/2">
+        <View className="flex-1 min-h-[16rem]">
+          {mapLoadError || !googleMapsApiKey ? (
+            <View className="flex-1 items-center justify-center gap-3 px-6 text-center">
+              <Text className="text-white/70 text-sm font-medium">Mapa interactivo no disponible en este momento</Text>
+              <Text className="text-white/50 text-xs">
+                {mapLoadError || 'Configurá la clave EXPO_PUBLIC_GOOGLE_MAPS_API_KEY para habilitar el mapa.'}
+              </Text>
+            </View>
+          ) : !isLoaded ? (
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color="#F59E0B" />
+            </View>
+          ) : (
+            <GoogleMap
+              mapContainerStyle={{ width: '100%', height: '100%' }}
+              center={mapCenter}
+              zoom={hasCoordinate ? 14 : 4}
+              options={mapOptions}
+              mapId={googleMapsMapId || undefined}
+              onLoad={(map) => setMapInstance(map)}
+              onUnmount={() => setMapInstance(null)}
+            >
+              {hasCoordinate &&
+                (shouldUseAdvancedMarker ? (
+                  mapInstance && (
+                    <AdvancedMarker map={mapInstance} position={mapCenter} onDragEnd={handleMapEvent} />
+                  )
+                ) : (
+                  <MarkerF position={mapCenter} draggable onDragEnd={handleMapEvent} />
+                ))}
+            </GoogleMap>
+          )}
+        </View>
       </View>
       <View className="flex w-full flex-col gap-4 lg:w-1/2">
         {children}
