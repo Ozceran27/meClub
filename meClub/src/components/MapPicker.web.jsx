@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, Text, TextInput, View, Platform } from 'r
 import * as Location from 'expo-location';
 import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 
+const GOOGLE_MAP_LIBRARIES = ['marker'];
+
 const buildPlaceId = (coordinate, address) => {
   if (!coordinate) return null;
   if (address?.name && address?.isoCountryCode) {
@@ -41,7 +43,7 @@ export default function MapPicker({
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-maps-script',
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['marker'],
+    libraries: GOOGLE_MAP_LIBRARIES,
   });
 
   useEffect(() => {
