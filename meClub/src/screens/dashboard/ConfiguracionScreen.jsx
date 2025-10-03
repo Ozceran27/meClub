@@ -28,224 +28,23 @@ import {
 } from '../../lib/api';
 import { useAuth } from '../../features/auth/useAuth';
 import MapPicker from '../../components/MapPicker';
+import {
+  DAYS,
+  STATUS_LABELS,
+  parseMaybeNumber,
+  createClientId,
+  normalizeCatalogServices,
+  normalizeServices,
+  normalizeTaxes,
+  normalizeSchedule,
+  denormalizeSchedule,
+  sanitizeServicesForPayload,
+  initialSaveStatus,
+  buildFormState,
+} from './configurationState';
 
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
-
-const DAYS = [
-  { key: 'monday', label: 'Lunes' },
-  { key: 'tuesday', label: 'Martes' },
-  { key: 'wednesday', label: 'Miércoles' },
-  { key: 'thursday', label: 'Jueves' },
-  { key: 'friday', label: 'Viernes' },
-  { key: 'saturday', label: 'Sábado' },
-  { key: 'sunday', label: 'Domingo' },
-];
-
-const DAY_NUMBER_TO_KEY = DAYS.reduce((acc, day, index) => {
-  acc[index + 1] = day.key;
-  return acc;
-}, {});
-
-const DAY_KEY_TO_NUMBER = DAYS.reduce((acc, day, index) => {
-  acc[day.key] = index + 1;
-  return acc;
-}, {});
-
-const STATUS_LABELS = {
-  profile: 'Perfil',
-  schedule: 'Horarios',
-  services: 'Servicios',
-  taxes: 'Impuestos',
-};
-
-const parseMaybeNumber = (value) => {
-  if (value === null || value === undefined || value === '') return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-};
-
-let clientIdCounter = 0;
-const createClientId = () => {
-  clientIdCounter += 1;
-  return `tmp-${Date.now()}-${clientIdCounter}`;
-};
-
-const createEmptySchedule = () =>
-  DAYS.reduce((acc, day) => {
-    acc[day.key] = { enabled: false, ranges: [] };
-    return acc;
-  }, {});
-
-const normalizeCatalogServices = (items) => {
-  if (!Array.isArray(items)) return [];
-  return items
-    .map((item) => {
-      const id = item?.id ?? item?.value ?? item?.key ?? item?.servicio_id ?? item?.codigo;
-      if (id === null || id === undefined) return null;
-      return {
-        id: String(id),
-        nombre: item?.nombre ?? item?.name ?? 'Servicio sin nombre',
-        descripcion: item?.descripcion ?? item?.description ?? '',
-      };
-    })
-    .filter(Boolean);
-};
-
-const normalizeServices = (services) => {
-  if (!Array.isArray(services)) return [];
-  return services
-    .map((service) => {
-      if (service === null || service === undefined) return null;
-      if (typeof service === 'object') {
-        if (service?.seleccionado === false) return null;
-        const id = service?.id ?? service?.servicio_id ?? service?.codigo ?? service?.value;
-        return id === null || id === undefined ? null : String(id);
-      }
-      return String(service);
-    })
-    .filter((value) => value !== null && value !== undefined && value !== '');
-};
-
-const normalizeTaxes = (taxes) => {
-  if (!Array.isArray(taxes)) return [];
-  return taxes.map((tax, index) => ({
-    id: tax?.id ?? tax?.impuesto_id ?? `tmp-${index}-${Date.now()}`,
-    nombre: tax?.nombre ?? tax?.name ?? '',
-    porcentaje:
-      tax?.porcentaje !== undefined && tax?.porcentaje !== null
-        ? String(tax.porcentaje)
-        : '',
-  }));
-};
-
-const extractRanges = (ranges) => {
-  if (!Array.isArray(ranges)) return [];
-  return ranges
-    .map((range) => {
-      const start = range?.desde ?? range?.inicio ?? range?.start ?? range?.from ?? '';
-      const end = range?.hasta ?? range?.fin ?? range?.end ?? range?.to ?? '';
-      if (!start || !end) return null;
-      return { start, end };
-    })
-    .filter(Boolean);
-};
-
-const normalizeSchedule = (schedule) => {
-  const base = createEmptySchedule();
-  if (!Array.isArray(schedule)) return base;
-  schedule.forEach((entry) => {
-    let normalizedKey;
-
-    const dayNumber =
-      entry?.dia_semana ?? entry?.dia_num ?? entry?.diaNumero ?? entry?.numero ?? null;
-    if (dayNumber !== null && dayNumber !== undefined) {
-      const numeric = Number(dayNumber);
-      if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 7) {
-        normalizedKey = DAY_NUMBER_TO_KEY[numeric];
-      }
-    }
-
-    if (!normalizedKey) {
-      const rawKey =
-        (typeof entry?.dia === 'string' && entry.dia) ||
-        (typeof entry?.day === 'string' && entry.day) ||
-        (typeof entry?.nombre === 'string' && entry.nombre) ||
-        entry?.key ||
-        entry?.id;
-      if (!rawKey) return;
-      const lowerKey = String(rawKey).toLowerCase();
-      if (!(lowerKey in base)) return;
-      normalizedKey = lowerKey;
-    }
-
-    const start = entry?.abre ?? entry?.desde ?? entry?.inicio ?? entry?.start ?? entry?.from;
-    const end = entry?.cierra ?? entry?.hasta ?? entry?.fin ?? entry?.end ?? entry?.to;
-
-    let ranges = [];
-    if (start && end) {
-      ranges = [{ start, end }];
-    } else {
-      ranges = extractRanges(entry?.horarios ?? entry?.rangos ?? entry?.slots);
-    }
-
-    base[normalizedKey] = {
-      enabled:
-        entry?.activo ?? entry?.habilitado ?? entry?.enabled ?? (ranges.length > 0),
-      ranges,
-    };
-  });
-  return base;
-};
-
-const denormalizeSchedule = (schedule) => {
-  if (!schedule || typeof schedule !== 'object') return [];
-
-  return DAYS.map((day) => {
-    const value = schedule?.[day.key] ?? {};
-    const ranges = Array.isArray(value?.ranges) ? value.ranges : [];
-    const firstRange = ranges.find((range) => range?.start && range?.end) || null;
-    const hasValidRange = Boolean(firstRange);
-
-    return {
-      dia_semana: DAY_KEY_TO_NUMBER[day.key],
-      abre: hasValidRange ? firstRange.start : null,
-      cierra: hasValidRange ? firstRange.end : null,
-      activo: Boolean(value?.enabled) && hasValidRange,
-    };
-  }).filter((item) => item.abre && item.cierra);
-};
-
-const sanitizeServicesForPayload = (services) => {
-  if (!Array.isArray(services)) return [];
-  return services
-    .map((item) => {
-      if (item === null || item === undefined) return null;
-      let value = item;
-      if (typeof value === 'object') {
-        const id = value?.id ?? value?.servicio_id ?? value?.codigo ?? value?.value;
-        if (id === null || id === undefined) return null;
-        value = id;
-      }
-      const numeric = Number(value);
-      if (Number.isFinite(numeric)) {
-        return numeric;
-      }
-      const str = String(value).trim();
-      return str ? str : null;
-    })
-    .filter((value) => value !== null);
-};
-
-const initialSaveStatus = Object.keys(STATUS_LABELS).reduce((acc, key) => {
-  acc[key] = { state: 'idle', message: '' };
-  return acc;
-}, {});
-
-const buildFormState = (source = {}, fallback = {}) => {
-  const servicios = normalizeServices(source?.servicios ?? fallback?.servicios ?? []);
-  const impuestos = normalizeTaxes(source?.impuestos ?? fallback?.impuestos ?? []);
-  const horarios = normalizeSchedule(source?.horarios ?? fallback?.horarios ?? []);
-  return {
-    nombre: source?.nombre ?? fallback?.nombre ?? '',
-    descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
-    foto_logo: source?.foto_logo ?? fallback?.foto_logo ?? '',
-    provincia_id: source?.provincia_id ?? fallback?.provincia_id ?? null,
-    localidad_id: source?.localidad_id ?? fallback?.localidad_id ?? null,
-    localidad_nombre:
-      source?.localidad_nombre ?? source?.localidad?.nombre ?? fallback?.localidad_nombre ?? '',
-    telefono_contacto:
-      source?.telefono_contacto ?? fallback?.telefono_contacto ?? '',
-    email_contacto: source?.email_contacto ?? fallback?.email_contacto ?? '',
-    direccion: source?.direccion ?? fallback?.direccion ?? '',
-    latitud: parseMaybeNumber(source?.latitud ?? fallback?.latitud ?? null),
-    longitud: parseMaybeNumber(source?.longitud ?? fallback?.longitud ?? null),
-    google_place_id: source?.google_place_id ?? fallback?.google_place_id ?? '',
-    servicios,
-    impuestos,
-    horarios,
-  };
-};
 
 export default function ConfiguracionScreen({ go }) {
   const { updateUser } = useAuth();
@@ -296,7 +95,7 @@ export default function ConfiguracionScreen({ go }) {
               ...clubRes,
               servicios: normalizeServices(servicesRes),
               impuestos: normalizeTaxes(taxesRes),
-              horarios: normalizeSchedule(scheduleRes),
+              horarios: scheduleRes,
             },
             clubRes,
           ),
@@ -683,7 +482,7 @@ export default function ConfiguracionScreen({ go }) {
   }
 
   return (
-    <ScrollView className="py-6" contentContainerClassName="pb-32">
+    <ScrollView className="py-6 bg-[#0B152E]" contentContainerClassName="pb-32">
       <View className="flex-row items-center justify-between px-4 md:px-0">
         <View>
           <Text className="text-white text-[32px] font-extrabold tracking-tight">Configuración</Text>
@@ -776,10 +575,10 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showProvinceMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-50"
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-lg z-50"
                     style={{ elevation: 50 }}
                   >
-                    <ScrollView style={{ maxHeight: 240 }}>
+                    <ScrollView style={{ maxHeight: 240, backgroundColor: '#0B152E' }}>
                       {(provinces || []).map((prov) => (
                         <Pressable
                           key={prov.id}
@@ -790,7 +589,7 @@ export default function ConfiguracionScreen({ go }) {
                           className={`px-4 py-3 ${
                             String(prov.id) === String(form.provincia_id)
                               ? 'bg-white/10'
-                              : 'bg-transparent'
+                              : 'bg-[#0B152E]'
                           } hover:bg-white/10`}
                         >
                           <Text className="text-white/90 text-base">{prov.nombre}</Text>
@@ -825,7 +624,7 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showLocalityMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#111C3A] shadow-lg z-40"
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-lg z-40"
                     style={{ elevation: 40 }}
                   >
                     <View className="border-b border-white/5 px-4 py-3">
@@ -843,7 +642,7 @@ export default function ConfiguracionScreen({ go }) {
                         <Text className="text-white/70 text-sm">Cargando...</Text>
                       </View>
                     ) : (
-                      <ScrollView style={{ maxHeight: 240 }}>
+                      <ScrollView style={{ maxHeight: 240, backgroundColor: '#0B152E' }}>
                         {(localities || []).map((loc) => (
                           <Pressable
                             key={loc.id}
@@ -851,7 +650,7 @@ export default function ConfiguracionScreen({ go }) {
                             className={`px-4 py-3 ${
                               String(loc.id) === String(form.localidad_id)
                                 ? 'bg-white/10'
-                                : 'bg-transparent'
+                                : 'bg-[#0B152E]'
                             } hover:bg-white/10`}
                           >
                             <Text className="text-white/90 text-base">{loc.nombre}</Text>
