@@ -153,23 +153,25 @@ const buildCanchaPayload = (body = {}, { partial = false } = {}) => {
     payload.capacidad = capacidad === undefined ? null : capacidad;
   }
 
-  const precioBase = parseDecimal(body.precio, 'precio', { required: !partial });
-  if (precioBase !== undefined) {
-    payload.precio = precioBase;
+  const precioDiaProvided = body.precio_dia !== undefined;
+  const precioNocheProvided = body.precio_noche !== undefined;
+
+  if (!partial && !precioDiaProvided && !precioNocheProvided) {
+    throwValidationError('Debe especificar al menos uno de precio_dia o precio_noche');
   }
 
-  const precioDia = parseDecimal(body.precio_dia, 'precio_dia');
-  if (precioDia !== undefined) {
-    payload.precio_dia = precioDia;
-  } else if (!partial) {
-    payload.precio_dia = null;
+  if (precioDiaProvided) {
+    const precioDia = parseDecimal(body.precio_dia, 'precio_dia');
+    if (precioDia !== undefined) {
+      payload.precio_dia = precioDia;
+    }
   }
 
-  const precioNoche = parseDecimal(body.precio_noche, 'precio_noche');
-  if (precioNoche !== undefined) {
-    payload.precio_noche = precioNoche;
-  } else if (!partial) {
-    payload.precio_noche = null;
+  if (precioNocheProvided) {
+    const precioNoche = parseDecimal(body.precio_noche, 'precio_noche');
+    if (precioNoche !== undefined) {
+      payload.precio_noche = precioNoche;
+    }
   }
 
   const tipoSuelo = parseNullableString(body.tipo_suelo, 'tipo_suelo');
