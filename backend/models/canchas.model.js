@@ -37,11 +37,15 @@ const mapCanchaRow = (row) => {
     return String(value);
   };
 
+  const precioDia = normalizeDecimal(row.precio_dia);
+  const precioNoche = normalizeDecimal(row.precio_noche);
+  const precioBase = precioDia !== null ? precioDia : precioNoche;
+
   return {
     ...row,
-    precio: normalizeDecimal(row.precio),
-    precio_dia: normalizeDecimal(row.precio_dia),
-    precio_noche: normalizeDecimal(row.precio_noche),
+    precio: precioBase,
+    precio_dia: precioDia,
+    precio_noche: precioNoche,
     capacidad: normalizeInteger(row.capacidad),
     techada: !!row.techada,
     iluminacion: !!row.iluminacion,

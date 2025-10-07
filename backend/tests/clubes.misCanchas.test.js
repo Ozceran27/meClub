@@ -1,6 +1,10 @@
 const express = require('express');
 const request = require('supertest');
 
+jest.mock('../config/db', () => ({
+  query: jest.fn(),
+}));
+
 jest.mock('../middleware/auth.middleware', () => (req, _res, next) => next());
 jest.mock('../middleware/roles.middleware', () => ({
   requireRole: () => (req, _res, next) => next(),
@@ -35,6 +39,8 @@ jest.mock('../models/canchas.model', () => ({
 
 const ClubesModel = require('../models/clubes.model');
 const CanchasModel = require('../models/canchas.model');
+const db = require('../config/db');
+const ActualClubesModel = jest.requireActual('../models/clubes.model');
 const { buildSingleUploadMiddleware } = require('../middleware/logoUpload.middleware');
 const clubesRoutes = require('../routes/clubes.routes');
 
@@ -49,6 +55,7 @@ describe('Rutas de Mis Canchas', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     global.__testCanchaFile = null;
+    db.query.mockReset();
   });
 
   it('lista canchas con campos extendidos', async () => {
@@ -202,5 +209,63 @@ describe('Rutas de Mis Canchas', () => {
     expect(res.status).toBe(200);
     expect(CanchasModel.obtenerResumen).toHaveBeenCalledWith(3);
     expect(res.body).toHaveProperty('resumen');
+  });
+
+  it('calcula precio base usando precio_dia y precio_noche al mapear canchas', async () => {
+    db.query.mockResolvedValueOnce([
+      [
+        {
+          cancha_id: 21,
+          club_id: 10,
+          nombre: 'Principal',
+          deporte_id: 4,
+          capacidad: '10',
+          precio_dia: '1500.00',
+          precio_noche: '1700.50',
+          tipo_suelo: 'Sintético',
+          techada: 1,
+          iluminacion: 0,
+          estado: 'disponible',
+          imagen_url: null,
+          deporte_nombre: 'Padel',
+        },
+        {
+          cancha_id: 22,
+          club_id: 10,
+          nombre: 'Nocturna',
+          deporte_id: 4,
+          capacidad: null,
+          precio_dia: null,
+          precio_noche: '1800.00',
+          tipo_suelo: null,
+          techada: 0,
+          iluminacion: 1,
+          estado: null,
+          imagen_url: '/uploads/canchas/nocturna.png',
+          deporte_nombre: null,
+        },
+      ],
+    ]);
+
+    const canchas = await ActualClubesModel.obtenerMisCanchas(10);
+
+    expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SELECT c.cancha_id'), [10]);
+    expect(canchas).toHaveLength(2);
+    expect(canchas[0]).toMatchObject({
+      cancha_id: 21,
+      precio: 1500,
+      precio_dia: 1500,
+      precio_noche: 1700.5,
+      techada: true,
+      iluminacion: false,
+    });
+    expect(canchas[1]).toMatchObject({
+      cancha_id: 22,
+      precio: 1800,
+      precio_dia: null,
+      precio_noche: 1800,
+      techada: false,
+      iluminacion: true,
+    });
   });
 });
