@@ -120,15 +120,32 @@ export default function CourtFormModal({
     if (!form.deporte_id) {
       nextErrors.deporte_id = 'Seleccioná un deporte';
     }
+    const isEmpty = (value) => value === '' || value === null || value === undefined;
+
     if (form.capacidad === '' || form.capacidad === null) {
       nextErrors.capacidad = 'Indicá la capacidad';
     } else if (Number.isNaN(Number(form.capacidad))) {
       nextErrors.capacidad = 'Capacidad inválida';
     }
-    if (form.precio === '' || form.precio === null) {
-      nextErrors.precio = 'Indicá el precio base';
-    } else if (Number.isNaN(Number(form.precio))) {
-      nextErrors.precio = 'Precio inválido';
+
+    const hasPrecioBase = !isEmpty(form.precio);
+    const hasPrecioDia = !isEmpty(form.precio_dia);
+    const hasPrecioNoche = !isEmpty(form.precio_noche);
+
+    if (!hasPrecioBase && !hasPrecioDia && !hasPrecioNoche) {
+      nextErrors.precio = 'Indicá al menos una tarifa (base, día o noche)';
+    }
+
+    if (hasPrecioBase && Number.isNaN(Number(form.precio))) {
+      nextErrors.precio = 'Precio base inválido';
+    }
+
+    if (hasPrecioDia && Number.isNaN(Number(form.precio_dia))) {
+      nextErrors.precio_dia = 'Precio día inválido';
+    }
+
+    if (hasPrecioNoche && Number.isNaN(Number(form.precio_noche))) {
+      nextErrors.precio_noche = 'Precio noche inválido';
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -155,18 +172,26 @@ export default function CourtFormModal({
 
   const handleSubmit = () => {
     if (!validate()) return;
+    const precio = normalizeDecimal(form.precio);
+    const precioDia = normalizeDecimal(form.precio_dia);
+    const precioNoche = normalizeDecimal(form.precio_noche);
+
     const payload = {
       nombre: String(form.nombre).trim(),
       deporte_id: form.deporte_id ? Number(form.deporte_id) : null,
       capacidad: normalizeInteger(form.capacidad),
-      precio: normalizeDecimal(form.precio),
-      precio_dia: normalizeDecimal(form.precio_dia),
-      precio_noche: normalizeDecimal(form.precio_noche),
       tipo_suelo: form.tipo_suelo ? String(form.tipo_suelo).trim() : null,
       techada: !!form.techada,
       iluminacion: !!form.iluminacion,
       estado: form.estado || 'disponible',
     };
+
+    if (precio !== null) {
+      payload.precio = precio;
+    }
+
+    payload.precio_dia = precioDia;
+    payload.precio_noche = precioNoche;
 
     onSubmit?.({ values: payload, image: imageAsset });
   };
@@ -337,7 +362,7 @@ export default function CourtFormModal({
                   ) : null}
                 </View>
                 <View className="flex-1 min-w-[180px]">
-                  <Text className="text-white/70 text-sm mb-2">Precio base *</Text>
+                  <Text className="text-white/70 text-sm mb-2">Precio base</Text>
                   <TextInput
                     value={form.precio}
                     onChangeText={(text) => handleChange('precio', text.replace(/[^0-9.,]/g, ''))}
@@ -351,6 +376,9 @@ export default function CourtFormModal({
                   ) : null}
                 </View>
               </View>
+              <Text className="text-white/40 text-xs mt-1">
+                Podés dejar el precio base vacío si cargás un precio para el turno día o noche.
+              </Text>
 
               <View className="flex-row flex-wrap gap-4">
                 <View className="flex-1 min-w-[180px]">
@@ -363,6 +391,9 @@ export default function CourtFormModal({
                     placeholderTextColor="#94A3B8"
                     className={FIELD_STYLES}
                   />
+                  {errors.precio_dia ? (
+                    <Text className="text-mc-warn text-xs mt-1">{errors.precio_dia}</Text>
+                  ) : null}
                 </View>
                 <View className="flex-1 min-w-[180px]">
                   <Text className="text-white/70 text-sm mb-2">Precio turno noche</Text>
@@ -374,6 +405,9 @@ export default function CourtFormModal({
                     placeholderTextColor="#94A3B8"
                     className={FIELD_STYLES}
                   />
+                  {errors.precio_noche ? (
+                    <Text className="text-mc-warn text-xs mt-1">{errors.precio_noche}</Text>
+                  ) : null}
                 </View>
               </View>
 
