@@ -315,6 +315,215 @@ export async function uploadClubLogo(file) {
   return club?.foto_logo ?? null;
 }
 
+function extractCourts(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const candidates = [payload.canchas, payload.data, payload];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+    if (candidate && typeof candidate === 'object' && Array.isArray(candidate.canchas)) {
+      return candidate.canchas;
+    }
+  }
+  return [];
+}
+
+function extractCourt(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  if (payload.cancha && typeof payload.cancha === 'object') {
+    return payload.cancha;
+  }
+  if (payload.data && typeof payload.data === 'object' && payload.data.cancha) {
+    return payload.data.cancha;
+  }
+  return payload;
+}
+
+function extractCourtSummary(payload) {
+  if (!payload || typeof payload !== 'object') return {};
+  if (payload.resumen && typeof payload.resumen === 'object') {
+    return payload.resumen;
+  }
+  if (payload.data && typeof payload.data === 'object' && payload.data.resumen) {
+    return payload.data.resumen;
+  }
+  return payload;
+}
+
+export async function getClubCourts() {
+  const response = await api.get('/clubes/mis-canchas');
+  return extractCourts(response);
+}
+
+export async function createClubCourt(payload) {
+  const response = await api.post('/clubes/mis-canchas', payload);
+  return extractCourt(response);
+}
+
+export async function updateClubCourt(canchaId, payload) {
+  if (!canchaId) {
+    throw new Error('Identificador de cancha inválido');
+  }
+  const response = await api.patch(`/clubes/mis-canchas/${encodeURIComponent(canchaId)}`, payload);
+  return extractCourt(response);
+}
+
+export async function deleteClubCourt(canchaId) {
+  if (!canchaId) {
+    throw new Error('Identificador de cancha inválido');
+  }
+  const response = await api.del(`/clubes/mis-canchas/${encodeURIComponent(canchaId)}`);
+  return response;
+}
+
+export async function uploadClubCourtImage(canchaId, file) {
+  if (!canchaId) {
+    throw new Error('Identificador de cancha inválido');
+  }
+  if (!file) {
+    throw new Error('Debés seleccionar una imagen');
+  }
+
+  if (typeof FormData === 'undefined') {
+    throw new Error('La plataforma no soporta uploads');
+  }
+
+  const buildFormData = async () => {
+    if (typeof FormData !== 'undefined' && file instanceof FormData) {
+      return file;
+    }
+
+    const formData = new FormData();
+
+    if (typeof File !== 'undefined' && file instanceof File) {
+      formData.append('imagen', file);
+      return formData;
+    }
+
+    const candidate = file && typeof file === 'object' ? file : null;
+    const nestedFile = candidate?.file || null;
+    const uri = candidate?.uri || candidate?.url || candidate?.path || nestedFile?.uri;
+    const name =
+      candidate?.name ||
+      candidate?.fileName ||
+      nestedFile?.name ||
+      (uri ? uri.split('/').pop() : null) ||
+      `cancha-${Date.now()}`;
+
+    const resolveMimeType = () => {
+      const normalize = (value) => {
+        if (!value) return null;
+        const normalized = String(value).trim().toLowerCase();
+        if (!normalized) return null;
+        const map = {
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          heic: 'image/heic',
+          heif: 'image/heif',
+          bmp: 'image/bmp',
+          svg: 'image/svg+xml',
+          'image/jpg': 'image/jpeg',
+        };
+        if (normalized in map) {
+          return map[normalized];
+        }
+        if (normalized === 'image' || normalized === 'img') {
+          return 'image/jpeg';
+        }
+        if (normalized.startsWith('image/')) {
+          return map[normalized] || normalized;
+        }
+        return map[normalized] || null;
+      };
+
+      const candidateType =
+        normalize(candidate?.mimeType) ||
+        normalize(candidate?.type) ||
+        normalize(candidate?.fileType) ||
+        normalize(nestedFile?.type) ||
+        normalize(nestedFile?.mimeType);
+
+      return candidateType || 'image/jpeg';
+    };
+
+    const type = resolveMimeType();
+
+    if (nestedFile) {
+      if (typeof File !== 'undefined' && nestedFile instanceof File) {
+        const typedFile =
+          type && nestedFile.type !== type
+            ? new File([nestedFile], nestedFile.name || name, { type })
+            : nestedFile;
+        formData.append('imagen', typedFile);
+      } else {
+        formData.append('imagen', nestedFile);
+      }
+      return formData;
+    }
+
+    if (!uri) {
+      throw new Error('Imagen inválida');
+    }
+
+    let blob;
+    try {
+      const res = await fetch(uri);
+      if (!res?.ok) {
+        throw new Error('No se pudo leer la imagen');
+      }
+      blob = await res.blob();
+    } catch {
+      throw new Error('No se pudo leer la imagen');
+    }
+
+    const fallbackType = type || blob.type || 'application/octet-stream';
+
+    if (typeof File !== 'undefined') {
+      const fileFromBlob = new File([blob], name, { type: fallbackType });
+      formData.append('imagen', fileFromBlob);
+    } else {
+      const typedBlob =
+        blob.type === fallbackType || !blob.slice
+          ? blob
+          : blob.slice(0, blob.size, fallbackType);
+      formData.append('imagen', typedBlob, name);
+    }
+
+    return formData;
+  };
+
+  const formData = await buildFormData();
+  const response = await api.post(
+    `/clubes/mis-canchas/${encodeURIComponent(canchaId)}/imagen`,
+    formData
+  );
+  const court = extractCourt(response);
+  return court?.imagen_url ?? response?.imagen_url ?? null;
+}
+
+export async function getClubCourtSummary(canchaId) {
+  if (!canchaId) {
+    throw new Error('Identificador de cancha inválido');
+  }
+  const response = await api.get(`/clubes/mis-canchas/${encodeURIComponent(canchaId)}/resumen`);
+  return extractCourtSummary(response);
+}
+
+export async function listSports() {
+  const response = await api.get('/deportes', { auth: false });
+  if (Array.isArray(response)) {
+    return response;
+  }
+  if (response?.data && Array.isArray(response.data)) {
+    return response.data;
+  }
+  return [];
+}
+
 export async function listProvinces() {
   const response = await api.get('/provincias');
   return extractProvinces(response);
