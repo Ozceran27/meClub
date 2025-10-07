@@ -100,7 +100,6 @@ const CanchasModel = {
     nombre,
     deporte_id,
     capacidad = null,
-    precio = null,
     precio_dia = null,
     precio_noche = null,
     tipo_suelo = null,
@@ -113,14 +112,13 @@ const CanchasModel = {
 
     const [result] = await db.query(
       `INSERT INTO canchas
-       (club_id, nombre, deporte_id, capacidad, precio, precio_dia, precio_noche, tipo_suelo, techada, iluminacion, estado, imagen_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (club_id, nombre, deporte_id, capacidad, precio_dia, precio_noche, tipo_suelo, techada, iluminacion, estado, imagen_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         club_id,
         nombre,
         deporte_id,
         capacidad === undefined ? null : capacidad,
-        precio === undefined ? null : precio,
         precio_dia === undefined ? null : precio_dia,
         precio_noche === undefined ? null : precio_noche,
         tipo_suelo === undefined ? null : tipo_suelo,
@@ -150,7 +148,7 @@ const CanchasModel = {
 
   listarPorClub: async (club_id) => {
     const [rows] = await db.query(
-      `SELECT cancha_id, club_id, nombre, deporte_id, capacidad, precio, precio_dia, precio_noche,
+      `SELECT cancha_id, club_id, nombre, deporte_id, capacidad, precio_dia, precio_noche,
               tipo_suelo, techada, iluminacion, estado, imagen_url
        FROM canchas
        WHERE club_id = ?
@@ -166,7 +164,6 @@ const CanchasModel = {
       nombre,
       deporte_id,
       capacidad,
-      precio,
       precio_dia,
       precio_noche,
       tipo_suelo,
@@ -202,7 +199,6 @@ const CanchasModel = {
       values.push(deporte_id);
     }
     setNullable('capacidad', capacidad === undefined ? undefined : capacidad);
-    setNullable('precio', precio === undefined ? undefined : precio);
     setNullable('precio_dia', precio_dia === undefined ? undefined : precio_dia);
     setNullable('precio_noche', precio_noche === undefined ? undefined : precio_noche);
     setNullable('tipo_suelo', tipo_suelo === undefined ? undefined : tipo_suelo);

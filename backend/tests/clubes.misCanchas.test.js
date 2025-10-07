@@ -87,10 +87,12 @@ describe('Rutas de Mis Canchas', () => {
     expect(ClubesModel.obtenerMisCanchas).toHaveBeenCalledWith(10);
   });
 
-  it('rechaza creación sin campos obligatorios', async () => {
+  it('rechaza creación sin precios', async () => {
     const app = buildApp();
 
-    const res = await request(app).post('/mis-canchas').send({ nombre: '' });
+    const res = await request(app)
+      .post('/mis-canchas')
+      .send({ nombre: 'Cancha sin precio', deporte_id: 2, capacidad: 10 });
 
     expect(res.status).toBe(400);
     expect(CanchasModel.crearCancha).not.toHaveBeenCalled();
@@ -107,7 +109,6 @@ describe('Rutas de Mis Canchas', () => {
         nombre: '  Cancha Central  ',
         deporte_id: '5',
         capacidad: '12',
-        precio: '1000.555',
         precio_dia: '1200.4',
         precio_noche: '',
         tipo_suelo: '  Cemento ',
@@ -122,7 +123,6 @@ describe('Rutas de Mis Canchas', () => {
       nombre: 'Cancha Central',
       deporte_id: 5,
       capacidad: 12,
-      precio: 1000.56,
       precio_dia: 1200.4,
       precio_noche: null,
       tipo_suelo: 'Cemento',
@@ -145,15 +145,15 @@ describe('Rutas de Mis Canchas', () => {
   it('actualiza cancha válida', async () => {
     const app = buildApp();
     CanchasModel.obtenerCanchaPorId.mockResolvedValue({ cancha_id: 1, club_id: 10 });
-    CanchasModel.actualizarCancha.mockResolvedValue({ cancha_id: 1, precio: 2000 });
+    CanchasModel.actualizarCancha.mockResolvedValue({ cancha_id: 1, precio_dia: 2000 });
 
     const res = await request(app)
       .patch('/mis-canchas/1')
-      .send({ precio: '2000', iluminacion: 1 });
+      .send({ precio_dia: '2000', iluminacion: 1 });
 
     expect(res.status).toBe(200);
     expect(CanchasModel.actualizarCancha).toHaveBeenCalledWith(1, {
-      precio: 2000,
+      precio_dia: 2000,
       iluminacion: true,
     });
   });
