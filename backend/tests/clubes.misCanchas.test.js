@@ -182,12 +182,12 @@ describe('Rutas de Mis Canchas', () => {
     const app = buildApp();
     CanchasModel.obtenerCanchaPorId
       .mockResolvedValueOnce({ cancha_id: 11, club_id: 10, imagen_url: null })
-      .mockResolvedValueOnce({ cancha_id: 11, club_id: 10, imagen_url: '/uploads/canchas/nueva.png' });
+      .mockResolvedValueOnce({ cancha_id: 11, club_id: 10, imagen_url: 'data:image/png;base64,AAA' });
 
-    CanchasModel.actualizarImagen.mockResolvedValue('/uploads/canchas/nueva.png');
+    CanchasModel.actualizarImagen.mockResolvedValue('data:image/png;base64,AAA');
 
     global.__testCanchaFile = {
-      buffer: Buffer.from('file'),
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]),
       mimetype: 'image/png',
       originalname: 'foto.png',
     };
@@ -196,7 +196,7 @@ describe('Rutas de Mis Canchas', () => {
 
     expect(res.status).toBe(200);
     expect(CanchasModel.actualizarImagen).toHaveBeenCalledWith(11, global.__testCanchaFile);
-    expect(res.body).toHaveProperty('imagen_url', '/uploads/canchas/nueva.png');
+    expect(res.body.imagen_url).toMatch(/^data:image\//);
   });
 
   it('devuelve resumen de cancha', async () => {

@@ -669,10 +669,14 @@ router.post('/mis-canchas/:cancha_id/imagen', uploadCanchaImagen, async (req, re
       return res.status(400).json({ mensaje: 'Debe adjuntar un archivo "imagen"' });
     }
 
-    const storedPath = await CanchasModel.actualizarImagen(canchaId, req.file);
+    await CanchasModel.actualizarImagen(canchaId, req.file);
     const cancha = await CanchasModel.obtenerCanchaPorId(canchaId);
 
-    res.json({ mensaje: 'Imagen actualizada', imagen_url: storedPath, cancha });
+    res.json({
+      mensaje: 'Imagen actualizada',
+      imagen_url: cancha ? cancha.imagen_url : null,
+      cancha,
+    });
   } catch (err) {
     if (err.statusCode === 400) {
       return res.status(400).json({ mensaje: err.message });

@@ -1,14 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const { randomUUID } = require('crypto');
-
 const db = require('../config/db');
 const ReservasModel = require('./reservas.model');
-
-const imagenesDir = path.join(__dirname, '..', 'uploads', 'canchas');
-const imagenesPublicPath = '/uploads/canchas';
-
-fs.mkdirSync(imagenesDir, { recursive: true });
+const { normalizeCourtImage, prepareCourtImage } = require('../utils/courtImage');
 
 const ESTADOS_VALIDOS = new Set(['disponible', 'mantenimiento', 'inactiva']);
 
@@ -51,47 +43,8 @@ const mapCanchaRow = (row) => {
     iluminacion: !!row.iluminacion,
     tipo_suelo: normalizeString(row.tipo_suelo),
     estado: typeof row.estado === 'string' ? row.estado : 'disponible',
-    imagen_url: normalizeString(row.imagen_url),
+    imagen_url: normalizeCourtImage(row.imagen_url),
   };
-};
-
-const obtenerExtensionDesdeMime = (mimetype = '', originalname = '') => {
-  if (typeof mimetype === 'string') {
-    if (mimetype.includes('png')) return '.png';
-    if (mimetype.includes('jpeg') || mimetype.includes('jpg')) return '.jpg';
-    if (mimetype.includes('webp')) return '.webp';
-  }
-  const ext = path.extname(originalname || '').toLowerCase();
-  if (ext) return ext;
-  return '.png';
-};
-
-const escribirImagen = async (buffer, mimetype, originalname) => {
-  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
-    throw new Error('Buffer de imagen inválido');
-  }
-
-  const extension = obtenerExtensionDesdeMime(mimetype, originalname);
-  const filename = `${Date.now()}-${randomUUID()}${extension}`;
-  const absolutePath = path.join(imagenesDir, filename);
-  await fs.promises.writeFile(absolutePath, buffer);
-  return path.posix.join(imagenesPublicPath, filename);
-};
-
-const eliminarImagen = async (storedPath) => {
-  if (!storedPath) return;
-  if (storedPath.startsWith('http')) return;
-  const normalized = storedPath.split('?')[0];
-  if (!normalized.startsWith(imagenesPublicPath)) return;
-  const filename = path.posix.basename(normalized);
-  const absolutePath = path.join(imagenesDir, filename);
-  try {
-    await fs.promises.unlink(absolutePath);
-  } catch (err) {
-    if (err.code !== 'ENOENT') {
-      console.error('Error eliminando imagen de cancha', absolutePath, err);
-    }
-  }
 };
 
 const CanchasModel = {
@@ -110,6 +63,12 @@ const CanchasModel = {
   }) => {
     const estadoNormalizado = ESTADOS_VALIDOS.has(estado) ? estado : 'disponible';
 
+    let imagenValue = null;
+    if (imagen_url !== undefined) {
+      const prepared = prepareCourtImage(imagen_url);
+      imagenValue = prepared.value === undefined ? null : prepared.value;
+    }
+
     const [result] = await db.query(
       `INSERT INTO canchas
        (club_id, nombre, deporte_id, capacidad, precio_dia, precio_noche, tipo_suelo, techada, iluminacion, estado, imagen_url)
@@ -125,7 +84,7 @@ const CanchasModel = {
         techada ? 1 : 0,
         iluminacion ? 1 : 0,
         estadoNormalizado,
-        imagen_url === undefined ? null : imagen_url,
+        imagen_url === undefined ? null : imagenValue,
       ]
     );
 
@@ -220,7 +179,13 @@ const CanchasModel = {
     }
 
     if (imagen_url !== undefined) {
-      setNullable('imagen_url', imagen_url);
+      const prepared = prepareCourtImage(imagen_url);
+      if (prepared.value === null) {
+        updates.push('imagen_url = NULL');
+      } else if (prepared.value !== undefined) {
+        updates.push('imagen_url = ?');
+        values.push(prepared.value);
+      }
     }
 
     if (updates.length === 0) {
@@ -241,9 +206,6 @@ const CanchasModel = {
     }
 
     await db.query(`DELETE FROM canchas WHERE cancha_id = ?`, [cancha_id]);
-    if (existente.imagen_url) {
-      await eliminarImagen(existente.imagen_url);
-    }
     return true;
   },
 
@@ -252,9 +214,8 @@ const CanchasModel = {
       throw new Error('Archivo de imagen inválido');
     }
 
-    const storedPath = await escribirImagen(file.buffer, file.mimetype, file.originalname);
-    await db.query(`UPDATE canchas SET imagen_url = ? WHERE cancha_id = ?`, [storedPath, cancha_id]);
-    return storedPath;
+    await db.query(`UPDATE canchas SET imagen_url = ? WHERE cancha_id = ?`, [file.buffer, cancha_id]);
+    return normalizeCourtImage(file.buffer);
   },
 
   actualizarImagen: async (cancha_id, file) => {
@@ -263,11 +224,7 @@ const CanchasModel = {
       throw new Error('Cancha no encontrada');
     }
 
-    const storedPath = await CanchasModel.guardarImagen(cancha_id, file);
-    if (existente.imagen_url && existente.imagen_url !== storedPath) {
-      await eliminarImagen(existente.imagen_url);
-    }
-    return storedPath;
+    return CanchasModel.guardarImagen(cancha_id, file);
   },
 
   obtenerResumen: async (cancha_id) => {
@@ -311,7 +268,6 @@ const CanchasModel = {
 };
 
 CanchasModel._mapCanchaRow = mapCanchaRow;
-CanchasModel._imagenes = { dir: imagenesDir, publicPath: imagenesPublicPath };
 
 module.exports = CanchasModel;
 
