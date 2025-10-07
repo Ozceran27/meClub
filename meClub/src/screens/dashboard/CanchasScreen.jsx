@@ -48,6 +48,25 @@ function formatCurrency(value) {
   }
 }
 
+function toNumeric(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  return num;
+}
+
+function computeReferenceTariff(court) {
+  if (!court || typeof court !== 'object') return null;
+  const values = [toNumeric(court.precio_dia), toNumeric(court.precio_noche)].filter(
+    (val) => val !== null
+  );
+  if (values.length === 0) {
+    return toNumeric(court.precio);
+  }
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  return sum / values.length;
+}
+
 function formatBoolean(value) {
   if (value === null || value === undefined) return 'Sin definir';
   return value ? 'Sí' : 'No';
@@ -216,6 +235,8 @@ export default function CanchasScreen({ go }) {
 
   const cards = useMemo(() => {
     return courts.map((court) => {
+      const referenceTariff = computeReferenceTariff(court);
+
       const infoItems = [
         {
           icon: 'people-outline',
@@ -224,11 +245,6 @@ export default function CanchasScreen({ go }) {
             court.capacidad === null || court.capacidad === undefined
               ? 'Sin definir'
               : `${court.capacidad} jugadores`,
-        },
-        {
-          icon: 'cash-outline',
-          label: 'Precio base',
-          value: formatCurrency(court.precio),
         },
         {
           icon: 'sunny-outline',
@@ -262,6 +278,14 @@ export default function CanchasScreen({ go }) {
           status: court.estado,
         },
       ];
+
+      if (referenceTariff !== null) {
+        infoItems.splice(2, 0, {
+          icon: 'cash-outline',
+          label: 'Tarifa de referencia',
+          value: formatCurrency(referenceTariff),
+        });
+      }
 
       const preview = court.imagen_url ? resolveAssetUrl(court.imagen_url) : null;
 

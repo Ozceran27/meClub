@@ -22,7 +22,6 @@ const DEFAULT_VALUES = {
   nombre: '',
   deporte_id: null,
   capacidad: '',
-  precio: '',
   precio_dia: '',
   precio_noche: '',
   tipo_suelo: '',
@@ -50,10 +49,6 @@ function useInitialFormValues(initialValues) {
         initialValues.capacidad === null || initialValues.capacidad === undefined
           ? ''
           : String(initialValues.capacidad),
-      precio:
-        initialValues.precio === null || initialValues.precio === undefined
-          ? ''
-          : String(initialValues.precio),
       precio_dia:
         initialValues.precio_dia === null || initialValues.precio_dia === undefined
           ? ''
@@ -112,6 +107,20 @@ export default function CourtFormModal({
     setForm((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    if (!Number.isFinite(Number(value))) return null;
+    try {
+      return new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: 'ARS',
+        maximumFractionDigits: 0,
+      }).format(Number(value));
+    } catch {
+      return `$${Math.round(Number(value))}`;
+    }
+  };
+
   const validate = () => {
     const nextErrors = {};
     if (!form.nombre || !String(form.nombre).trim()) {
@@ -128,16 +137,13 @@ export default function CourtFormModal({
       nextErrors.capacidad = 'Capacidad inválida';
     }
 
-    const hasPrecioBase = !isEmpty(form.precio);
     const hasPrecioDia = !isEmpty(form.precio_dia);
     const hasPrecioNoche = !isEmpty(form.precio_noche);
 
-    if (!hasPrecioBase && !hasPrecioDia && !hasPrecioNoche) {
-      nextErrors.precio = 'Indicá al menos una tarifa (base, día o noche)';
-    }
-
-    if (hasPrecioBase && Number.isNaN(Number(form.precio))) {
-      nextErrors.precio = 'Precio base inválido';
+    if (!hasPrecioDia && !hasPrecioNoche) {
+      const message = 'Indicá al menos una tarifa para el turno día o noche';
+      nextErrors.precio_dia = message;
+      nextErrors.precio_noche = message;
     }
 
     if (hasPrecioDia && Number.isNaN(Number(form.precio_dia))) {
@@ -170,9 +176,21 @@ export default function CourtFormModal({
     return Math.max(0, Math.trunc(num));
   };
 
+  const referencePrice = useMemo(() => {
+    const dia = normalizeDecimal(form.precio_dia);
+    const noche = normalizeDecimal(form.precio_noche);
+    const values = [dia, noche].filter((value) => value !== null);
+    if (values.length === 0) {
+      return normalizeDecimal(initialValues?.precio);
+    }
+    const sum = values.reduce((acc, value) => acc + value, 0);
+    const average = sum / values.length;
+    if (!Number.isFinite(average)) return null;
+    return Number(average.toFixed(2));
+  }, [form.precio_dia, form.precio_noche, initialValues?.precio]);
+
   const handleSubmit = () => {
     if (!validate()) return;
-    const precio = normalizeDecimal(form.precio);
     const precioDia = normalizeDecimal(form.precio_dia);
     const precioNoche = normalizeDecimal(form.precio_noche);
 
@@ -185,10 +203,6 @@ export default function CourtFormModal({
       iluminacion: !!form.iluminacion,
       estado: form.estado || 'disponible',
     };
-
-    if (precio !== null) {
-      payload.precio = precio;
-    }
 
     payload.precio_dia = precioDia;
     payload.precio_noche = precioNoche;
@@ -361,24 +375,7 @@ export default function CourtFormModal({
                     <Text className="text-mc-warn text-xs mt-1">{errors.capacidad}</Text>
                   ) : null}
                 </View>
-                <View className="flex-1 min-w-[180px]">
-                  <Text className="text-white/70 text-sm mb-2">Precio base</Text>
-                  <TextInput
-                    value={form.precio}
-                    onChangeText={(text) => handleChange('precio', text.replace(/[^0-9.,]/g, ''))}
-                    keyboardType="decimal-pad"
-                    placeholder="2500"
-                    placeholderTextColor="#94A3B8"
-                    className={FIELD_STYLES}
-                  />
-                  {errors.precio ? (
-                    <Text className="text-mc-warn text-xs mt-1">{errors.precio}</Text>
-                  ) : null}
-                </View>
               </View>
-              <Text className="text-white/40 text-xs mt-1">
-                Podés dejar el precio base vacío si cargás un precio para el turno día o noche.
-              </Text>
 
               <View className="flex-row flex-wrap gap-4">
                 <View className="flex-1 min-w-[180px]">
@@ -410,6 +407,15 @@ export default function CourtFormModal({
                   ) : null}
                 </View>
               </View>
+              <Text className="text-white/40 text-xs mt-1">
+                Indicá al menos uno de los precios para turno día o noche. Podés dejar el otro en blanco si no aplica.
+              </Text>
+              {referencePrice !== null ? (
+                <Text className="text-white/50 text-xs mt-1">
+                  Tarifa de referencia (no se guarda automáticamente):{' '}
+                  {formatCurrency(referencePrice)}
+                </Text>
+              ) : null}
 
               <View>
                 <Text className="text-white/70 text-sm mb-2">Tipo de suelo</Text>
