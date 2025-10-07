@@ -34,6 +34,179 @@ router.use(
 );
 
 const uploadClubLogo = buildSingleUploadMiddleware('logo');
+const uploadCanchaImagen = buildSingleUploadMiddleware('imagen');
+
+const ESTADOS_CANCHA = new Set(['disponible', 'mantenimiento', 'inactiva']);
+
+const throwValidationError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  throw error;
+};
+
+const parseNullableString = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string') {
+    throwValidationError(`${fieldName} debe ser una cadena`);
+  }
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+};
+
+const parsePositiveInteger = (value, fieldName, { required = false } = {}) => {
+  if (value === undefined) {
+    if (required) {
+      throwValidationError(`${fieldName} es obligatorio`);
+    }
+    return undefined;
+  }
+  if (value === null || value === '') {
+    if (required) {
+      throwValidationError(`${fieldName} es obligatorio`);
+    }
+    return null;
+  }
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric < 0) {
+    throwValidationError(`${fieldName} debe ser un entero positivo`);
+  }
+  return numeric;
+};
+
+const parseDecimal = (value, fieldName, { required = false } = {}) => {
+  if (value === undefined) {
+    if (required) {
+      throwValidationError(`${fieldName} es obligatorio`);
+    }
+    return undefined;
+  }
+  if (value === null || value === '') {
+    if (required) {
+      throwValidationError(`${fieldName} es obligatorio`);
+    }
+    return null;
+  }
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    throwValidationError(`${fieldName} debe ser un número positivo`);
+  }
+  return Math.round(numeric * 100) / 100;
+};
+
+const parseBooleanLike = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null) return false;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'si', 'sí', 'on', 'yes'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  }
+  throwValidationError(`${fieldName} debe ser booleano`);
+};
+
+const parseEstadoCancha = (value, { required = false } = {}) => {
+  if (value === undefined) {
+    if (required) {
+      throwValidationError('estado es obligatorio');
+    }
+    return undefined;
+  }
+  if (value === null || value === '') {
+    if (required) {
+      throwValidationError('estado es obligatorio');
+    }
+    return 'disponible';
+  }
+  if (!ESTADOS_CANCHA.has(value)) {
+    throwValidationError('estado inválido');
+  }
+  return value;
+};
+
+const buildCanchaPayload = (body = {}, { partial = false } = {}) => {
+  const payload = {};
+
+  const nombre = parseNullableString(body.nombre, 'nombre');
+  if (!partial || body.nombre !== undefined) {
+    if (nombre === undefined || nombre === null || nombre === '') {
+      throwValidationError('El nombre de la cancha es obligatorio');
+    }
+    payload.nombre = nombre;
+  }
+
+  if (!partial || body.deporte_id !== undefined) {
+    const deporteId = parsePositiveInteger(body.deporte_id, 'deporte_id', { required: true });
+    if (deporteId === null) {
+      throwValidationError('deporte_id es obligatorio');
+    }
+    payload.deporte_id = deporteId;
+  }
+
+  if (!partial || body.capacidad !== undefined) {
+    const capacidad = parsePositiveInteger(body.capacidad, 'capacidad', { required: true });
+    payload.capacidad = capacidad === undefined ? null : capacidad;
+  }
+
+  const precioBase = parseDecimal(body.precio, 'precio', { required: !partial });
+  if (precioBase !== undefined) {
+    payload.precio = precioBase;
+  }
+
+  const precioDia = parseDecimal(body.precio_dia, 'precio_dia');
+  if (precioDia !== undefined) {
+    payload.precio_dia = precioDia;
+  } else if (!partial) {
+    payload.precio_dia = null;
+  }
+
+  const precioNoche = parseDecimal(body.precio_noche, 'precio_noche');
+  if (precioNoche !== undefined) {
+    payload.precio_noche = precioNoche;
+  } else if (!partial) {
+    payload.precio_noche = null;
+  }
+
+  const tipoSuelo = parseNullableString(body.tipo_suelo, 'tipo_suelo');
+  if (tipoSuelo !== undefined) {
+    payload.tipo_suelo = tipoSuelo;
+  } else if (!partial) {
+    payload.tipo_suelo = null;
+  }
+
+  const techada = parseBooleanLike(body.techada, 'techada');
+  if (techada !== undefined) {
+    payload.techada = techada;
+  } else if (!partial) {
+    payload.techada = false;
+  }
+
+  const iluminacion = parseBooleanLike(body.iluminacion, 'iluminacion');
+  if (iluminacion !== undefined) {
+    payload.iluminacion = iluminacion;
+  } else if (!partial) {
+    payload.iluminacion = false;
+  }
+
+  const estado = parseEstadoCancha(body.estado, { required: false });
+  if (estado !== undefined) {
+    payload.estado = estado;
+  } else if (!partial) {
+    payload.estado = 'disponible';
+  }
+
+  const imagenUrl = parseNullableString(body.imagen_url ?? body.imagen, 'imagen_url');
+  if (imagenUrl !== undefined) {
+    payload.imagen_url = imagenUrl;
+  }
+
+  return payload;
+};
 
 // ---------------- Mis datos
 router.get('/mis-datos', (req, res) => {
@@ -391,22 +564,137 @@ router.get('/mis-canchas', async (req, res) => {
 // ---------------- Mis canchas (crear)
 router.post('/mis-canchas', async (req, res) => {
   try {
-    const { nombre, deporte_id, capacidad, precio, techada = 0, iluminacion = 0 } = req.body;
-    if (!nombre || !deporte_id || !capacidad || !precio) {
-      return res.status(400).json({ mensaje: 'Faltan campos requeridos' });
-    }
-
+    const payload = buildCanchaPayload(req.body || {}, { partial: false });
     const cancha = await CanchasModel.crearCancha({
+      ...payload,
       club_id: req.club.club_id,
-      nombre,
-      deporte_id,
-      capacidad,
-      precio,
-      techada,
-      iluminacion,
     });
 
     res.status(201).json({ mensaje: 'Cancha creada', cancha });
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis canchas (detalle)
+router.get('/mis-canchas/:cancha_id', async (req, res) => {
+  try {
+    const canchaId = Number(req.params.cancha_id);
+    if (!Number.isInteger(canchaId)) {
+      return res.status(400).json({ mensaje: 'cancha_id inválido' });
+    }
+
+    const cancha = await CanchasModel.obtenerCanchaPorId(canchaId);
+    if (!cancha || cancha.club_id !== req.club.club_id) {
+      return res.status(404).json({ mensaje: 'Cancha no encontrada' });
+    }
+
+    res.json({ cancha });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis canchas (actualizar)
+router.patch('/mis-canchas/:cancha_id', async (req, res) => {
+  try {
+    const canchaId = Number(req.params.cancha_id);
+    if (!Number.isInteger(canchaId)) {
+      return res.status(400).json({ mensaje: 'cancha_id inválido' });
+    }
+
+    const existente = await CanchasModel.obtenerCanchaPorId(canchaId);
+    if (!existente || existente.club_id !== req.club.club_id) {
+      return res.status(404).json({ mensaje: 'Cancha no encontrada' });
+    }
+
+    const payload = buildCanchaPayload(req.body || {}, { partial: true });
+    if (Object.keys(payload).length === 0) {
+      return res.status(400).json({ mensaje: 'Debe enviar al menos un campo a actualizar' });
+    }
+
+    const cancha = await CanchasModel.actualizarCancha(canchaId, payload);
+    res.json({ mensaje: 'Cancha actualizada', cancha });
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis canchas (eliminar)
+router.delete('/mis-canchas/:cancha_id', async (req, res) => {
+  try {
+    const canchaId = Number(req.params.cancha_id);
+    if (!Number.isInteger(canchaId)) {
+      return res.status(400).json({ mensaje: 'cancha_id inválido' });
+    }
+
+    const existente = await CanchasModel.obtenerCanchaPorId(canchaId);
+    if (!existente || existente.club_id !== req.club.club_id) {
+      return res.status(404).json({ mensaje: 'Cancha no encontrada' });
+    }
+
+    await CanchasModel.eliminarCancha(canchaId);
+    res.json({ mensaje: 'Cancha eliminada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis canchas (imagen)
+router.post('/mis-canchas/:cancha_id/imagen', uploadCanchaImagen, async (req, res) => {
+  try {
+    const canchaId = Number(req.params.cancha_id);
+    if (!Number.isInteger(canchaId)) {
+      return res.status(400).json({ mensaje: 'cancha_id inválido' });
+    }
+
+    const existente = await CanchasModel.obtenerCanchaPorId(canchaId);
+    if (!existente || existente.club_id !== req.club.club_id) {
+      return res.status(404).json({ mensaje: 'Cancha no encontrada' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ mensaje: 'Debe adjuntar un archivo "imagen"' });
+    }
+
+    const storedPath = await CanchasModel.actualizarImagen(canchaId, req.file);
+    const cancha = await CanchasModel.obtenerCanchaPorId(canchaId);
+
+    res.json({ mensaje: 'Imagen actualizada', imagen_url: storedPath, cancha });
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Mis canchas (resumen)
+router.get('/mis-canchas/:cancha_id/resumen', async (req, res) => {
+  try {
+    const canchaId = Number(req.params.cancha_id);
+    if (!Number.isInteger(canchaId)) {
+      return res.status(400).json({ mensaje: 'cancha_id inválido' });
+    }
+
+    const existente = await CanchasModel.obtenerCanchaPorId(canchaId);
+    if (!existente || existente.club_id !== req.club.club_id) {
+      return res.status(404).json({ mensaje: 'Cancha no encontrada' });
+    }
+
+    const resumen = await CanchasModel.obtenerResumen(canchaId);
+    res.json({ resumen });
   } catch (err) {
     console.error(err);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
