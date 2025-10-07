@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import Card from '../../components/Card';
 import {
   getClubProfile,
   updateClubProfile,
@@ -519,7 +520,7 @@ export default function ConfiguracionScreen({ go }) {
         </Pressable>
       </View>
 
-      <View className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 mx-4 md:mx-0">
+      <Card className="mt-8 mx-4 md:mx-0 p-6">
         <View className="gap-6">
           <View>
             <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
@@ -1010,7 +1011,7 @@ export default function ConfiguracionScreen({ go }) {
             )}
           </Pressable>
         </View>
-      </View>
+      </Card>
     </ScrollView>
   );
 }
