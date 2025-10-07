@@ -505,7 +505,7 @@ export default function ConfiguracionScreen({ go }) {
   }
 
   return (
-    <ScrollView className="py-6 bg-[#0B152E]" contentContainerClassName="pb-32">
+    <ScrollView className="py-6" contentContainerClassName="pb-32">
       <View className="flex-row items-center justify-between px-4 md:px-0">
         <View>
           <Text className="text-white text-[32px] font-extrabold tracking-tight">Configuración</Text>
