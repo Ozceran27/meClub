@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { normalizeLogoValue, prepareLogoValue } = require('../utils/logoStorage');
+const { normalizeCourtImage } = require('../utils/courtImage');
 
 const toNullableNumber = (value) => {
   if (value === undefined || value === null) return null;
@@ -173,7 +174,7 @@ const ClubesModel = {
       techada: !!row.techada,
       iluminacion: !!row.iluminacion,
       estado: row.estado || 'disponible',
-      imagen_url: row.imagen_url == null ? null : row.imagen_url,
+      imagen_url: normalizeCourtImage(row.imagen_url),
     }));
   },
 
