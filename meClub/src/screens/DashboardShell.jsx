@@ -5,7 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors as mcColors } from '../theme/tokens';
 import { useAuth } from '../features/auth/useAuth';
 import { getClubSummary } from '../lib/api';
-import { InicioScreen, ReservasScreen, CanchasScreen, ConfiguracionScreen } from './dashboard';
+import {
+  InicioScreen,
+  ReservasScreen,
+  CanchasScreen,
+  ConfiguracionScreen,
+  EconomiaScreen,
+} from './dashboard';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
@@ -89,13 +95,12 @@ export default function DashboardShell() {
     { key: 'buzon', label: 'Buzón', iconName: 'mail-outline' },
     { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline' },
     { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline' },
-    { key: 'horarios', label: 'Horarios', iconName: 'time-outline' },
+    { key: 'economia', label: 'Economía', iconName: 'cash-outline' },
     { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline' },
     { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline' },
     { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline' },
     { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline' },
     { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline' },
-    { key: 'conciliar', label: 'Conciliar', iconName: 'repeat-outline' },
     { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline' },
     { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline' },
   ];
@@ -143,6 +148,7 @@ export default function DashboardShell() {
     reservas: ReservasScreen,
     'mis-canchas': CanchasScreen,
     configuracion: ConfiguracionScreen,
+    economia: EconomiaScreen,
   };
   const ScreenComponent = screenMap[activeKey] || (() => null);
   const screenProps = { summary, firstName, today, go };
