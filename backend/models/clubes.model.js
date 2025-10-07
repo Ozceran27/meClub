@@ -142,10 +142,34 @@ const ClubesModel = {
 
   obtenerMisCanchas: async (club_id) => {
     const [rows] = await db.query(
-      'SELECT * FROM canchas WHERE club_id = ? ORDER BY cancha_id DESC',
+      `SELECT c.cancha_id, c.club_id, c.nombre, c.deporte_id, c.capacidad, c.precio, c.precio_dia,
+              c.precio_noche, c.tipo_suelo, c.techada, c.iluminacion, c.estado, c.imagen_url,
+              d.nombre AS deporte_nombre
+       FROM canchas c
+       LEFT JOIN deportes d ON d.deporte_id = c.deporte_id
+       WHERE c.club_id = ?
+       ORDER BY c.cancha_id DESC`,
       [club_id]
     );
-    return rows;
+
+    return rows.map((row) => ({
+      cancha_id: row.cancha_id,
+      club_id: row.club_id,
+      nombre: row.nombre,
+      deporte_id: row.deporte_id,
+      deporte_nombre: row.deporte_nombre || null,
+      capacidad: row.capacidad === null || row.capacidad === undefined ? null : Number(row.capacidad),
+      precio: row.precio === null || row.precio === undefined ? null : Number(row.precio),
+      precio_dia:
+        row.precio_dia === null || row.precio_dia === undefined ? null : Number(row.precio_dia),
+      precio_noche:
+        row.precio_noche === null || row.precio_noche === undefined ? null : Number(row.precio_noche),
+      tipo_suelo: row.tipo_suelo == null ? null : row.tipo_suelo,
+      techada: !!row.techada,
+      iluminacion: !!row.iluminacion,
+      estado: row.estado || 'disponible',
+      imagen_url: row.imagen_url == null ? null : row.imagen_url,
+    }));
   },
 
   obtenerClubPorId: async (club_id) => {
