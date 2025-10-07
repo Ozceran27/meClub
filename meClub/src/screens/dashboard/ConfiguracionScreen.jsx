@@ -584,7 +584,7 @@ export default function ConfiguracionScreen({ go }) {
           <View className="grid gap-6 md:grid-cols-2">
             <View>
               <Text className="text-white/70 text-sm mb-2">Provincia</Text>
-              <View className="relative z-60" style={{ elevation: 60 }}>
+              <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
                 <Pressable
                   onPress={() => setShowProvinceMenu((prev) => !prev)}
                   className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-[#0B152E] px-4 py-3 transition-colors hover:bg-white/10"
@@ -598,8 +598,8 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showProvinceMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-60"
-                    style={{ elevation: 60 }}
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
+                    style={{ zIndex: 60, elevation: 60 }}
                   >
                     <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
                       {(provinces || []).map((prov) => {
@@ -627,7 +627,7 @@ export default function ConfiguracionScreen({ go }) {
 
             <View>
               <Text className="text-white/70 text-sm mb-2">Localidad</Text>
-              <View className="relative z-60" style={{ elevation: 60 }}>
+              <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
                 <Pressable
                   onPress={() => {
                     if (!form.provincia_id) return;
@@ -650,8 +650,8 @@ export default function ConfiguracionScreen({ go }) {
                 </Pressable>
                 {showLocalityMenu && (
                   <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-60"
-                    style={{ elevation: 60 }}
+                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
+                    style={{ zIndex: 60, elevation: 60 }}
                   >
                     <View className="border-b border-white/10 bg-[#101C36] px-4 py-3">
                       <TextInput
