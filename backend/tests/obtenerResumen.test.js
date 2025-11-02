@@ -14,6 +14,7 @@ jest.mock('../config/db', () => ({
     }
     return [[{ total: 0 }]];
   }),
+  getConnection: jest.fn(),
 }));
 
 const ClubesModel = require('../models/clubes.model');

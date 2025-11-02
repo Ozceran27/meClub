@@ -3,6 +3,7 @@ const request = require('supertest');
 
 jest.mock('../config/db', () => ({
   query: jest.fn(),
+  getConnection: jest.fn(),
 }));
 
 jest.mock('../middleware/auth.middleware', () => (req, _res, next) => {
@@ -38,6 +39,7 @@ const buildApp = () => {
 
 describe('Gestión de solapes de reservas', () => {
   let reservasEnMemoria;
+  let connectionMock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -56,6 +58,14 @@ describe('Gestión de solapes de reservas', () => {
         grabacion_solicitada: 0,
       },
     ];
+
+    connectionMock = {
+      beginTransaction: jest.fn().mockResolvedValue(),
+      query: jest.fn(),
+      commit: jest.fn().mockResolvedValue(),
+      rollback: jest.fn().mockResolvedValue(),
+      release: jest.fn().mockResolvedValue(),
+    };
 
     CanchasModel.obtenerCanchaPorId.mockResolvedValue({
       cancha_id: 5,
@@ -113,6 +123,42 @@ describe('Gestión de solapes de reservas', () => {
 
       return Promise.reject(new Error(`Query no mockeada: ${sql}`));
     });
+
+    connectionMock.query.mockImplementation((sql, params = []) => {
+      if (sql.startsWith('SELECT r.reserva_id') && sql.includes('FOR UPDATE')) {
+        const [canchaId, fecha, horaInicio, horaFin, estadosActivos] = params;
+        const activos = Array.isArray(estadosActivos) ? estadosActivos : [];
+        const overlapping = reservasEnMemoria.filter((reserva) =>
+          reserva.cancha_id === canchaId &&
+          reserva.fecha === fecha &&
+          !(reserva.hora_fin <= horaInicio || reserva.hora_inicio >= horaFin) &&
+          activos.includes(reserva.estado)
+        );
+        return Promise.resolve([overlapping.slice(0, 1), []]);
+      }
+
+      if (sql.startsWith('INSERT INTO reservas')) {
+        const [usuarioId, canchaId, fecha, horaInicio, horaFin, monto, grabacionSolicitada, duracionHoras] = params;
+        const nuevaReserva = {
+          reserva_id: reservasEnMemoria.length + 1,
+          usuario_id: usuarioId,
+          cancha_id: canchaId,
+          fecha,
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+          estado: 'pendiente',
+          duracion_horas: duracionHoras,
+          monto,
+          grabacion_solicitada: grabacionSolicitada,
+        };
+        reservasEnMemoria.push(nuevaReserva);
+        return Promise.resolve([{ insertId: nuevaReserva.reserva_id }, []]);
+      }
+
+      return Promise.reject(new Error(`Query no mockeada en conexión: ${sql}`));
+    });
+
+    db.getConnection.mockResolvedValue(connectionMock);
   });
 
   it('libera el horario cuando una reserva activa pasa a cancelada', async () => {

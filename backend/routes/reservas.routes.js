@@ -77,6 +77,10 @@ router.post('/', verifyToken, async (req, res) => {
 
     return res.status(201).json({ mensaje: 'Reserva creada', reserva });
   } catch (err) {
+    if (err && err.code === ReservasModel.RESERVA_SOLAPADA_CODE) {
+      return res.status(409).json({ mensaje: 'El horario solicitado se solapa con otra reserva' });
+    }
+
     console.error(err);
     return res.status(500).json({ mensaje: 'Error interno del servidor' });
   }
