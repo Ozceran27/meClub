@@ -7,7 +7,14 @@ jest.mock('../config/db', () => ({
 }));
 
 jest.mock('../middleware/auth.middleware', () => (req, _res, next) => {
-  req.usuario = { id: 99, rol: 'usuario' };
+  req.usuario = global.__TEST_AUTH_USER__ || { id: 99, rol: 'usuario' };
+  next();
+});
+
+jest.mock('../middleware/club.middleware', () => (req, _res, next) => {
+  if (global.__TEST_CLUB__) {
+    req.club = global.__TEST_CLUB__;
+  }
   next();
 });
 
@@ -28,12 +35,17 @@ jest.mock('../models/clubes.model', () => ({
   obtenerClubPorPropietario: jest.fn(),
 }));
 
+jest.mock('../models/usuarios.model', () => ({
+  buscarPorId: jest.fn(),
+}));
+
 const db = require('../config/db');
 const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
+const UsuariosModel = require('../models/usuarios.model');
 const reservasRoutes = require('../routes/reservas.routes');
 
 const buildApp = () => {
@@ -54,6 +66,7 @@ describe('Gestión de solapes de reservas', () => {
       {
         reserva_id: 1,
         usuario_id: 42,
+        creado_por_id: 7,
         cancha_id: 5,
         fecha: '2099-01-01',
         hora_inicio: '10:00:00',
@@ -61,9 +74,18 @@ describe('Gestión de solapes de reservas', () => {
         estado: 'pendiente',
         duracion_horas: 1,
         monto: 2000,
+        monto_base: 2000,
+        monto_grabacion: 0,
         grabacion_solicitada: 0,
+        tipo_reserva: 'relacionada',
+        contacto_nombre: 'Juan',
+        contacto_apellido: 'Pérez',
+        contacto_telefono: '123456',
       },
     ];
+
+    global.__TEST_AUTH_USER__ = { id: 99, rol: 'usuario' };
+    global.__TEST_CLUB__ = { club_id: 3, precio_grabacion: null };
 
     connectionMock = {
       beginTransaction: jest.fn().mockResolvedValue(),
@@ -90,6 +112,50 @@ describe('Gestión de solapes de reservas', () => {
       precio_grabacion: null,
     });
     ClubesModel.obtenerClubPorPropietario.mockResolvedValue({ club_id: 3 });
+    UsuariosModel.buscarPorId.mockReset();
+    UsuariosModel.buscarPorId.mockResolvedValue(null);
+
+    const buildInsertReserva = (params) => {
+      const [
+        usuarioId,
+        canchaId,
+        fecha,
+        horaInicio,
+        horaFin,
+        monto,
+        grabacionSolicitada,
+        duracionHoras,
+        tipoReserva,
+        contactoNombre,
+        contactoApellido,
+        contactoTelefono,
+        creadoPorId,
+        montoBase,
+        montoGrabacion,
+      ] = params;
+
+      const nuevaReserva = {
+        reserva_id: reservasEnMemoria.length + 1,
+        usuario_id: usuarioId,
+        creado_por_id: creadoPorId,
+        cancha_id: canchaId,
+        fecha,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        estado: 'pendiente',
+        duracion_horas: duracionHoras,
+        monto,
+        monto_base: montoBase,
+        monto_grabacion: montoGrabacion,
+        grabacion_solicitada: Boolean(grabacionSolicitada),
+        tipo_reserva: tipoReserva,
+        contacto_nombre: contactoNombre,
+        contacto_apellido: contactoApellido,
+        contacto_telefono: contactoTelefono,
+      };
+      reservasEnMemoria.push(nuevaReserva);
+      return nuevaReserva;
+    };
 
     db.query.mockImplementation((sql, params = []) => {
       if (sql.startsWith('SELECT r.reserva_id') && sql.includes('FROM reservas r')) {
@@ -105,20 +171,7 @@ describe('Gestión de solapes de reservas', () => {
       }
 
       if (sql.startsWith('INSERT INTO reservas')) {
-        const [usuarioId, canchaId, fecha, horaInicio, horaFin, monto, grabacionSolicitada, duracionHoras] = params;
-        const nuevaReserva = {
-          reserva_id: reservasEnMemoria.length + 1,
-          usuario_id: usuarioId,
-          cancha_id: canchaId,
-          fecha,
-          hora_inicio: horaInicio,
-          hora_fin: horaFin,
-          estado: 'pendiente',
-          duracion_horas: duracionHoras,
-          monto,
-          grabacion_solicitada: grabacionSolicitada,
-        };
-        reservasEnMemoria.push(nuevaReserva);
+        const nuevaReserva = buildInsertReserva(params);
         return Promise.resolve([{ insertId: nuevaReserva.reserva_id }, []]);
       }
 
@@ -149,20 +202,7 @@ describe('Gestión de solapes de reservas', () => {
       }
 
       if (sql.startsWith('INSERT INTO reservas')) {
-        const [usuarioId, canchaId, fecha, horaInicio, horaFin, monto, grabacionSolicitada, duracionHoras] = params;
-        const nuevaReserva = {
-          reserva_id: reservasEnMemoria.length + 1,
-          usuario_id: usuarioId,
-          cancha_id: canchaId,
-          fecha,
-          hora_inicio: horaInicio,
-          hora_fin: horaFin,
-          estado: 'pendiente',
-          duracion_horas: duracionHoras,
-          monto,
-          grabacion_solicitada: grabacionSolicitada,
-        };
-        reservasEnMemoria.push(nuevaReserva);
+        const nuevaReserva = buildInsertReserva(params);
         return Promise.resolve([{ insertId: nuevaReserva.reserva_id }, []]);
       }
 
@@ -170,6 +210,11 @@ describe('Gestión de solapes de reservas', () => {
     });
 
     db.getConnection.mockResolvedValue(connectionMock);
+  });
+
+  afterEach(() => {
+    delete global.__TEST_AUTH_USER__;
+    delete global.__TEST_CLUB__;
   });
 
   it('libera el horario cuando una reserva activa pasa a cancelada', async () => {
@@ -181,6 +226,10 @@ describe('Gestión de solapes de reservas', () => {
       hora_inicio: '10:00:00',
       duracion_horas: 1,
       grabacion_solicitada: false,
+      tipo_reserva: 'privada',
+      contacto_nombre: 'Luisa',
+      contacto_apellido: 'Martínez',
+      contacto_telefono: '1111-2222',
     };
 
     const primerIntento = await request(app).post('/reservas').send(payload);
@@ -197,5 +246,101 @@ describe('Gestión de solapes de reservas', () => {
       fecha: '2099-01-01',
       hora_inicio: '10:00:00',
     });
+  });
+
+  it('permite a un club crear una reserva privada incluyendo el recargo de cámara cuando corresponde', async () => {
+    const app = buildApp();
+
+    global.__TEST_AUTH_USER__ = { id: 777, rol: 'club' };
+    global.__TEST_CLUB__ = { club_id: 3, precio_grabacion: 500 };
+
+    const payload = {
+      cancha_id: 5,
+      fecha: '2099-01-01',
+      hora_inicio: '12:00:00',
+      duracion_horas: 1,
+      tipo_reserva: 'privada',
+      grabacion_solicitada: true,
+      contacto_nombre: 'Carla',
+      contacto_apellido: 'Gómez',
+      contacto_telefono: '555-0000',
+    };
+
+    const respuesta = await request(app).post('/reservas').send(payload);
+
+    expect(respuesta.status).toBe(201);
+    expect(respuesta.body.reserva).toMatchObject({
+      tipo_reserva: 'privada',
+      creado_por_id: 777,
+      usuario_id: null,
+      monto_base: 2000,
+      monto_grabacion: 500,
+      monto: 2500,
+      grabacion_solicitada: true,
+      contacto_nombre: 'Carla',
+      contacto_apellido: 'Gómez',
+      contacto_telefono: '555-0000',
+    });
+  });
+
+  it('permite a un club crear una reserva relacionada sin recargo de cámara cuando no se solicita', async () => {
+    const app = buildApp();
+
+    global.__TEST_AUTH_USER__ = { id: 888, rol: 'club' };
+    global.__TEST_CLUB__ = { club_id: 3, precio_grabacion: 600 };
+
+    UsuariosModel.buscarPorId.mockResolvedValue({
+      usuario_id: 555,
+      nombre: 'Ada',
+      apellido: 'Lovelace',
+      telefono: '123456789',
+    });
+
+    const payload = {
+      cancha_id: 5,
+      fecha: '2099-01-01',
+      hora_inicio: '14:00:00',
+      duracion_horas: 1,
+      tipo_reserva: 'relacionada',
+      jugador_usuario_id: 555,
+      grabacion_solicitada: false,
+    };
+
+    const respuesta = await request(app).post('/reservas').send(payload);
+
+    expect(UsuariosModel.buscarPorId).toHaveBeenCalledWith(555);
+    expect(respuesta.status).toBe(201);
+    expect(respuesta.body.reserva).toMatchObject({
+      tipo_reserva: 'relacionada',
+      creado_por_id: 888,
+      usuario_id: 555,
+      monto_base: 2000,
+      monto_grabacion: 0,
+      monto: 2000,
+      grabacion_solicitada: false,
+      contacto_nombre: 'Ada',
+      contacto_apellido: 'Lovelace',
+      contacto_telefono: '123456789',
+    });
+  });
+
+  it('consulta reservasAgendaClub filtrando por club y ordenando por hora', async () => {
+    const clubId = 42;
+    const fecha = '2099-01-02';
+    const filasOrdenadas = [
+      { reserva_id: 1, cancha_id: 7, hora_inicio: '08:00:00', cancha_nombre: 'A' },
+      { reserva_id: 2, cancha_id: 7, hora_inicio: '09:00:00', cancha_nombre: 'A' },
+    ];
+
+    db.query.mockImplementationOnce((sql, params = []) => {
+      expect(sql).toMatch(/FROM reservas r/);
+      expect(sql).toMatch(/WHERE c\.club_id = \?/);
+      expect(sql).toMatch(/ORDER BY r\.hora_inicio ASC, c\.cancha_id ASC/);
+      expect(params).toEqual([clubId, fecha]);
+      return Promise.resolve([filasOrdenadas, []]);
+    });
+
+    const resultado = await ReservasModel.reservasAgendaClub({ club_id: clubId, fecha });
+    expect(resultado).toEqual(filasOrdenadas);
   });
 });
