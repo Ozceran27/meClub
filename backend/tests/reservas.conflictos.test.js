@@ -23,11 +23,17 @@ jest.mock('../models/clubesHorario.model', () => ({
   getPorClubYDia: jest.fn(),
 }));
 
+jest.mock('../models/clubes.model', () => ({
+  obtenerClubPorId: jest.fn(),
+  obtenerClubPorPropietario: jest.fn(),
+}));
+
 const db = require('../config/db');
 const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
+const ClubesModel = require('../models/clubes.model');
 const reservasRoutes = require('../routes/reservas.routes');
 
 const buildApp = () => {
@@ -79,6 +85,11 @@ describe('Gestión de solapes de reservas', () => {
       abre: '08:00:00',
       cierra: '23:00:00',
     });
+    ClubesModel.obtenerClubPorId.mockResolvedValue({
+      club_id: 3,
+      precio_grabacion: null,
+    });
+    ClubesModel.obtenerClubPorPropietario.mockResolvedValue({ club_id: 3 });
 
     db.query.mockImplementation((sql, params = []) => {
       if (sql.startsWith('SELECT r.reserva_id') && sql.includes('FROM reservas r')) {

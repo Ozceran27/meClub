@@ -23,10 +23,15 @@ jest.mock('../models/clubesHorario.model', () => ({
   getPorClubYDia: jest.fn(),
 }));
 
+jest.mock('../models/clubes.model', () => ({
+  obtenerClubPorId: jest.fn(),
+}));
+
 const db = require('../config/db');
 const CanchasModel = require('../models/canchas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
+const ClubesModel = require('../models/clubes.model');
 const reservasRoutes = require('../routes/reservas.routes');
 
 const buildApp = () => {
@@ -78,6 +83,10 @@ describe('ReservasModel.crear con transacción', () => {
       activo: true,
       abre: '08:00:00',
       cierra: '22:00:00',
+    });
+    ClubesModel.obtenerClubPorId.mockResolvedValue({
+      club_id: 2,
+      precio_grabacion: null,
     });
 
     db.query.mockImplementation((sql) => {

@@ -23,6 +23,10 @@ const mapClubRow = (row) => {
     direccion: row.direccion === undefined ? null : row.direccion || null,
     google_place_id:
       row.google_place_id === undefined ? null : row.google_place_id || null,
+    precio_grabacion:
+      row.precio_grabacion === undefined || row.precio_grabacion === null
+        ? null
+        : toNullableNumber(row.precio_grabacion),
   };
 };
 
@@ -78,6 +82,7 @@ const ClubesModel = {
     localidad_id = null,
     telefono_contacto = null,
     email_contacto = null,
+    precio_grabacion = null,
     direccion = null,
     latitud = null,
     longitud = null,
@@ -87,6 +92,7 @@ const ClubesModel = {
     const descripcionValue = normalizeNullableTrimmedString(descripcion, 'descripcion');
     const telefonoValue = normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto');
     const emailValue = normalizeNullableTrimmedString(email_contacto, 'email_contacto');
+    const precioGrabacionValue = normalizeNullableFloat(precio_grabacion, 'precio_grabacion');
     const direccionValue = normalizeNullableTrimmedString(direccion, 'direccion');
     const latitudValue = normalizeNullableFloat(latitud, 'latitud');
     const longitudValue = normalizeNullableFloat(longitud, 'longitud');
@@ -96,14 +102,15 @@ const ClubesModel = {
 
     const [result] = await db.query(
       `INSERT INTO clubes
-       (nombre, descripcion, telefono_contacto, email_contacto, direccion, latitud, longitud, google_place_id,
+       (nombre, descripcion, telefono_contacto, email_contacto, precio_grabacion, direccion, latitud, longitud, google_place_id,
         usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre,
         descripcionValue,
         telefonoValue,
         emailValue,
+        precioGrabacionValue,
         direccionValue,
         latitudValue,
         longitudValue,
@@ -129,6 +136,7 @@ const ClubesModel = {
       localidad_id: localidadValue,
       telefono_contacto: telefonoValue,
       email_contacto: emailValue,
+      precio_grabacion: precioGrabacionValue,
       direccion: direccionValue,
       latitud: latitudValue,
       longitud: longitudValue,
@@ -193,6 +201,7 @@ const ClubesModel = {
       localidad_id,
       telefono_contacto,
       email_contacto,
+      precio_grabacion,
       direccion,
       latitud,
       longitud,
@@ -224,6 +233,7 @@ const ClubesModel = {
       normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto')
     );
     setField('email_contacto', normalizeNullableTrimmedString(email_contacto, 'email_contacto'));
+    setField('precio_grabacion', normalizeNullableFloat(precio_grabacion, 'precio_grabacion'));
     setField('direccion', normalizeNullableTrimmedString(direccion, 'direccion'));
     setField('google_place_id', normalizeNullableTrimmedString(google_place_id, 'google_place_id'));
 

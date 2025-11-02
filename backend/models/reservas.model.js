@@ -19,16 +19,39 @@ const ReservasModel = {
   },
 
   crear: async ({
-    usuario_id,
+    usuario_id = null,
+    creado_por_id,
     cancha_id,
     fecha,
     hora_inicio,
     hora_fin,
     duracion_horas = 1,
     monto = null,
-    grabacion_solicitada = 0
+    monto_base = null,
+    monto_grabacion = null,
+    tipo_reserva = 'relacionada',
+    contacto_nombre = null,
+    contacto_apellido = null,
+    contacto_telefono = null,
+    grabacion_solicitada = 0,
   }) => {
-    if (!usuario_id) throw new Error('usuario_id es requerido');
+    if (!creado_por_id) throw new Error('creado_por_id es requerido');
+    if (!cancha_id) throw new Error('cancha_id es requerido');
+    if (!fecha) throw new Error('fecha es requerida');
+    if (!hora_inicio) throw new Error('hora_inicio es requerida');
+
+    const tipoReservaNormalizado = tipo_reserva === 'privada' ? 'privada' : 'relacionada';
+
+    const sanitizeContacto = (value, maxLength) => {
+      if (value === undefined || value === null) return null;
+      const trimmed = String(value).trim();
+      if (!trimmed) return null;
+      return trimmed.slice(0, maxLength);
+    };
+
+    const contactoNombreValue = sanitizeContacto(contacto_nombre, 100);
+    const contactoApellidoValue = sanitizeContacto(contacto_apellido, 100);
+    const contactoTelefonoValue = sanitizeContacto(contacto_telefono, 25);
 
     const connection = await db.getConnection();
 
@@ -55,11 +78,26 @@ const ReservasModel = {
 
       const [result] = await connection.query(
         `INSERT INTO reservas
-         (usuario_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (usuario_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas,
+          tipo_reserva, contacto_nombre, contacto_apellido, contacto_telefono, creado_por_id,
+          monto_base, monto_grabacion)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          usuario_id, cancha_id, fecha, hora_inicio, hora_fin,
-          monto, grabacion_solicitada ? 1 : 0, duracion_horas
+          usuario_id,
+          cancha_id,
+          fecha,
+          hora_inicio,
+          hora_fin,
+          monto,
+          grabacion_solicitada ? 1 : 0,
+          duracion_horas,
+          tipoReservaNormalizado,
+          contactoNombreValue,
+          contactoApellidoValue,
+          contactoTelefonoValue,
+          creado_por_id,
+          monto_base,
+          monto_grabacion,
         ]
       );
 
@@ -72,9 +110,16 @@ const ReservasModel = {
         fecha,
         hora_inicio,
         hora_fin,
+        creado_por_id,
         duracion_horas,
         monto,
-        grabacion_solicitada: !!grabacion_solicitada
+        monto_base,
+        monto_grabacion,
+        grabacion_solicitada: !!grabacion_solicitada,
+        tipo_reserva: tipoReservaNormalizado,
+        contacto_nombre: contactoNombreValue,
+        contacto_apellido: contactoApellidoValue,
+        contacto_telefono: contactoTelefonoValue,
       };
     } catch (error) {
       try {
@@ -105,9 +150,11 @@ const ReservasModel = {
     const [rows] = await db.query(
       `SELECT r.reserva_id, r.usuario_id, r.cancha_id, r.fecha, r.hora_inicio, r.hora_fin,
               r.duracion_horas, r.estado, r.monto, r.grabacion_solicitada,
+              r.tipo_reserva, r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
+              r.creado_por_id, r.monto_base, r.monto_grabacion,
               u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email
        FROM reservas r
-       JOIN usuarios u ON u.usuario_id = r.usuario_id
+       LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
        WHERE r.cancha_id = ? AND r.fecha = ?
        ORDER BY r.hora_inicio ASC`,
       [cancha_id, fecha]
