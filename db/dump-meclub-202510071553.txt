@@ -1,649 +1,0 @@
--- MySQL dump 10.13  Distrib 8.0.19, for Win64 (x86_64)
---
--- Host: localhost    Database: meclub
--- ------------------------------------------------------
--- Server version	8.0.40
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table `actividades`
---
-
-DROP TABLE IF EXISTS `actividades`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `actividades` (
-  `actividad_id` int NOT NULL AUTO_INCREMENT,
-  `usuario_id` int NOT NULL,
-  `descripcion` text,
-  `puntos_cambiados` int DEFAULT NULL,
-  `fecha` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`actividad_id`),
-  KEY `usuario_id` (`usuario_id`),
-  CONSTRAINT `actividades_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `actividades`
---
-
-LOCK TABLES `actividades` WRITE;
-/*!40000 ALTER TABLE `actividades` DISABLE KEYS */;
-/*!40000 ALTER TABLE `actividades` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `camaras`
---
-
-DROP TABLE IF EXISTS `camaras`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `camaras` (
-  `camara_id` int NOT NULL AUTO_INCREMENT,
-  `cancha_id` int NOT NULL,
-  `modelo` varchar(100) DEFAULT NULL,
-  `ip` varchar(100) DEFAULT NULL,
-  `estado` enum('activa','inactiva') DEFAULT 'activa',
-  PRIMARY KEY (`camara_id`),
-  KEY `cancha_id` (`cancha_id`),
-  CONSTRAINT `camaras_ibfk_1` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `camaras`
---
-
-LOCK TABLES `camaras` WRITE;
-/*!40000 ALTER TABLE `camaras` DISABLE KEYS */;
-/*!40000 ALTER TABLE `camaras` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `canchas`
---
-
-DROP TABLE IF EXISTS `canchas`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `canchas` (
-  `cancha_id` int NOT NULL AUTO_INCREMENT,
-  `club_id` int NOT NULL,
-  `nombre` varchar(100) DEFAULT NULL,
-  `imagen_url` longblob,
-  `deporte_id` int NOT NULL,
-  `precio_dia` decimal(10,2) DEFAULT NULL,
-  `precio_noche` decimal(10,2) DEFAULT NULL,
-  `capacidad` int DEFAULT NULL,
-  `tipo_suelo` varchar(100) DEFAULT NULL,
-  `techada` tinyint(1) DEFAULT '0',
-  `iluminacion` tinyint(1) DEFAULT '0',
-  `estado` enum('disponible','mantenimiento','inactiva') NOT NULL DEFAULT 'disponible',
-  PRIMARY KEY (`cancha_id`),
-  KEY `club_id` (`club_id`),
-  KEY `deporte_id` (`deporte_id`),
-  CONSTRAINT `canchas_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
-  CONSTRAINT `canchas_ibfk_2` FOREIGN KEY (`deporte_id`) REFERENCES `deportes` (`deporte_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `canchas`
---
-
-LOCK TABLES `canchas` WRITE;
-/*!40000 ALTER TABLE `canchas` DISABLE KEYS */;
-INSERT INTO `canchas` VALUES (1,1,'Cancha 1',NULL,1,7000.00,7000.00,10,NULL,1,0,'disponible'),(2,2,'Cancha 1',NULL,1,3500.00,3500.00,10,NULL,1,0,'disponible');
-/*!40000 ALTER TABLE `canchas` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `clubes`
---
-
-DROP TABLE IF EXISTS `clubes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clubes` (
-  `club_id` int NOT NULL AUTO_INCREMENT,
-  `usuario_id` int NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `descripcion` text,
-  `telefono_contacto` varchar(25) DEFAULT NULL,
-  `email_contacto` varchar(150) DEFAULT NULL,
-  `direccion` varchar(255) DEFAULT NULL,
-  `latitud` decimal(10,7) DEFAULT NULL,
-  `longitud` decimal(10,7) DEFAULT NULL,
-  `google_place_id` varchar(255) DEFAULT NULL,
-  `nivel_id` int NOT NULL DEFAULT '1',
-  `foto_logo` longblob,
-  `foto_portada` longblob,
-  `provincia_id` int DEFAULT NULL,
-  `localidad_id` int DEFAULT NULL,
-  `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`club_id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `fk_clubes_nivel` (`nivel_id`),
-  KEY `idx_clubes_localidad` (`localidad_id`),
-  CONSTRAINT `clubes_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
-  CONSTRAINT `clubes_ibfk_2` FOREIGN KEY (`nivel_id`) REFERENCES `niveles` (`nivel_id`),
-  CONSTRAINT `fk_clubes_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidades` (`localidad_id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_clubes_nivel` FOREIGN KEY (`nivel_id`) REFERENCES `niveles` (`nivel_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `clubes`
---
-
-LOCK TABLES `clubes` WRITE;
-/*!40000 ALTER TABLE `clubes` DISABLE KEYS */;
-INSERT INTO `clubes` VALUES (1,6,'Club Centro','Mi primer club',NULL,NULL,NULL,NULL,NULL,NULL,1,NULL,NULL,NULL,NULL,'2025-08-07 21:00:39'),(2,8,'Club Atlético Admin','Club de prueba para el Admin','3765302043','academia.pi.fce@gmail.com','Calle 62A, N° 15',-27.3663785,-55.9468187,'-27.3664,-55.9468',1,_binary '�PNG\r\n\Z\n\0\0\0\rIHDR\0\0h\0\0h\0\0\0M;�\�\0\0\0ZPLTE\0\0\0HhIg|UY\\VY\\VX[TWYUXZUWYTVY`be`ceJMOUXZaceJLNJLN%�\�$�\�$�\�\"�\�3�\�$�\�4�\��\��\�5�\�1�\��\��\��ޞ\0\0\0\ZtRNS\0!3Ld}�\�\�\�ޖ��\� Cq��\�\�\�R\�Ax\0\0�IDATx\�\���\0\0\0\0�����\0\0\0\0\0\0\0\0`v\�B\�qh͈\�\�D���\�E\'Ui[Ѳ�>X�W�-e�BD\�\�-\�D\�\�3C,�\�\�X\�\�>��㜵\�h�7\�Ke�\�l�\�dv�yg����q�\Z[\�C\�\�\�%-\�p?�\�Ch�m�j\�9!�o�14\�ֲY��q\0@#lg7O���2�.�n!0\�:ۚ�m\Z(c\�|kѬ_B*Ae��h[�t\�\\\�\�\Z7�D8�$\��S\Z\�$iaC��w6���R�DJ�^ q�\� Ԙ1\�\�\Z���^���r2)�{>Ųf5Z\��%��)\"�t�=Z֊\�-�Q�xX۸8B��CM\�\��\'�<zٕ\��\�TS\�\�\�Qf\�\�>���u\�������\��\�ӥ&��P.��q�ZVL-L���}�\�\�\n�FT\�\�\�3}\�\"%bj�󪁛Y\�\�.`u}�6�\�\�\�K\�\�5\�D,�渪\'Q\�!\�Q1-�\�\�j�\�l�\�v��~�\�r8�W\��u0\�\�jR2Ә\�b�\�t�ǫ�Η�\�;\�\�r�\�\�NSխ1\��l\�\�\�e�\�\�i3�<R�W\�l���G\�зy��\�J���+`\�\�GF\�{�\��mּ\��j\r�hP�G\�\�8/֘\Z\�\�n\r�\�k\�@@Bck\�\�V��u�\�\�\�j\ZA\�\���mF\�\�\\�C�T0\�\0�x�\��Sq�ğg�\�/\�0c\�\�FmM����\nAXμÌ�\�E\r\�:�K\�߾:\�r^@f��=�i\�?}ZI���\�S�\�\�=E�Q̌�\�\��#ɿ�\�ǭ��ˡ\�T\�\��5��\"�g\�P��0�;1ƨ4�\�\�\�\��\�\\�\0C\�?�\�Ps�_\�\�L�	0\�f\�@\�G]�!�\Za��\0\�nh\��@�XM~p\�=m\�\0R~�\�~h^��c���<5d�\�\�\Z�q��z\�\��>l\��l\�H\�/t\�\�����\�\��׭\�\�\�\���Kgg{h�jh\����\�¡3l�\�R\���z��\�\'�\03n��\Z\�Bs~�\�_�\��B�6AH\rch\�(����.\��\�\�\��\�\�gFZ�(6H\r#hn�x`1ʑʉo��P:C�r4\�\�\n��St鐴�Y�nu|\�\n���o5ř\��_\��1爥�h�_Q�VfH~�?�Ϸ��+\��!��tv���bPQM�8土<�^r^4�9��6A\�\�ܔ�\�B\�k0�\�=�JgO\�\\T\�UW\�#��Jg\�jSj\�0Cj8���\0\��\�\���_h\�����\�N\r�\�w\�\�8z\Z�!�\�p\���Stˏ@�3�H\rO\�ܿ\�#�b\�/=p�\��\�(�\�e1�n����Շk1����\r[w�¶���q�S׊z\�¹*h>?\�Q�8Y|\�	>d8>����\�%!�Z��\�e�p6�v@\�)\�l\�̕B\�*/1�ffO\�\�\�\�x\�\0\�As��\�<\�\0]m\�|�]졛�\�P�=����n9\�\Z�y\'t�\��\r�+�\�\��iMг%t��\�ʡy湈!t\�++\�\�֫�\��!\�\�u\�\�\���L\�/��fг\�	�t\�\�\'t��U\�}&tQۗ�N���m\�\�6�\�/ZA�AAw���M\���D\�;@/����\�	��/vЭ\�?Zu������[=�\�\0}1��}\"\�MA\�EA��gVF�~�\�K�\�0Ci\���S\'\��FߴopfV�JZ\�A@���t���@�H~�	:���\�[�z��y����\n\Z�u\�>\Z\�M\'CC\�GDЇ�\�nY�A\�\�A!\r�\�\�\0\Z\�;砹�\�:AO�ޠ%\�ܓ��\�@_v-�\�w{DлYy\'�Xvxm_\�q�\�e�\�\�U��\�x\����\�+Kfe�\��%\�0��\�	<\�0�\�x��A�h(��1@�wJ\�V)2\�\� �S4�>A\�C���X��\�2I��%�\�\�k^\��8�\�yeP�I\�h�˼\"���t4\�\�4�H\�p\�*\�@�W(�WL�Yg,\�\�W����\�?\Z\�l\��.���\�\�=hn��F\�\�K\�\�x~wD\�\�\�+�Ϥ���{\�\�\��F���T\"�\�\�[�f���@ۻ;��k�@7x\�\�;�׌h;\"�~Rw\�\�\�	�\�P��� �;#\�\�4��\�\�J�#h��\�$s۱G�y\�nb:��\���@s\�1|A�\��v\0hW�C\Z�\��a@s\�1H\���\�]�\�\�7\��,A@\�+�U=g���_м3��3�6\�\�3hޅ\�t�\�\Z4\�Q\'e؆�D�*\����\���g\�\�N�0\�\�m\�tKPF/\�;\�m\���\�]x\�6\��R.\�w\�F\�\��/\�H��\�\�MMi�\0�e\�HWIv\�\�s�\�h�+�\�.�&\��+\�\�H�5���#\�,\�t�摥�\�O: �\�Di��\�%� Ҏ@�DC\\1�, \�~A�D�\�?iC�v�]\�\ng,{�\�\�;\�@���E:\�I\�,yi\�C�Y��\�H\�h\�7�h��C�7\�|.A�;�4\�\�7\�]4�\�\�\"�-0x\�@��\�AF�\�\�Pg�\�\�mPt�4h�;\�l\�Y\�/\��_\�\�\�\�o�\�\�2x���	�X[�\�|ӣ�\�t���\�f��\�+\��W\���Yf��Oh\�\�\�hV�\�]\�I+�\�\�t�\�nM2�\�\�\�4+\�\"\�I;\�p	��\�o�复\��\�4+7w\�ڱ�A_;+�\�L\�;|�f\�\�\n�\�d2jG\���rd�\�kG\��uP�\�ڡ\�\�C\�9&YO\�\��n9�f\�A9\�f��#7o�\�+\��\�0�@W�\�\rt4���\�1B\�\0�*А�r�j\�\"�\�@?\��\��ڑ�J�%h��\�=\�m]\�\�\��A�LW\�5閙\�JWO�+�h��\�\�AVz?���v2\�_�\�\�M\�0~@J�\n��n��\�\�\�4�B6\�\�Vz��\���\�D&\�\�JS+]��.�\n\�7\�\'�\�\�|�n�R\�רg\�tX}���T&\�nҡeo@�N+�\n\r\�!���@W�iV�e:$���\��\��\��*4M�\�\�t�?\�C\�\�\�K�����\\Gb \�-9眀��9g-x[�\�~$�Jm^\�\�\�\�0�V\�v�_s.M\�C\��V\�]�\�e������\�v?�`hA\�\�V\�󮂶\��\���\��_��\�)\�QA+\�}��?\�h5sxa<�zjM��\�OI\�\�}C\�+��%=*\�\'�fXɒt>\�|A+i�G}\�=tA\�y�.\�1A_\�\�:L\�\�1\"\�Oa(D\��^LL-ÀvV�:E\�\�\�\�2\��*h%M\��ծ \� Io*o \�\�[�\�A\��\�zXc��.�:E\�\�y8h�p�\�r�\�\�y\�$\\E	ڽ\�nn\�vɱ\�\�\�C����緇���W�\�+`��V�r\��M\�3�\�8Iof�G8h�c�9q)L�\�<,4�\\\�6�\�PB8�ٖ<\�<\�@k.9|��5��+\�Z\�\�jg\�c>\�<�@k<��ڥ\�\�1\�\�A\�&\�WqI\�q\�K\�#\��R�I\�W~�\�3\�\� 	�$ݮ<�\�1\�\�K\�6�1:^h���c]\�@�y���\�#��q��ae\�\�q}�֠�\�a�\�E�Nm���\�\nm�f\�A�\0͕��IT\�p\�XLb\nh�\�\�\�QJ�y\�\�\�#\r\��\�\�B�Ï\�\�.�^\n\0\�*�fG\�H6m��\n\0M��\�l���;^H\�-g�Q%\�<��\�z�@S8h\�\�8�;�ĩ\�R@\�\�ĕ��w\�|\�\��P\�@\�A\�r4t\�\�\�\�\0��T�0�\�i\�\�\�/\���\�\�W\�L�.]A.\��M3!B�h83��ޓG\0��{��\�p�p�7h/�\�\�\�\0Z=[86\�@m��U�\n�\0\Z\��ݍ\���;J��h9��6\rĝ�{��Ϯy\�8Apf�li�p��\�Ź���:\'@4\�	�ޞ�\�\�\�n\�RY\��4\�\�\�E�qG\�#\�MdZ/}�\�&\�\�Y \���c\��\�+E_\�J\�Kz��\�\�\�\�/M\�ϵ�e�\��wv\�W��\��1얊60��\�\�kD�ҞY.ڮx1\�.��N�[�E��H��\�\�Dsnг\�æ\�t�<�O�3����J��Q\�\�\�z�\�\�d\�X\�&�oL\�}A=�Myy�ig2a}<A4j\�E\�y\��\�L\�N\�}\��s�\� ��i|]\�λO4ké��\�\�\�c�%Q\��fm8\���g�\�vv\�;D3\�;\�\���+�メ�Ct2\�\�\�\�d�\�q\�;D#\�8�{\�w��\����K\�i�j��M��\�?/j\�\�\�|�\�\�a+@\�1S\�D��L�\��c�h��\n\���\\��.j!�?\�\�\�0��6��Vɗ\�MG\�\�=�5XN_K\�h\�i\�\�G�?\�i\�\�\ZD�6?�\�fP��V!\n\�\�r&ڌ\�\�\�kW\�d�j��f^����$\�kM��hhVZ\��\�ب�Z\��C\r\��43\����\�wS65S}8&�r@�\�\�\�T\�|�s~TWTo}WC\�\�\�ꕿ�nC͛\�\�-\�ۅ_\�y��h\��+��\�W\�\��\"U\�nr\�f�f�\r� j\�M\��Alw8�}9v&W\��Gk�\�p|}\��\�U\�~s�\�\�8�\��\r�7E�\�1�A���F1��\�f\n\�\�&Ru\Zj.W�f�\�ݪ��ęx�\�P\rͥ����z�!���ęM��������q.X;\\S\�\�&	\�w3\�۹EW\�G\r�\�\�]3[�����k���h��6\�d5�lk������IaFU�B�qm�\�\�qX\�M=��ME4D����s\�*��萮i�1���RH\�\0f����N��\���j�[D�\�&����\�)\�\�\�n5_\��+���	2\�=N\�x*�\�W)ћ\��@�v�\�ul���qm=�p\rћq�M\nu�\'\�n��\�RO�k�\�n��%z\�ڒ\�\�\�P�\�0vm�\�\�Q5�\�}\0\0�\0\0\�\�~!$��g\0\0\0\0\0\0\0\0X&\0\���\�0\�\0\0\0\0IEND�B`�',NULL,13,NULL,'2025-08-08 04:44:55');
-/*!40000 ALTER TABLE `clubes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `clubes_horario`
---
-
-DROP TABLE IF EXISTS `clubes_horario`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clubes_horario` (
-  `club_horario_id` int unsigned NOT NULL AUTO_INCREMENT,
-  `club_id` int NOT NULL,
-  `dia_semana` tinyint unsigned NOT NULL,
-  `abre` time NOT NULL,
-  `cierra` time NOT NULL,
-  `activo` tinyint(1) NOT NULL DEFAULT '1',
-  PRIMARY KEY (`club_horario_id`),
-  UNIQUE KEY `uq_club_dia` (`club_id`,`dia_semana`),
-  CONSTRAINT `fk_ch_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=109 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `clubes_horario`
---
-
-LOCK TABLES `clubes_horario` WRITE;
-/*!40000 ALTER TABLE `clubes_horario` DISABLE KEYS */;
-INSERT INTO `clubes_horario` VALUES (1,2,1,'08:00:00','21:00:00',1),(2,2,2,'08:00:00','21:00:00',1),(3,2,3,'08:00:00','21:00:00',1),(4,2,4,'08:00:00','22:00:00',1),(5,2,5,'08:00:00','22:00:00',1),(6,2,6,'08:00:00','23:00:00',1),(7,2,7,'08:00:00','20:00:00',0);
-/*!40000 ALTER TABLE `clubes_horario` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `clubes_impuestos`
---
-
-DROP TABLE IF EXISTS `clubes_impuestos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clubes_impuestos` (
-  `impuesto_id` int unsigned NOT NULL AUTO_INCREMENT,
-  `club_id` int NOT NULL,
-  `nombre` varchar(120) NOT NULL,
-  `porcentaje` decimal(5,2) NOT NULL,
-  `descripcion` varchar(255) DEFAULT NULL,
-  `activo` tinyint(1) NOT NULL DEFAULT '1',
-  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`impuesto_id`),
-  UNIQUE KEY `uq_clubes_impuestos_nombre` (`club_id`,`nombre`),
-  CONSTRAINT `fk_clubesimpuestos_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `clubes_impuestos`
---
-
-LOCK TABLES `clubes_impuestos` WRITE;
-/*!40000 ALTER TABLE `clubes_impuestos` DISABLE KEYS */;
-INSERT INTO `clubes_impuestos` VALUES (1,2,'IVA',21.00,NULL,1,'2025-10-02 20:22:02','2025-10-07 07:58:56');
-/*!40000 ALTER TABLE `clubes_impuestos` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `clubes_servicios`
---
-
-DROP TABLE IF EXISTS `clubes_servicios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clubes_servicios` (
-  `club_id` int NOT NULL,
-  `servicio_id` int unsigned NOT NULL,
-  `activo` tinyint(1) NOT NULL DEFAULT '1',
-  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`club_id`,`servicio_id`),
-  KEY `fk_clubesservicios_servicio` (`servicio_id`),
-  CONSTRAINT `fk_clubesservicios_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_clubesservicios_servicio` FOREIGN KEY (`servicio_id`) REFERENCES `servicios` (`servicio_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `clubes_servicios`
---
-
-LOCK TABLES `clubes_servicios` WRITE;
-/*!40000 ALTER TABLE `clubes_servicios` DISABLE KEYS */;
-INSERT INTO `clubes_servicios` VALUES (2,1,0,'2025-10-02 22:17:46'),(2,2,1,'2025-10-02 20:23:30'),(2,5,1,'2025-10-02 20:23:30'),(2,7,1,'2025-10-02 20:23:30'),(2,8,1,'2025-10-02 20:23:30');
-/*!40000 ALTER TABLE `clubes_servicios` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `clubs_usuarios`
---
-
-DROP TABLE IF EXISTS `clubs_usuarios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clubs_usuarios` (
-  `club_id` int NOT NULL,
-  `usuario_id` int NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `foto_logo` longblob,
-  `foto_portada` longblob,
-  `provincia_id` int DEFAULT NULL,
-  `localidad_id` int DEFAULT NULL,
-  `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`club_id`,`usuario_id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `idx_clubsusuarios_localidad` (`localidad_id`),
-  CONSTRAINT `clubs_usuarios_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
-  CONSTRAINT `clubs_usuarios_ibfk_2` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
-  CONSTRAINT `fk_clubsusuarios_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidades` (`localidad_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `clubs_usuarios`
---
-
-LOCK TABLES `clubs_usuarios` WRITE;
-/*!40000 ALTER TABLE `clubs_usuarios` DISABLE KEYS */;
-/*!40000 ALTER TABLE `clubs_usuarios` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `deportes`
---
-
-DROP TABLE IF EXISTS `deportes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `deportes` (
-  `deporte_id` int NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(100) NOT NULL,
-  `descripcion` text,
-  `jugadores_recomendados` int DEFAULT NULL,
-  PRIMARY KEY (`deporte_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `deportes`
---
-
-LOCK TABLES `deportes` WRITE;
-/*!40000 ALTER TABLE `deportes` DISABLE KEYS */;
-INSERT INTO `deportes` VALUES (1,'Futbol 5','Fútbol reducido',10),(2,'Padel','Cancha dobles',4),(3,'Basquet','Cancha estándar',10);
-/*!40000 ALTER TABLE `deportes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `eventos`
---
-
-DROP TABLE IF EXISTS `eventos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `eventos` (
-  `evento_id` int NOT NULL AUTO_INCREMENT,
-  `club_id` int NOT NULL,
-  `nombre` varchar(100) DEFAULT NULL,
-  `descripcion` text,
-  `fecha` date DEFAULT NULL,
-  `ubicacion` text,
-  PRIMARY KEY (`evento_id`),
-  KEY `club_id` (`club_id`),
-  CONSTRAINT `eventos_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `eventos`
---
-
-LOCK TABLES `eventos` WRITE;
-/*!40000 ALTER TABLE `eventos` DISABLE KEYS */;
-/*!40000 ALTER TABLE `eventos` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `grabaciones`
---
-
-DROP TABLE IF EXISTS `grabaciones`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `grabaciones` (
-  `grabacion_id` int NOT NULL AUTO_INCREMENT,
-  `reserva_id` int NOT NULL,
-  `url` text,
-  `fecha_subida` datetime DEFAULT NULL,
-  `duracion` time DEFAULT NULL,
-  PRIMARY KEY (`grabacion_id`),
-  KEY `reserva_id` (`reserva_id`),
-  CONSTRAINT `grabaciones_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reservas` (`reserva_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `grabaciones`
---
-
-LOCK TABLES `grabaciones` WRITE;
-/*!40000 ALTER TABLE `grabaciones` DISABLE KEYS */;
-/*!40000 ALTER TABLE `grabaciones` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `localidades`
---
-
-DROP TABLE IF EXISTS `localidades`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `localidades` (
-  `localidad_id` int NOT NULL AUTO_INCREMENT,
-  `provincia_id` int NOT NULL,
-  `nombre` varchar(150) NOT NULL,
-  `codigo_postal` varchar(15) DEFAULT NULL,
-  `activo` tinyint(1) NOT NULL DEFAULT '1',
-  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`localidad_id`),
-  KEY `idx_localidades_provincia` (`provincia_id`),
-  CONSTRAINT `fk_localidades_provincia` FOREIGN KEY (`provincia_id`) REFERENCES `provincia` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `localidades`
---
-
-LOCK TABLES `localidades` WRITE;
-/*!40000 ALTER TABLE `localidades` DISABLE KEYS */;
-/*!40000 ALTER TABLE `localidades` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `mensajes`
---
-
-DROP TABLE IF EXISTS `mensajes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `mensajes` (
-  `mensaje_id` int NOT NULL AUTO_INCREMENT,
-  `emisor_id` int NOT NULL,
-  `receptor_id` int NOT NULL,
-  `contenido` text,
-  `fecha` datetime DEFAULT CURRENT_TIMESTAMP,
-  `leido` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`mensaje_id`),
-  KEY `emisor_id` (`emisor_id`),
-  KEY `receptor_id` (`receptor_id`),
-  CONSTRAINT `mensajes_ibfk_1` FOREIGN KEY (`emisor_id`) REFERENCES `usuarios` (`usuario_id`),
-  CONSTRAINT `mensajes_ibfk_2` FOREIGN KEY (`receptor_id`) REFERENCES `usuarios` (`usuario_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `mensajes`
---
-
-LOCK TABLES `mensajes` WRITE;
-/*!40000 ALTER TABLE `mensajes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `mensajes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `niveles`
---
-
-DROP TABLE IF EXISTS `niveles`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `niveles` (
-  `nivel_id` int NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(50) NOT NULL,
-  `descripcion` text,
-  `camaras_max` int DEFAULT NULL,
-  `precio` int DEFAULT NULL,
-  PRIMARY KEY (`nivel_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `niveles`
---
-
-LOCK TABLES `niveles` WRITE;
-/*!40000 ALTER TABLE `niveles` DISABLE KEYS */;
-INSERT INTO `niveles` VALUES (1,'gratuito','Sin cámaras',0,0),(2,'plus','Hasta 1 cámara',1,12000),(3,'multicam','Hasta 6 cámaras',6,35000);
-/*!40000 ALTER TABLE `niveles` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `notificaciones`
---
-
-DROP TABLE IF EXISTS `notificaciones`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `notificaciones` (
-  `notificacion_id` int NOT NULL AUTO_INCREMENT,
-  `usuario_id` int NOT NULL,
-  `mensaje` text,
-  `fecha` datetime DEFAULT CURRENT_TIMESTAMP,
-  `leido` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`notificacion_id`),
-  KEY `usuario_id` (`usuario_id`),
-  CONSTRAINT `notificaciones_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `notificaciones`
---
-
-LOCK TABLES `notificaciones` WRITE;
-/*!40000 ALTER TABLE `notificaciones` DISABLE KEYS */;
-/*!40000 ALTER TABLE `notificaciones` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `provincia`
---
-
-DROP TABLE IF EXISTS `provincia`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `provincia` (
-  `id` int NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `provincia`
---
-
-LOCK TABLES `provincia` WRITE;
-/*!40000 ALTER TABLE `provincia` DISABLE KEYS */;
-INSERT INTO `provincia` VALUES (1,'Buenos Aires'),(2,'Catamarca'),(3,'Chaco'),(4,'Chubut'),(5,'Córdoba'),(6,'Corrientes'),(7,'Entre Ríos'),(8,'Formosa'),(9,'Jujuy'),(10,'La Pampa'),(11,'La Rioja'),(12,'Mendoza'),(13,'Misiones'),(14,'Neuquén'),(15,'Río Negro'),(16,'Salta'),(17,'San Juan'),(18,'San Luis'),(19,'Santa Cruz'),(20,'Santa Fe'),(21,'Santiago del Estero'),(22,'Tierra del Fuego, Antártida e Islas del Atlántico Sur'),(23,'Tucumán'),(24,'Ciudad Autónoma de Buenos Aires');
-/*!40000 ALTER TABLE `provincia` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `reservas`
---
-
-DROP TABLE IF EXISTS `reservas`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `reservas` (
-  `reserva_id` int NOT NULL AUTO_INCREMENT,
-  `usuario_id` int NOT NULL,
-  `cancha_id` int NOT NULL,
-  `fecha` date NOT NULL,
-  `hora_inicio` time NOT NULL,
-  `hora_fin` time NOT NULL,
-  `estado` enum('pendiente','pagada','cancelada','finalizada') DEFAULT 'pendiente',
-  `monto` decimal(10,2) DEFAULT NULL,
-  `grabacion_solicitada` tinyint(1) DEFAULT '0',
-  `duracion_horas` int NOT NULL DEFAULT '1',
-  PRIMARY KEY (`reserva_id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `idx_reservas_cancha_fecha_horas` (`cancha_id`,`fecha`,`hora_inicio`,`hora_fin`),
-  KEY `idx_reservas_cancha_fecha` (`cancha_id`,`fecha`,`hora_inicio`,`hora_fin`),
-  CONSTRAINT `reservas_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
-  CONSTRAINT `reservas_ibfk_2` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `reservas`
---
-
-LOCK TABLES `reservas` WRITE;
-/*!40000 ALTER TABLE `reservas` DISABLE KEYS */;
-INSERT INTO `reservas` VALUES (1,1,1,'2025-08-10','20:00:00','21:00:00','cancelada',3500.00,1,1),(2,1,2,'2025-08-15','20:00:00','22:00:00','pendiente',7000.00,1,2),(3,1,2,'2025-08-12','20:00:00','22:00:00','pendiente',12000.00,1,2),(4,1,2,'2025-08-12','10:00:00','12:00:00','pendiente',8000.00,1,2);
-/*!40000 ALTER TABLE `reservas` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `servicios`
---
-
-DROP TABLE IF EXISTS `servicios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `servicios` (
-  `servicio_id` int unsigned NOT NULL AUTO_INCREMENT,
-  `slug` varchar(60) NOT NULL,
-  `nombre` varchar(120) NOT NULL,
-  `descripcion` varchar(255) DEFAULT NULL,
-  `icono` varchar(120) DEFAULT NULL,
-  PRIMARY KEY (`servicio_id`),
-  UNIQUE KEY `uq_servicios_slug` (`slug`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `servicios`
---
-
-LOCK TABLES `servicios` WRITE;
-/*!40000 ALTER TABLE `servicios` DISABLE KEYS */;
-INSERT INTO `servicios` VALUES (1,'restaurant','Restaurant','Servicio de restaurante dentro del club',NULL),(2,'bar','Bar','Bar o confitería',NULL),(3,'pileta','Pileta','Piscina climatizada o al aire libre',NULL),(4,'espacios-verdes','Espacios verdes','Áreas verdes o parques',NULL),(5,'parrillas','Parrillas','Sector con parrillas',NULL),(6,'cabanas','Cabañas','Alojamiento en cabañas',NULL),(7,'salon-eventos','Salón de eventos','Salón multifunción',NULL),(8,'gimnasio','Gimnasio','Área de gimnasio',NULL);
-/*!40000 ALTER TABLE `servicios` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `tarifas_club`
---
-
-DROP TABLE IF EXISTS `tarifas_club`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tarifas_club` (
-  `tarifa_id` int unsigned NOT NULL AUTO_INCREMENT,
-  `club_id` int NOT NULL,
-  `dia_semana` tinyint unsigned NOT NULL,
-  `hora_desde` time NOT NULL,
-  `hora_hasta` time NOT NULL,
-  `precio` int NOT NULL,
-  PRIMARY KEY (`tarifa_id`),
-  UNIQUE KEY `uq_tarifa` (`club_id`,`dia_semana`,`hora_desde`,`hora_hasta`),
-  CONSTRAINT `fk_tarifa_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `tarifas_club`
---
-
-LOCK TABLES `tarifas_club` WRITE;
-/*!40000 ALTER TABLE `tarifas_club` DISABLE KEYS */;
-INSERT INTO `tarifas_club` VALUES (1,1,1,'08:00:00','18:00:00',4000),(2,1,1,'18:00:00','23:00:00',6000),(3,1,2,'08:00:00','18:00:00',4000),(4,1,2,'18:00:00','23:00:00',6000),(5,1,3,'08:00:00','18:00:00',4000),(6,1,3,'18:00:00','23:00:00',6000),(7,1,4,'08:00:00','18:00:00',4000),(8,1,4,'18:00:00','23:00:00',6000),(9,1,5,'08:00:00','18:00:00',4000),(10,1,5,'18:00:00','23:00:00',6000),(11,2,1,'08:00:00','18:00:00',4000),(12,2,1,'18:00:00','23:00:00',6000),(13,2,2,'08:00:00','18:00:00',4000),(14,2,2,'18:00:00','23:00:00',6000);
-/*!40000 ALTER TABLE `tarifas_club` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `usuarios`
---
-
-DROP TABLE IF EXISTS `usuarios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `usuarios` (
-  `usuario_id` int NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(100) NOT NULL,
-  `apellido` varchar(100) DEFAULT NULL,
-  `email` varchar(100) NOT NULL,
-  `telefono` varchar(20) DEFAULT NULL,
-  `provincia_id` int DEFAULT NULL,
-  `localidad_id` int DEFAULT NULL,
-  `contrasena` varchar(255) NOT NULL,
-  `rol` enum('deportista','club') NOT NULL DEFAULT 'deportista',
-  `foto_perfil` text,
-  `puntos` int DEFAULT '0',
-  `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`usuario_id`),
-  UNIQUE KEY `email` (`email`),
-  KEY `idx_usuarios_localidad` (`localidad_id`),
-  CONSTRAINT `fk_usuarios_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidades` (`localidad_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `usuarios`
---
-
-LOCK TABLES `usuarios` WRITE;
-/*!40000 ALTER TABLE `usuarios` DISABLE KEYS */;
-INSERT INTO `usuarios` VALUES (1,'Lucas','Gómez','lucas@example.com',NULL,NULL,NULL,'$2b$10$cKv52M22yGOpwfjaro41LuOfm88qRtbqfHpdA8gUUWfnOAnx2iqi2','deportista',NULL,0,'2025-08-07 15:38:45'),(6,'Ana','Gonzalez','ana.club@example.com',NULL,NULL,NULL,'$2b$10$1Kgyqco3au4RYKX9eR7YeexBbRRDtb.25h5cj.qVJjSa.KPPyjxGC','club',NULL,0,'2025-08-07 21:00:39'),(7,'Luca','Test','luca@example.com',NULL,NULL,NULL,'$2b$10$GI1gHP88yhAArgqFEMTUH.E16vikHMgQd9Y1dj8HYi2rZgZg5GXia','deportista',NULL,0,'2025-08-08 04:44:14'),(8,'Carla','Owner','carla@example.com',NULL,NULL,NULL,'$2b$10$o4zs.gbO0nF5gLMGxEIVy.ijq0EjGOqURSA8a6ybLkpfkfzhiISqO','club',NULL,0,'2025-08-08 04:44:55'),(9,'Fernando','Ramos','fernando_ariel_27@hotmail.com',NULL,NULL,NULL,'$2b$10$xZ4h6O59vFwlSc.4KecQwOzNwJkzF5zZa63EfY22ND6GFptW9B.JK','deportista',NULL,0,'2025-09-06 23:43:08');
-/*!40000 ALTER TABLE `usuarios` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Dumping routines for database 'meclub'
---
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2025-10-07 15:53:41
