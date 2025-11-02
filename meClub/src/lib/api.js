@@ -131,6 +131,192 @@ function extractSchedule(payload) {
   return Array.isArray(schedule) ? schedule : [];
 }
 
+const toNumberOrNull = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toPositiveIntOrZero = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const toNumberOrZero = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toBoolean = (value) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    return ['1', 'true', 'si', 'sí', 'on', 'yes'].includes(normalized);
+  }
+  return false;
+};
+
+function normalizeReservation(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const reservaId = toNumberOrNull(raw.reserva_id);
+  const canchaId = toNumberOrNull(raw.cancha_id);
+
+  return {
+    reservaId,
+    usuarioId: raw.usuario_id != null ? toNumberOrNull(raw.usuario_id) : null,
+    creadoPorId: raw.creado_por_id != null ? toNumberOrNull(raw.creado_por_id) : null,
+    canchaId,
+    canchaNombre: raw.cancha_nombre ?? null,
+    fecha: typeof raw.fecha === 'string' ? raw.fecha : null,
+    horaInicio: typeof raw.hora_inicio === 'string' ? raw.hora_inicio : null,
+    horaFin: typeof raw.hora_fin === 'string' ? raw.hora_fin : null,
+    duracionHoras: toPositiveIntOrZero(raw.duracion_horas),
+    estado: raw.estado ?? null,
+    monto: toNumberOrZero(raw.monto),
+    montoBase: toNumberOrZero(raw.monto_base),
+    montoGrabacion: toNumberOrZero(raw.monto_grabacion),
+    grabacionSolicitada: toBoolean(raw.grabacion_solicitada),
+    tipoReserva: raw.tipo_reserva ?? null,
+    contactoNombre: raw.contacto_nombre ?? '',
+    contactoApellido: raw.contacto_apellido ?? '',
+    contactoTelefono: raw.contacto_telefono ?? '',
+    usuarioNombre: raw.usuario_nombre ?? null,
+    usuarioApellido: raw.usuario_apellido ?? null,
+    usuarioEmail: raw.usuario_email ?? null,
+    creadoPorNombre: raw.creado_por_nombre ?? null,
+    creadoPorApellido: raw.creado_por_apellido ?? null,
+    creadoPorEmail: raw.creado_por_email ?? null,
+    estadoTemporal: raw.estado_temporal ?? null,
+  };
+}
+
+function normalizeReservationList(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeReservation(item))
+    .filter((item) => item && item.reservaId != null && item.canchaId != null);
+}
+
+function extractReservation(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const candidates = [payload.reserva, payload.data?.reserva, payload.data, payload];
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate)) {
+      const normalized = normalizeReservation(candidate);
+      if (normalized) return normalized;
+    }
+  }
+  return null;
+}
+
+function normalizeTotales(raw = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const porEstadoSource =
+    source.por_estado && typeof source.por_estado === 'object' ? source.por_estado : {};
+  const porEstado = Object.fromEntries(
+    Object.entries(porEstadoSource).map(([key, value]) => [key, toNumberOrZero(value)])
+  );
+  return {
+    total: toNumberOrZero(source.total),
+    activas: toNumberOrZero(source.activas),
+    canceladas: toNumberOrZero(source.canceladas),
+    montoTotal: toNumberOrZero(source.monto_total),
+    montoBaseTotal: toNumberOrZero(source.monto_base_total),
+    montoGrabacionTotal: toNumberOrZero(source.monto_grabacion_total),
+    porEstado,
+  };
+}
+
+function normalizeResumenEstados(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => ({
+    estado: item?.estado ?? null,
+    total: toNumberOrZero(item?.total),
+    montoTotal: toNumberOrZero(item?.monto_total),
+    montoBaseTotal: toNumberOrZero(item?.monto_base_total),
+    montoGrabacionTotal: toNumberOrZero(item?.monto_grabacion_total),
+  }));
+}
+
+function extractReservationsPanel(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      fecha: '',
+      horaActual: '',
+      totales: { hoy: normalizeTotales(), semana: normalizeTotales() },
+      resumenEstadosHoy: [],
+      agenda: [],
+      enCurso: { jugandoAhora: [], proximos: [], siguiente: null },
+      club: { clubId: null, precioGrabacion: 0 },
+    };
+  }
+
+  const data = payload.data && typeof payload.data === 'object' ? payload.data : payload;
+  const agenda = Array.isArray(data.agenda)
+    ? data.agenda.map((item) => ({
+        canchaId: toNumberOrNull(item?.cancha_id),
+        canchaNombre: item?.cancha_nombre ?? null,
+        reservas: normalizeReservationList(item?.reservas),
+      }))
+    : [];
+
+  const enCursoData = data.en_curso && typeof data.en_curso === 'object' ? data.en_curso : {};
+  const jugandoAhora = normalizeReservationList(enCursoData.jugando_ahora);
+  const proximos = normalizeReservationList(enCursoData.proximos);
+  const siguiente = enCursoData.siguiente ? normalizeReservation(enCursoData.siguiente) : null;
+
+  const clubData = data.club && typeof data.club === 'object' ? data.club : {};
+
+  return {
+    fecha: typeof data.fecha === 'string' ? data.fecha : '',
+    horaActual: typeof data.hora_actual === 'string' ? data.hora_actual : '',
+    totales: {
+      hoy: normalizeTotales(data.totales?.hoy),
+      semana: normalizeTotales(data.totales?.semana),
+    },
+    resumenEstadosHoy: normalizeResumenEstados(data.resumen_estados_hoy),
+    agenda: agenda.filter((item) => item.canchaId != null),
+    enCurso: {
+      jugandoAhora,
+      proximos,
+      siguiente,
+    },
+    club: {
+      clubId: toNumberOrNull(clubData.club_id),
+      precioGrabacion: toNumberOrZero(clubData.precio_grabacion),
+    },
+  };
+}
+
+function normalizePlayer(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = toNumberOrNull(raw.usuario_id);
+  return {
+    id,
+    nombre: raw.nombre ?? '',
+    apellido: raw.apellido ?? '',
+    telefono: raw.telefono ?? '',
+    nombreCompleto: [raw.nombre, raw.apellido].filter(Boolean).join(' ').trim(),
+  };
+}
+
+function extractPlayerSearch(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const candidates = [payload.usuarios, payload.data?.usuarios, payload.data, payload];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.map((item) => normalizePlayer(item)).filter((item) => item && item.id != null);
+    }
+    if (candidate && typeof candidate === 'object' && Array.isArray(candidate.usuarios)) {
+      return candidate.usuarios
+        .map((item) => normalizePlayer(item))
+        .filter((item) => item && item.id != null);
+    }
+  }
+  return [];
+}
+
 export async function getClubProfile() {
   const response = await api.get('/clubes/mis-datos');
   return extractClub(response);
@@ -550,4 +736,36 @@ export async function getClubSummary({ clubId }) {
     console.warn('getClubSummary error', err);
     throw err;
   }
+}
+
+export async function getReservationsPanel({ date } = {}) {
+  const params = new URLSearchParams();
+  if (date) {
+    params.set('fecha', date);
+  }
+  const search = params.toString();
+  const path = `/reservas/panel${search ? `?${search}` : ''}`;
+  const response = await api.get(path);
+  return extractReservationsPanel(response);
+}
+
+export async function createClubReservation(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Datos de reserva inválidos');
+  }
+  const response = await api.post('/reservas', payload);
+  return extractReservation(response);
+}
+
+export async function searchPlayers(term, { limit } = {}) {
+  const params = new URLSearchParams();
+  if (term) {
+    params.set('q', term);
+  }
+  if (limit) {
+    params.set('limit', limit);
+  }
+  const search = params.toString();
+  const response = await api.get(`/usuarios/buscar${search ? `?${search}` : ''}`);
+  return extractPlayerSearch(response);
 }
