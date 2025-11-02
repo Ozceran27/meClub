@@ -244,6 +244,7 @@ router.patch('/mis-datos', async (req, res) => {
       localidad_id,
       telefono_contacto,
       email_contacto,
+      precio_grabacion,
       direccion,
       latitud,
       longitud,
@@ -328,6 +329,19 @@ router.patch('/mis-datos', async (req, res) => {
       }
     }
 
+    let precioGrabacionValue = precio_grabacion;
+    if (precio_grabacion !== undefined) {
+      if (precio_grabacion === null || precio_grabacion === '') {
+        precioGrabacionValue = null;
+      } else {
+        const numeric = Number(precio_grabacion);
+        if (!Number.isFinite(numeric) || numeric < 0) {
+          return res.status(400).json({ mensaje: 'precio_grabacion inválido' });
+        }
+        precioGrabacionValue = numeric;
+      }
+    }
+
     let direccionValue;
     try {
       direccionValue = parseOptionalString(direccion, 'direccion');
@@ -403,6 +417,7 @@ router.patch('/mis-datos', async (req, res) => {
     if (localidad_id !== undefined) payload.localidad_id = localidadIdValue;
     if (telefono_contacto !== undefined) payload.telefono_contacto = telefonoValue;
     if (email_contacto !== undefined) payload.email_contacto = emailValue;
+    if (precio_grabacion !== undefined) payload.precio_grabacion = precioGrabacionValue;
     if (direccion !== undefined) payload.direccion = direccionValue;
     if (latitud !== undefined) payload.latitud = latitudValue;
     if (longitud !== undefined) payload.longitud = longitudValue;

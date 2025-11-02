@@ -6,6 +6,7 @@ const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
+const ClubesModel = require('../models/clubes.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
 const { getUserId } = require('../utils/auth');
 const { esEstadoReservaActivo } = require('../constants/reservasEstados');
@@ -14,7 +15,21 @@ const { esEstadoReservaActivo } = require('../constants/reservasEstados');
 // POST crear reserva
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { cancha_id, fecha, hora_inicio, duracion_horas = 1, grabacion_solicitada, monto } = req.body;
+    const {
+      cancha_id,
+      fecha,
+      hora_inicio,
+      duracion_horas = 1,
+      grabacion_solicitada,
+      monto,
+      tipo_reserva = 'relacionada',
+      usuario_id: usuario_id_payload = null,
+      contacto_nombre = null,
+      contacto_apellido = null,
+      contacto_telefono = null,
+      monto_base: monto_base_payload = null,
+      monto_grabacion: monto_grabacion_payload = null,
+    } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {
       return res.status(400).json({ mensaje: 'Faltan campos requeridos (cancha_id, fecha, hora_inicio)' });
@@ -43,6 +58,8 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ mensaje: 'Reserva fuera del horario comercial del club' });
     }
 
+    const tipoReservaNormalizado = tipo_reserva === 'privada' ? 'privada' : 'relacionada';
+
     // Solapes
     const haySolape = await ReservasModel.existeSolape({ cancha_id, fecha, hora_inicio, hora_fin });
     if (haySolape) {
@@ -50,29 +67,64 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Precio
-    let total = null;
-    if (monto != null) {
-      // Si lo envían manual (p.ej. checkout externo) respetamos
-      total = Number(monto);
+    const club = await ClubesModel.obtenerClubPorId(cancha.club_id);
+    if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
+
+    const safeNumber = (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    let montoBase = safeNumber(monto_base_payload);
+    let montoGrabacion = safeNumber(monto_grabacion_payload);
+    let total = monto != null ? safeNumber(monto) : null;
+
+    if (montoBase === null) {
+      if (monto != null) {
+        montoBase = safeNumber(monto);
+      } else {
+        const tarifa = await TarifasModel.obtenerTarifaAplicable(cancha.club_id, dia, hora_inicio, hora_fin);
+        const precioHora = tarifa ? Number(tarifa.precio) : Number(cancha.precio || 0);
+        montoBase = Number.isFinite(precioHora) ? precioHora * Number(duracion_horas) : null;
+      }
+    }
+
+    if (grabacion_solicitada) {
+      if (montoGrabacion === null) {
+        const precioGrabacion = safeNumber(club.precio_grabacion);
+        montoGrabacion = precioGrabacion !== null ? precioGrabacion : 0;
+      }
     } else {
-      // Busca tarifa aplicable; si no hay, usa precio base de la cancha
-      const tarifa = await TarifasModel.obtenerTarifaAplicable(cancha.club_id, dia, hora_inicio, hora_fin);
-      const precioHora = tarifa ? Number(tarifa.precio) : Number(cancha.precio || 0);
-      total = precioHora * Number(duracion_horas);
+      montoGrabacion = null;
+    }
+
+    if (total === null) {
+      total = (montoBase || 0) + (montoGrabacion || 0);
     }
 
     const usuarioId = getUserId(req.usuario);
     if (!usuarioId) return res.status(401).json({ mensaje: 'Token sin identificador de usuario' });
 
+    const usuarioReservaId =
+      tipoReservaNormalizado === 'privada' ? usuario_id_payload ?? null : usuarioId;
+
     const reserva = await ReservasModel.crear({
-      usuario_id: usuarioId,
+      usuario_id: usuarioReservaId,
+      creado_por_id: usuarioId,
       cancha_id,
       fecha,
       hora_inicio,
       hora_fin,
       duracion_horas,
       monto: total,
-      grabacion_solicitada
+      monto_base: montoBase,
+      monto_grabacion: montoGrabacion,
+      grabacion_solicitada,
+      tipo_reserva: tipoReservaNormalizado,
+      contacto_nombre,
+      contacto_apellido,
+      contacto_telefono,
     });
 
     return res.status(201).json({ mensaje: 'Reserva creada', reserva });
@@ -114,7 +166,6 @@ router.patch('/:reserva_id/cancelar', verifyToken, async (req, res) => {
     // dueño del club:
     let esClubPropietario = false;
     if (req.usuario.rol === 'club') {
-      const ClubesModel = require('../models/clubes.model');
       const club = await ClubesModel.obtenerClubPorPropietario(usuarioId);
       esClubPropietario = club && club.club_id === data.club_id;
     }
