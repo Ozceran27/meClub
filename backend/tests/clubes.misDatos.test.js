@@ -101,6 +101,7 @@ describe('PATCH /mis-datos', () => {
         localidad_id: 5,
         telefono_contacto: '+54 11 5555-5555',
         email_contacto: 'info@club.com',
+        precio_grabacion: 750,
         direccion: 'Av. Siempre Viva 123',
         latitud: -34.6,
         longitud: -58.4,
@@ -115,6 +116,7 @@ describe('PATCH /mis-datos', () => {
       localidad_id: 5,
       telefono_contacto: '+54 11 5555-5555',
       email_contacto: 'info@club.com',
+      precio_grabacion: 750,
       direccion: 'Av. Siempre Viva 123',
       latitud: -34.6,
       longitud: -58.4,
@@ -131,6 +133,17 @@ describe('PATCH /mis-datos', () => {
     const res = await request(app)
       .patch('/mis-datos')
       .send({ nombre: 'Club', telefono_contacto: 'abc123' });
+
+    expect(res.status).toBe(400);
+    expect(ClubesModel.actualizarPorId).not.toHaveBeenCalled();
+  });
+
+  it('rechaza precio_grabacion negativo', async () => {
+    const app = buildApp();
+
+    const res = await request(app)
+      .patch('/mis-datos')
+      .send({ nombre: 'Club', precio_grabacion: -10 });
 
     expect(res.status).toBe(400);
     expect(ClubesModel.actualizarPorId).not.toHaveBeenCalled();
