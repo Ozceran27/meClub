@@ -136,25 +136,37 @@ const ReservasModel = {
 
   misReservas: async (usuario_id) => {
     const [rows] = await db.query(
-      `SELECT r.*, c.nombre AS cancha_nombre
+      `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha,
+              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.monto,
+              r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
+              r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
+              c.nombre AS cancha_nombre,
+              u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email,
+              uc.nombre AS creado_por_nombre, uc.apellido AS creado_por_apellido,
+              uc.email AS creado_por_email
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
-       WHERE r.usuario_id = ?
+       LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
+       LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
+       WHERE r.usuario_id = ? OR r.creado_por_id = ?
        ORDER BY r.fecha DESC, r.hora_inicio DESC`,
-      [usuario_id]
+      [usuario_id, usuario_id]
     );
     return rows;
   },
 
   reservasPorCanchaFecha: async (cancha_id, fecha) => {
     const [rows] = await db.query(
-      `SELECT r.reserva_id, r.usuario_id, r.cancha_id, r.fecha, r.hora_inicio, r.hora_fin,
+      `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha, r.hora_inicio, r.hora_fin,
               r.duracion_horas, r.estado, r.monto, r.grabacion_solicitada,
               r.tipo_reserva, r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
-              r.creado_por_id, r.monto_base, r.monto_grabacion,
-              u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email
+              r.monto_base, r.monto_grabacion,
+              u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email,
+              uc.nombre AS creado_por_nombre, uc.apellido AS creado_por_apellido,
+              uc.email AS creado_por_email
        FROM reservas r
        LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
+       LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
        WHERE r.cancha_id = ? AND r.fecha = ?
        ORDER BY r.hora_inicio ASC`,
       [cancha_id, fecha]
@@ -162,11 +174,94 @@ const ReservasModel = {
     return rows;
   },
 
-  getByIdConClub: async (reserva_id) => {
+  reservasAgendaClub: async ({ club_id, fecha }) => {
     const [rows] = await db.query(
-      `SELECT r.*, c.club_id
+      `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha,
+              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.monto,
+              r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
+              r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
+              c.nombre AS cancha_nombre,
+              u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email,
+              uc.nombre AS creado_por_nombre, uc.apellido AS creado_por_apellido,
+              uc.email AS creado_por_email
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
+       LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
+       LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
+       WHERE c.club_id = ? AND r.fecha = ?
+       ORDER BY r.hora_inicio ASC, c.cancha_id ASC`,
+      [club_id, fecha]
+    );
+    return rows;
+  },
+
+  resumenReservasClub: async ({ club_id, fecha }) => {
+    const [rows] = await db.query(
+      `SELECT r.estado,
+              COUNT(*) AS total,
+              COALESCE(SUM(r.monto), 0) AS monto_total,
+              COALESCE(SUM(r.monto_base), 0) AS monto_base_total,
+              COALESCE(SUM(r.monto_grabacion), 0) AS monto_grabacion_total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ? AND r.fecha = ?
+       GROUP BY r.estado`,
+      [club_id, fecha]
+    );
+
+    return rows.map((row) => ({
+      estado: row.estado,
+      total: Number(row.total) || 0,
+      monto_total: Number(row.monto_total) || 0,
+      monto_base_total: Number(row.monto_base_total) || 0,
+      monto_grabacion_total: Number(row.monto_grabacion_total) || 0,
+    }));
+  },
+
+  reservasEnCurso: async ({ club_id, fecha, ahora }) => {
+    const horaActual = ahora || '00:00:00';
+    const [rows] = await db.query(
+      `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha,
+              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.monto,
+              r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
+              r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
+              c.nombre AS cancha_nombre,
+              u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email,
+              uc.nombre AS creado_por_nombre, uc.apellido AS creado_por_apellido,
+              uc.email AS creado_por_email,
+              CASE
+                WHEN r.hora_inicio <= ? AND r.hora_fin > ? THEN 'en_curso'
+                WHEN r.hora_inicio > ? THEN 'pendiente'
+                ELSE 'finalizada'
+              END AS estado_temporal
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
+       LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
+       WHERE c.club_id = ?
+         AND r.fecha = ?
+         AND r.estado IN (?)
+         AND r.hora_fin > ?
+       ORDER BY r.hora_inicio ASC`,
+      [
+        horaActual,
+        horaActual,
+        horaActual,
+        club_id,
+        fecha,
+        ESTADOS_RESERVA_ACTIVOS,
+        horaActual,
+      ]
+    );
+    return rows;
+  },
+
+  getByIdConClub: async (reserva_id) => {
+    const [rows] = await db.query(
+      `SELECT r.*, c.club_id, cl.precio_grabacion
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       JOIN clubes cl ON cl.club_id = c.club_id
        WHERE r.reserva_id = ?`,
       [reserva_id]
     );
