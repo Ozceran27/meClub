@@ -3,6 +3,7 @@ const request = require('supertest');
 
 jest.mock('../config/db', () => ({
   query: jest.fn(),
+  getConnection: jest.fn(),
 }));
 
 jest.mock('../middleware/auth.middleware', () => (req, _res, next) => next());

@@ -2,6 +2,7 @@ const mockQuery = jest.fn();
 
 jest.mock('../config/db', () => ({
   query: (...args) => mockQuery(...args),
+  getConnection: jest.fn(),
 }));
 
 const ClubesModel = require('../models/clubes.model');

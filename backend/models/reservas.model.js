@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const { ESTADOS_RESERVA_ACTIVOS, esEstadoReservaActivo } = require('../constants/reservasEstados');
 
+const RESERVA_SOLAPADA_CODE = 'RESERVA_SOLAPADA';
+
 const ReservasModel = {
   existeSolape: async ({ cancha_id, fecha, hora_inicio, hora_fin }) => {
     const [rows] = await db.query(
@@ -28,27 +30,63 @@ const ReservasModel = {
   }) => {
     if (!usuario_id) throw new Error('usuario_id es requerido');
 
-    const [result] = await db.query(
-      `INSERT INTO reservas
-       (usuario_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        usuario_id, cancha_id, fecha, hora_inicio, hora_fin,
-        monto, grabacion_solicitada ? 1 : 0, duracion_horas
-      ]
-    );
+    const connection = await db.getConnection();
 
-    return {
-      reserva_id: result.insertId,
-      usuario_id,
-      cancha_id,
-      fecha,
-      hora_inicio,
-      hora_fin,
-      duracion_horas,
-      monto,
-      grabacion_solicitada: !!grabacion_solicitada
-    };
+    try {
+      await connection.beginTransaction();
+
+      const [solapadas] = await connection.query(
+        `SELECT r.reserva_id
+         FROM reservas r
+         WHERE r.cancha_id = ?
+           AND r.fecha = ?
+           AND NOT (r.hora_fin <= ? OR r.hora_inicio >= ?)
+           AND r.estado IN (?)
+         LIMIT 1
+         FOR UPDATE`,
+        [cancha_id, fecha, hora_inicio, hora_fin, ESTADOS_RESERVA_ACTIVOS]
+      );
+
+      if (solapadas.length > 0) {
+        const error = new Error('El horario solicitado se solapa con otra reserva');
+        error.code = RESERVA_SOLAPADA_CODE;
+        throw error;
+      }
+
+      const [result] = await connection.query(
+        `INSERT INTO reservas
+         (usuario_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          usuario_id, cancha_id, fecha, hora_inicio, hora_fin,
+          monto, grabacion_solicitada ? 1 : 0, duracion_horas
+        ]
+      );
+
+      await connection.commit();
+
+      return {
+        reserva_id: result.insertId,
+        usuario_id,
+        cancha_id,
+        fecha,
+        hora_inicio,
+        hora_fin,
+        duracion_horas,
+        monto,
+        grabacion_solicitada: !!grabacion_solicitada
+      };
+    } catch (error) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Error al revertir la transacción de reserva', rollbackError);
+      }
+
+      throw error;
+    } finally {
+      connection.release();
+    }
   },
 
   misReservas: async (usuario_id) => {
@@ -96,5 +134,7 @@ const ReservasModel = {
     return esEstadoReservaActivo(nuevoEstado);
   },
 };
+
+ReservasModel.RESERVA_SOLAPADA_CODE = RESERVA_SOLAPADA_CODE;
 
 module.exports = ReservasModel;
