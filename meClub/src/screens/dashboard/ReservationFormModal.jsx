@@ -1,0 +1,704 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Card from '../../components/Card';
+import { searchPlayers } from '../../lib/api';
+
+const FIELD_STYLES =
+  'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
+
+const RESERVATION_TYPES = [
+  { value: 'relacionada', label: 'Reserva relacionada' },
+  { value: 'privada', label: 'Reserva privada' },
+];
+
+const DEFAULT_VALUES = {
+  tipo_reserva: 'privada',
+  cancha_id: null,
+  fecha: null,
+  hora_inicio: null,
+  duracion: null,
+  monto_base: null,
+  monto_grabacion: null,
+  con_grabacion: false,
+  contacto_nombre: '',
+  contacto_telefono: '',
+  contacto_email: '',
+  jugador: null,
+};
+
+function useInitialValues(initialValues) {
+  return useMemo(() => {
+    if (!initialValues || typeof initialValues !== 'object') {
+      return DEFAULT_VALUES;
+    }
+
+    const safe = { ...DEFAULT_VALUES, ...initialValues };
+
+    return {
+      ...safe,
+      tipo_reserva: safe.tipo_reserva === 'relacionada' ? 'relacionada' : 'privada',
+      cancha_id: safe.cancha_id ?? null,
+      fecha: safe.fecha ?? null,
+      hora_inicio: safe.hora_inicio ?? null,
+      duracion: safe.duracion ?? null,
+      monto_base:
+        safe.monto_base === null || safe.monto_base === undefined
+          ? null
+          : Number(safe.monto_base),
+      monto_grabacion:
+        safe.monto_grabacion === null || safe.monto_grabacion === undefined
+          ? null
+          : Number(safe.monto_grabacion),
+      con_grabacion: !!safe.con_grabacion,
+      contacto_nombre: safe.contacto_nombre || '',
+      contacto_telefono: safe.contacto_telefono || '',
+      contacto_email: safe.contacto_email || '',
+      jugador: safe.jugador || null,
+    };
+  }, [initialValues]);
+}
+
+function ensureArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value;
+}
+
+function formatCurrency(value) {
+  if (value === null || value === undefined) return '-';
+  if (!Number.isFinite(Number(value))) return '-';
+  try {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      maximumFractionDigits: 0,
+    }).format(Number(value));
+  } catch (err) {
+    return `$${Math.round(Number(value))}`;
+  }
+}
+
+export default function ReservationFormModal({
+  visible,
+  title = 'Crear reserva',
+  onDismiss,
+  onSubmit,
+  loading,
+  initialValues,
+  courts = [],
+  availableDates = [],
+  availableStartTimes = [],
+  durationOptions = [],
+  fetchPlayers = searchPlayers,
+}) {
+  const parsedInitialValues = useInitialValues(initialValues);
+  const [form, setForm] = useState(parsedInitialValues);
+  const [errors, setErrors] = useState({});
+  const [showCourtPicker, setShowCourtPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [playerQuery, setPlayerQuery] = useState('');
+  const [playerResults, setPlayerResults] = useState([]);
+  const [searchingPlayers, setSearchingPlayers] = useState(false);
+  const [playerSearchError, setPlayerSearchError] = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    setForm(parsedInitialValues);
+    setErrors({});
+    setPlayerQuery('');
+    setPlayerResults([]);
+    setPlayerSearchError('');
+    setShowCourtPicker(false);
+    setShowDatePicker(false);
+    setShowStartPicker(false);
+    setShowDurationPicker(false);
+  }, [visible, parsedInitialValues]);
+
+  const selectedCourt = useMemo(() => {
+    if (!form.cancha_id) return null;
+    return ensureArray(courts).find((court) => String(court.cancha_id ?? court.id) === String(form.cancha_id));
+  }, [courts, form.cancha_id]);
+
+  const cameraFee = useMemo(() => {
+    if (form.monto_grabacion !== null && Number.isFinite(Number(form.monto_grabacion))) {
+      return Number(form.monto_grabacion);
+    }
+    if (selectedCourt?.monto_grabacion !== undefined && selectedCourt?.monto_grabacion !== null) {
+      return Number(selectedCourt.monto_grabacion);
+    }
+    if (parsedInitialValues.monto_grabacion !== null && parsedInitialValues.monto_grabacion !== undefined) {
+      return Number(parsedInitialValues.monto_grabacion);
+    }
+    if (selectedCourt?.precio_grabacion !== undefined && selectedCourt?.precio_grabacion !== null) {
+      return Number(selectedCourt.precio_grabacion);
+    }
+    return 0;
+  }, [form.monto_grabacion, parsedInitialValues.monto_grabacion, selectedCourt]);
+
+  const baseAmount = useMemo(() => {
+    if (form.monto_base !== null && Number.isFinite(Number(form.monto_base))) {
+      return Number(form.monto_base);
+    }
+    if (selectedCourt?.monto_base !== undefined && selectedCourt?.monto_base !== null) {
+      return Number(selectedCourt.monto_base);
+    }
+    if (selectedCourt?.precio !== undefined && selectedCourt?.precio !== null) {
+      return Number(selectedCourt.precio);
+    }
+    if (selectedCourt?.precio_dia !== undefined && selectedCourt?.precio_dia !== null) {
+      return Number(selectedCourt.precio_dia);
+    }
+    if (parsedInitialValues.monto_base !== null && parsedInitialValues.monto_base !== undefined) {
+      return Number(parsedInitialValues.monto_base);
+    }
+    return 0;
+  }, [form.monto_base, parsedInitialValues.monto_base, selectedCourt]);
+
+  const totalAmount = useMemo(() => {
+    const base = Number(baseAmount) || 0;
+    const extra = form.con_grabacion ? Number(cameraFee) || 0 : 0;
+    return base + extra;
+  }, [baseAmount, cameraFee, form.con_grabacion]);
+
+  useEffect(() => {
+    if (form.tipo_reserva !== 'relacionada') {
+      return;
+    }
+    const trimmed = playerQuery.trim();
+    if (trimmed.length < 2) {
+      setPlayerResults([]);
+      setPlayerSearchError('');
+      return;
+    }
+    let cancelled = false;
+    setSearchingPlayers(true);
+    setPlayerSearchError('');
+    fetchPlayers(trimmed, { limit: 10 })
+      .then((result) => {
+        if (cancelled) return;
+        if (Array.isArray(result?.results)) {
+          setPlayerResults(result.results);
+        } else if (Array.isArray(result)) {
+          setPlayerResults(result);
+        } else {
+          setPlayerResults([]);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setPlayerSearchError(err?.message || 'No pudimos buscar jugadores');
+        setPlayerResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSearchingPlayers(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchPlayers, form.tipo_reserva, playerQuery]);
+
+  const handleChange = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSelectValue = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: null }));
+  };
+
+  const handleTypeChange = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      tipo_reserva: value,
+      jugador: value === 'relacionada' ? prev.jugador : null,
+      contacto_nombre: value === 'privada' ? prev.contacto_nombre : '',
+      contacto_telefono: value === 'privada' ? prev.contacto_telefono : '',
+      contacto_email: value === 'privada' ? prev.contacto_email : '',
+    }));
+    setErrors((prev) => ({
+      ...prev,
+      jugador: null,
+      contacto_nombre: null,
+      contacto_telefono: null,
+    }));
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+    if (!form.tipo_reserva) {
+      nextErrors.tipo_reserva = 'Seleccioná un tipo de reserva';
+    }
+
+    if (!form.cancha_id) {
+      nextErrors.cancha_id = 'Seleccioná una cancha';
+    }
+
+    if (!form.fecha) {
+      nextErrors.fecha = 'Seleccioná una fecha';
+    }
+
+    if (!form.hora_inicio) {
+      nextErrors.hora_inicio = 'Seleccioná un horario';
+    }
+
+    if (!form.duracion) {
+      nextErrors.duracion = 'Seleccioná una duración';
+    }
+
+    if (form.tipo_reserva === 'privada') {
+      if (!form.contacto_nombre || !String(form.contacto_nombre).trim()) {
+        nextErrors.contacto_nombre = 'Ingresá un nombre de contacto';
+      }
+      if (!form.contacto_telefono || !String(form.contacto_telefono).trim()) {
+        nextErrors.contacto_telefono = 'Ingresá un teléfono de contacto';
+      }
+    }
+
+    if (form.tipo_reserva === 'relacionada') {
+      if (!form.jugador || !form.jugador.id) {
+        nextErrors.jugador = 'Seleccioná un jugador';
+      }
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = () => {
+    if (loading) return;
+    if (!validate()) return;
+
+    const payload = {
+      ...form,
+      cancha_id: form.cancha_id ? Number(form.cancha_id) : null,
+      duracion: form.duracion ? Number(form.duracion) : null,
+      monto_base: Number(baseAmount) || 0,
+      monto_grabacion: form.con_grabacion ? Number(cameraFee) || 0 : 0,
+      monto_total: Number(totalAmount) || 0,
+      jugador_id: form.jugador?.id ?? form.jugador?.jugador_id ?? null,
+    };
+
+    onSubmit?.(payload);
+  };
+
+  const renderPickerModal = ({ visible: pickerVisible, onClose, options, selectedValue, onSelect, title: pickerTitle, emptyText = 'No hay datos disponibles' }) => {
+    if (!pickerVisible) return null;
+    return (
+      <View className="absolute inset-0 bg-black/50 items-center justify-center px-4">
+        <Card className="w-full max-w-xl max-h-[480px]">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-white text-lg font-semibold">{pickerTitle}</Text>
+            <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
+              <Ionicons name="close" size={18} color="white" />
+            </Pressable>
+          </View>
+          <ScrollView className="max-h-[360px]" contentContainerClassName="pb-2">
+            {ensureArray(options).map((option) => {
+              const value = option.value ?? option.id ?? option.key ?? option;
+              const label = option.label ?? option.nombre ?? option.title ?? String(option);
+              const active = String(selectedValue) === String(value);
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => {
+                    onSelect(value, option);
+                    onClose();
+                  }}
+                  className={`rounded-xl px-4 py-3 mb-2 border border-white/5 ${
+                    active ? 'bg-white/10 border-mc-warn' : 'bg-white/5'
+                  }`}
+                >
+                  <Text className="text-white text-base font-medium">{label}</Text>
+                  {option.description ? (
+                    <Text className="text-white/60 text-sm mt-1">{option.description}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+            {ensureArray(options).length === 0 ? (
+              <Text className="text-white/60 text-sm text-center">{emptyText}</Text>
+            ) : null}
+          </ScrollView>
+        </Card>
+      </View>
+    );
+  };
+
+  const renderPlayerResults = () => {
+    if (form.tipo_reserva !== 'relacionada') return null;
+    if (playerQuery.trim().length < 2) return null;
+
+    if (searchingPlayers) {
+      return (
+        <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex-row items-center gap-2">
+          <ActivityIndicator color="#FACC15" />
+          <Text className="text-white/70 text-sm">Buscando jugadores...</Text>
+        </View>
+      );
+    }
+
+    if (playerSearchError) {
+      return (
+        <View className="mt-2 rounded-2xl border border-mc-warn/40 bg-mc-warn/10 px-4 py-3">
+          <Text className="text-mc-warn text-sm">{playerSearchError}</Text>
+        </View>
+      );
+    }
+
+    if (playerResults.length === 0) {
+      return (
+        <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <Text className="text-white/60 text-sm">No encontramos jugadores con esa búsqueda</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View className="mt-2 rounded-2xl border border-white/10 bg-white/5">
+        {playerResults.map((player) => {
+          const value = player.id ?? player.jugador_id;
+          const active = form.jugador && String(form.jugador.id ?? form.jugador.jugador_id) === String(value);
+          return (
+            <Pressable
+              key={value}
+              onPress={() => {
+                handleChange('jugador', player);
+                setErrors((prev) => ({ ...prev, jugador: null }));
+              }}
+              className={`px-4 py-3 border-b border-white/5 ${active ? 'bg-white/10' : 'bg-transparent'}`}
+            >
+              <Text className="text-white text-sm font-medium">{player.nombre ?? player.name}</Text>
+              {player.email ? <Text className="text-white/60 text-xs mt-1">{player.email}</Text> : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  };
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent
+      visible={visible}
+      onRequestClose={() => {
+        if (!loading) onDismiss?.();
+      }}
+    >
+      <View className="flex-1 bg-black/60 items-center justify-center px-4">
+        <Card className="w-full max-w-3xl max-h-[90vh]">
+          <View className="flex-row items-center justify-between mb-6">
+            <View>
+              <Text className="text-white text-2xl font-bold tracking-tight">{title}</Text>
+              <Text className="text-white/60 text-sm mt-1">
+                Seleccioná la cancha, fecha y horario para registrar la reserva.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                if (!loading) onDismiss?.();
+              }}
+              className="h-10 w-10 items-center justify-center rounded-full bg-white/5"
+            >
+              <Ionicons name="close" size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
+
+          <ScrollView className="flex-1" contentContainerClassName="pb-6" showsVerticalScrollIndicator={false}>
+            <View className="gap-6">
+              <View>
+                <Text className="text-white/70 text-sm mb-3">Tipo de reserva</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {RESERVATION_TYPES.map((type) => {
+                    const active = form.tipo_reserva === type.value;
+                    return (
+                      <Pressable
+                        key={type.value}
+                        onPress={() => handleTypeChange(type.value)}
+                        className={`rounded-2xl px-4 py-2 border text-sm font-medium ${
+                          active ? 'border-mc-warn bg-mc-warn/20 text-mc-warn' : 'border-white/10 bg-white/5 text-white/80'
+                        }`}
+                      >
+                        <Text className={active ? 'text-mc-warn' : 'text-white/80'}>{type.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {errors.tipo_reserva ? (
+                  <Text className="text-mc-warn text-xs mt-1">{errors.tipo_reserva}</Text>
+                ) : null}
+              </View>
+
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Cancha *</Text>
+                <Pressable
+                  onPress={() => setShowCourtPicker(true)}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                >
+                  <Text className="text-white text-sm">
+                    {selectedCourt?.nombre ||
+                      ensureArray(courts).find((court) => String(court.cancha_id ?? court.id) === String(form.cancha_id))?.nombre ||
+                      'Seleccioná una cancha'}
+                  </Text>
+                </Pressable>
+                {errors.cancha_id ? (
+                  <Text className="text-mc-warn text-xs mt-1">{errors.cancha_id}</Text>
+                ) : null}
+              </View>
+
+              <View className="flex-row flex-wrap gap-4">
+                <View className="flex-1 min-w-[160px]">
+                  <Text className="text-white/70 text-sm mb-2">Fecha *</Text>
+                  <Pressable
+                    onPress={() => setShowDatePicker(true)}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                  >
+                    <Text className="text-white text-sm">
+                      {ensureArray(availableDates).find((option) => String(option.value ?? option.id ?? option) === String(form.fecha))?.label ||
+                        form.fecha ||
+                        'Seleccioná una fecha'}
+                    </Text>
+                  </Pressable>
+                  {errors.fecha ? <Text className="text-mc-warn text-xs mt-1">{errors.fecha}</Text> : null}
+                </View>
+
+                <View className="flex-1 min-w-[160px]">
+                  <Text className="text-white/70 text-sm mb-2">Hora de inicio *</Text>
+                  <Pressable
+                    onPress={() => setShowStartPicker(true)}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                  >
+                    <Text className="text-white text-sm">
+                      {ensureArray(availableStartTimes).find((option) => String(option.value ?? option.id ?? option) === String(form.hora_inicio))?.label ||
+                        form.hora_inicio ||
+                        'Seleccioná un horario'}
+                    </Text>
+                  </Pressable>
+                  {errors.hora_inicio ? (
+                    <Text className="text-mc-warn text-xs mt-1">{errors.hora_inicio}</Text>
+                  ) : null}
+                </View>
+
+                <View className="flex-1 min-w-[160px]">
+                  <Text className="text-white/70 text-sm mb-2">Duración (minutos) *</Text>
+                  <Pressable
+                    onPress={() => setShowDurationPicker(true)}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                  >
+                    <Text className="text-white text-sm">
+                      {ensureArray(durationOptions).find((option) => String(option.value ?? option.id ?? option) === String(form.duracion))?.label ||
+                        (form.duracion ? `${form.duracion} minutos` : 'Seleccioná duración')}
+                    </Text>
+                  </Pressable>
+                  {errors.duracion ? (
+                    <Text className="text-mc-warn text-xs mt-1">{errors.duracion}</Text>
+                  ) : null}
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Cámara y grabación</Text>
+                <View className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <View>
+                    <Text className="text-white text-sm font-medium">Agregar grabación del turno</Text>
+                    <Text className="text-white/50 text-xs">
+                      Se sumará el costo adicional solo si activás la grabación.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={!!form.con_grabacion}
+                    onValueChange={(value) => handleChange('con_grabacion', value)}
+                  />
+                </View>
+              </View>
+
+              <View className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                <Text className="text-white text-sm font-semibold mb-3">Resumen de precios</Text>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-white/70 text-sm">Monto base</Text>
+                  <Text className="text-white text-sm font-medium">{formatCurrency(baseAmount)}</Text>
+                </View>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-white/70 text-sm">Grabación</Text>
+                  <Text className="text-white text-sm font-medium">
+                    {form.con_grabacion ? formatCurrency(cameraFee) : formatCurrency(0)}
+                  </Text>
+                </View>
+                <View className="h-px bg-white/5 my-2" />
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-white text-sm font-semibold">Total</Text>
+                  <Text className="text-mc-warn text-base font-semibold">{formatCurrency(totalAmount)}</Text>
+                </View>
+              </View>
+
+              {form.tipo_reserva === 'privada' ? (
+                <View className="gap-4">
+                  <Text className="text-white/70 text-sm">Datos de contacto</Text>
+                  <View>
+                    <Text className="text-white/70 text-xs mb-1">Nombre *</Text>
+                    <TextInput
+                      value={form.contacto_nombre}
+                      onChangeText={(text) => handleChange('contacto_nombre', text)}
+                      placeholder="Nombre y apellido"
+                      placeholderTextColor="#94A3B8"
+                      className={FIELD_STYLES}
+                    />
+                    {errors.contacto_nombre ? (
+                      <Text className="text-mc-warn text-xs mt-1">{errors.contacto_nombre}</Text>
+                    ) : null}
+                  </View>
+                  <View>
+                    <Text className="text-white/70 text-xs mb-1">Teléfono *</Text>
+                    <TextInput
+                      value={form.contacto_telefono}
+                      onChangeText={(text) => handleChange('contacto_telefono', text)}
+                      keyboardType="phone-pad"
+                      placeholder="Ej: 3511234567"
+                      placeholderTextColor="#94A3B8"
+                      className={FIELD_STYLES}
+                    />
+                    {errors.contacto_telefono ? (
+                      <Text className="text-mc-warn text-xs mt-1">{errors.contacto_telefono}</Text>
+                    ) : null}
+                  </View>
+                  <View>
+                    <Text className="text-white/70 text-xs mb-1">Email</Text>
+                    <TextInput
+                      value={form.contacto_email}
+                      onChangeText={(text) => handleChange('contacto_email', text)}
+                      keyboardType="email-address"
+                      placeholder="nombre@correo.com"
+                      placeholderTextColor="#94A3B8"
+                      className={FIELD_STYLES}
+                      autoCapitalize="none"
+                    />
+                  </View>
+                </View>
+              ) : null}
+
+              {form.tipo_reserva === 'relacionada' ? (
+                <View>
+                  <Text className="text-white/70 text-sm mb-2">Buscar jugador *</Text>
+                  <TextInput
+                    value={playerQuery}
+                    onChangeText={(text) => setPlayerQuery(text)}
+                    placeholder="Buscá por nombre o email"
+                    placeholderTextColor="#94A3B8"
+                    className={FIELD_STYLES}
+                    autoCapitalize="none"
+                  />
+                  {errors.jugador ? (
+                    <Text className="text-mc-warn text-xs mt-1">{errors.jugador}</Text>
+                  ) : null}
+                  {form.jugador ? (
+                    <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <Text className="text-white text-sm font-medium">
+                        Jugador seleccionado: {form.jugador.nombre ?? form.jugador.name}
+                      </Text>
+                      {form.jugador.email ? (
+                        <Text className="text-white/60 text-xs mt-1">{form.jugador.email}</Text>
+                      ) : null}
+                      <Pressable
+                        onPress={() => handleChange('jugador', null)}
+                        className="mt-3 self-start rounded-xl border border-white/10 bg-white/5 px-3 py-1"
+                      >
+                        <Text className="text-white/70 text-xs">Limpiar selección</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  {renderPlayerResults()}
+                </View>
+              ) : null}
+            </View>
+          </ScrollView>
+
+          <View className="flex-row items-center justify-end gap-3 border-t border-white/5 pt-4">
+            <Pressable
+              onPress={() => {
+                if (!loading) onDismiss?.();
+              }}
+              disabled={loading}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 hover:bg-white/10"
+            >
+              <Text className="text-white/80 text-sm font-medium">Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSubmit}
+              disabled={loading}
+              className="rounded-2xl bg-mc-warn px-5 py-2 hover:bg-mc-warn/80"
+            >
+              <Text className="text-[#0A0F1D] text-sm font-semibold">
+                {loading ? 'Guardando...' : 'Guardar reserva'}
+              </Text>
+            </Pressable>
+          </View>
+        </Card>
+        {renderPickerModal({
+          visible: showCourtPicker,
+          onClose: () => setShowCourtPicker(false),
+          options: ensureArray(courts).map((court) => ({
+            value: court.cancha_id ?? court.id,
+            label: court.nombre ?? `Cancha #${court.cancha_id ?? court.id}`,
+            description: court.descripcion ?? court.deporte?.nombre,
+            raw: court,
+          })),
+          selectedValue: form.cancha_id,
+          onSelect: (value, option) => {
+            handleSelectValue('cancha_id', value);
+            if (option?.raw?.monto_base !== undefined) {
+              handleChange('monto_base', Number(option.raw.monto_base));
+            } else if (option?.raw?.precio !== undefined) {
+              handleChange('monto_base', Number(option.raw.precio));
+            }
+            if (option?.raw?.monto_grabacion !== undefined) {
+              handleChange('monto_grabacion', Number(option.raw.monto_grabacion));
+            }
+          },
+          title: 'Seleccioná una cancha',
+          emptyText: 'No encontramos canchas disponibles',
+        })}
+        {renderPickerModal({
+          visible: showDatePicker,
+          onClose: () => setShowDatePicker(false),
+          options: ensureArray(availableDates),
+          selectedValue: form.fecha,
+          onSelect: (value, option) => handleSelectValue('fecha', option?.value ?? option?.id ?? option),
+          title: 'Seleccioná una fecha',
+          emptyText: 'No encontramos fechas disponibles',
+        })}
+        {renderPickerModal({
+          visible: showStartPicker,
+          onClose: () => setShowStartPicker(false),
+          options: ensureArray(availableStartTimes),
+          selectedValue: form.hora_inicio,
+          onSelect: (value, option) => handleSelectValue('hora_inicio', option?.value ?? option?.id ?? option),
+          title: 'Seleccioná un horario',
+          emptyText: 'No encontramos horarios disponibles',
+        })}
+        {renderPickerModal({
+          visible: showDurationPicker,
+          onClose: () => setShowDurationPicker(false),
+          options: ensureArray(durationOptions),
+          selectedValue: form.duracion,
+          onSelect: (value, option) =>
+            handleSelectValue('duracion', Number(option?.value ?? option?.id ?? option)),
+          title: 'Seleccioná la duración',
+          emptyText: 'No encontramos duraciones disponibles',
+        })}
+      </View>
+    </Modal>
+  );
+}
