@@ -58,6 +58,27 @@ const UsuariosModel = {
     );
     return result.affectedRows === 1;
   },
+
+  buscarJugadores: async ({ term, limit = 10 }) => {
+    const numericLimit = Number.parseInt(limit, 10);
+    const sanitizedLimit = Number.isInteger(numericLimit) && numericLimit > 0 ? numericLimit : 10;
+    const likeTerm = `%${term}%`;
+    const [rows] = await db.query(
+      `SELECT usuario_id, nombre, apellido, telefono
+       FROM usuarios
+       WHERE rol <> 'club'
+         AND (
+           nombre LIKE ? OR
+           apellido LIKE ? OR
+           email LIKE ? OR
+           telefono LIKE ?
+         )
+       ORDER BY nombre ASC, apellido ASC
+       LIMIT ?`,
+      [likeTerm, likeTerm, likeTerm, likeTerm, sanitizedLimit]
+    );
+    return rows;
+  },
 };
 
 module.exports = UsuariosModel;
