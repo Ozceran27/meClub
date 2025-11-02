@@ -8,6 +8,7 @@ const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
 const { getUserId } = require('../utils/auth');
+const { esEstadoReservaActivo } = require('../constants/reservasEstados');
 // -----------------------------------------------------------------------------------------------
 
 // POST crear reserva
@@ -118,7 +119,7 @@ router.patch('/:reserva_id/cancelar', verifyToken, async (req, res) => {
       return res.status(403).json({ mensaje: 'No tienes permiso para cancelar esta reserva' });
     }
 
-    if (data.estado !== 'pendiente') {
+    if (!esEstadoReservaActivo(data.estado)) {
       return res.status(400).json({ mensaje: `No se puede cancelar una reserva en estado ${data.estado}` });
     }
 

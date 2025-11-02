@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { ESTADOS_RESERVA_ACTIVOS, esEstadoReservaActivo } = require('../constants/reservasEstados');
 
 const ReservasModel = {
   existeSolape: async ({ cancha_id, fecha, hora_inicio, hora_fin }) => {
@@ -8,8 +9,9 @@ const ReservasModel = {
        WHERE r.cancha_id = ?
          AND r.fecha = ?
          AND NOT (r.hora_fin <= ? OR r.hora_inicio >= ?)
+         AND r.estado IN (?)
        LIMIT 1`,
-      [cancha_id, fecha, hora_inicio, hora_fin]
+      [cancha_id, fecha, hora_inicio, hora_fin, ESTADOS_RESERVA_ACTIVOS]
     );
     return rows.length > 0;
   },
@@ -91,6 +93,7 @@ const ReservasModel = {
       `UPDATE reservas SET estado = ? WHERE reserva_id = ?`,
       [nuevoEstado, reserva_id]
     );
+    return esEstadoReservaActivo(nuevoEstado);
   },
 };
 
