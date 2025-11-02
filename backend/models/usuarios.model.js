@@ -36,7 +36,9 @@ const UsuariosModel = {
 
   buscarPorId: async (usuario_id) => {
     const [rows] = await db.query(
-      'SELECT usuario_id, nombre, apellido, email, rol FROM usuarios WHERE usuario_id = ?',
+      `SELECT usuario_id, nombre, apellido, email, rol, telefono
+       FROM usuarios
+       WHERE usuario_id = ?`,
       [usuario_id]
     );
     return rows[0] || null;
