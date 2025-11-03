@@ -225,6 +225,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       usuario_id: usuarioReservaId,
       creado_por_id: usuarioIdToken,
       cancha_id,
+      club_id: cancha.club_id,
       fecha,
       hora_inicio,
       hora_fin,

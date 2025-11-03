@@ -22,6 +22,7 @@ const ReservasModel = {
     usuario_id = null,
     creado_por_id,
     cancha_id,
+    club_id,
     fecha,
     hora_inicio,
     hora_fin,
@@ -37,6 +38,7 @@ const ReservasModel = {
   }) => {
     if (!creado_por_id) throw new Error('creado_por_id es requerido');
     if (!cancha_id) throw new Error('cancha_id es requerido');
+    if (club_id === undefined || club_id === null) throw new Error('club_id es requerido');
     if (!fecha) throw new Error('fecha es requerida');
     if (!hora_inicio) throw new Error('hora_inicio es requerida');
 
@@ -78,12 +80,13 @@ const ReservasModel = {
 
       const [result] = await connection.query(
         `INSERT INTO reservas
-         (usuario_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas,
+         (usuario_id, club_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas,
           tipo_reserva, contacto_nombre, contacto_apellido, contacto_telefono, creado_por_id,
           monto_base, monto_grabacion)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           usuario_id,
+          club_id,
           cancha_id,
           fecha,
           hora_inicio,
@@ -106,6 +109,7 @@ const ReservasModel = {
       return {
         reserva_id: result.insertId,
         usuario_id,
+        club_id,
         cancha_id,
         fecha,
         hora_inicio,
@@ -188,7 +192,7 @@ const ReservasModel = {
        JOIN canchas c ON c.cancha_id = r.cancha_id
        LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
        LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
-       WHERE c.club_id = ? AND r.fecha = ?
+       WHERE r.club_id = ? AND r.fecha = ?
        ORDER BY r.hora_inicio ASC, c.cancha_id ASC`,
       [club_id, fecha]
     );
@@ -203,8 +207,7 @@ const ReservasModel = {
               COALESCE(SUM(r.monto_base), 0) AS monto_base_total,
               COALESCE(SUM(r.monto_grabacion), 0) AS monto_grabacion_total
        FROM reservas r
-       JOIN canchas c ON c.cancha_id = r.cancha_id
-       WHERE c.club_id = ? AND r.fecha = ?
+       WHERE r.club_id = ? AND r.fecha = ?
        GROUP BY r.estado`,
       [club_id, fecha]
     );
@@ -238,7 +241,7 @@ const ReservasModel = {
        JOIN canchas c ON c.cancha_id = r.cancha_id
        LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
        LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
-       WHERE c.club_id = ?
+       WHERE r.club_id = ?
          AND r.fecha = ?
          AND r.estado IN (?)
          AND r.hora_fin > ?
@@ -258,10 +261,10 @@ const ReservasModel = {
 
   getByIdConClub: async (reserva_id) => {
     const [rows] = await db.query(
-      `SELECT r.*, c.club_id, cl.precio_grabacion
+      `SELECT r.*, c.club_id AS cancha_club_id, cl.precio_grabacion
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
-       JOIN clubes cl ON cl.club_id = c.club_id
+       JOIN clubes cl ON cl.club_id = r.club_id
        WHERE r.reserva_id = ?`,
       [reserva_id]
     );
