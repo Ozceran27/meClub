@@ -462,6 +462,12 @@ export default function ReservasScreen({ summary, go }) {
 
                 <View>
                   {segments.map((segment, segmentIndex) => {
+                    const slotsCovered =
+                      segment && Number.isFinite(segment.slotsCovered)
+                        ? Math.max(1, segment.slotsCovered)
+                        : 1;
+                    const containerHeight = SLOT_HEIGHT * slotsCovered;
+
                     if (segment.type === 'reservation' && segment.reservation) {
                       const { reservation } = segment;
                       const camera = reservation.grabacionSolicitada;
@@ -477,24 +483,28 @@ export default function ReservasScreen({ summary, go }) {
                       return (
                         <View
                           key={segment.key || `reservation-${segmentIndex}`}
-                          style={{ height: SLOT_HEIGHT * segment.slotsCovered - 6 }}
-                          className={`mx-3 mt-2 rounded-2xl border px-4 py-3 shadow-sm ${color.bg} ${color.border}`}
+                          style={{ height: containerHeight }}
+                          className="border-b border-white/5 px-3 py-2"
                         >
-                          <View className="flex-row items-center justify-between">
-                            <Text className={`text-sm font-semibold ${color.text}`} numberOfLines={1}>
-                              {contactName || 'Reserva privada'}
+                          <View
+                            className={`flex-1 rounded-2xl border px-4 py-3 shadow-sm ${color.bg} ${color.border}`}
+                          >
+                            <View className="flex-row items-center justify-between">
+                              <Text className={`text-sm font-semibold ${color.text}`} numberOfLines={1}>
+                                {contactName || 'Reserva privada'}
+                              </Text>
+                              {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
+                            </View>
+                            <Text className="text-white text-[13px] mt-1">{timeRange}</Text>
+                            <Text className="text-white/60 text-[11px] mt-1" numberOfLines={2}>
+                              Estado: {reservation.estado || 'sin estado'}
                             </Text>
-                            {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
+                            {reservation.contactoTelefono ? (
+                              <Text className="text-white/40 text-[11px] mt-1">
+                                {reservation.contactoTelefono}
+                              </Text>
+                            ) : null}
                           </View>
-                          <Text className="text-white text-[13px] mt-1">{timeRange}</Text>
-                          <Text className="text-white/60 text-[11px] mt-1" numberOfLines={2}>
-                            Estado: {reservation.estado || 'sin estado'}
-                          </Text>
-                          {reservation.contactoTelefono ? (
-                            <Text className="text-white/40 text-[11px] mt-1">
-                              {reservation.contactoTelefono}
-                            </Text>
-                          ) : null}
                         </View>
                       );
                     }
@@ -503,10 +513,10 @@ export default function ReservasScreen({ summary, go }) {
                       return (
                         <View
                           key={segment.key || `empty-${segmentIndex}`}
-                          style={{ height: SLOT_HEIGHT }}
-                          className="border-b border-dashed border-white/5 px-3"
+                          style={{ height: containerHeight }}
+                          className="border-b border-dashed border-white/5 px-3 py-2"
                         >
-                          <View className="h-full rounded-2xl border border-white/5 border-dashed" />
+                          <View className="flex-1 rounded-2xl border border-white/5 border-dashed" />
                         </View>
                       );
                     }
@@ -514,8 +524,8 @@ export default function ReservasScreen({ summary, go }) {
                     return (
                       <View
                         key={segment.key || `skip-${segmentIndex}`}
-                        style={{ height: SLOT_HEIGHT }}
-                        className="border-b border-transparent"
+                        style={{ height: containerHeight }}
+                        className="border-b border-transparent px-3 py-2"
                       />
                     );
                   })}
