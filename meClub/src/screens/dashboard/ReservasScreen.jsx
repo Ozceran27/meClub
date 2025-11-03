@@ -89,6 +89,96 @@ function formatCurrency(value) {
   }
 }
 
+function ensureTimeWithSeconds(value) {
+  if (!value) return '';
+  const trimmed = String(value).trim();
+  if (!trimmed) return '';
+  const parts = trimmed.split(':');
+  const parsePart = (part) => {
+    const numeric = Number(part);
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+  if (parts.length === 3) {
+    const [hRaw, mRaw, sRaw] = parts;
+    const h = parsePart(hRaw);
+    const m = parsePart(mRaw);
+    const s = parsePart(sRaw);
+    if (h == null || m == null || s == null) {
+      return trimmed;
+    }
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+  if (parts.length === 2) {
+    const [hRaw, mRaw] = parts;
+    const h = parsePart(hRaw);
+    const m = parsePart(mRaw);
+    if (h == null || m == null) {
+      return trimmed;
+    }
+    return `${pad(h)}:${pad(m)}:00`;
+  }
+  return trimmed;
+}
+
+function normalizeReservationDraft(draft, fallbackDate) {
+  if (!draft || typeof draft !== 'object') {
+    return null;
+  }
+
+  const fecha = draft.fecha && String(draft.fecha).trim() ? String(draft.fecha).trim() : fallbackDate;
+  const horaInicio = ensureTimeWithSeconds(draft.hora_inicio);
+  const duracionHorasNumero = Number.parseInt(draft.duracion_horas, 10);
+  const tipoReserva = draft.tipo_reserva === 'privada' ? 'privada' : 'relacionada';
+
+  const payload = {
+    fecha,
+    hora_inicio: horaInicio,
+    duracion_horas: Number.isInteger(duracionHorasNumero) ? duracionHorasNumero : undefined,
+    grabacion_solicitada: !!draft.grabacion_solicitada,
+    tipo_reserva: tipoReserva,
+  };
+
+  if (draft.cancha_id !== undefined && draft.cancha_id !== null) {
+    const canchaNumero = Number(draft.cancha_id);
+    if (!Number.isNaN(canchaNumero)) {
+      payload.cancha_id = canchaNumero;
+    }
+  }
+
+  const contactoNombre = draft.contacto_nombre && String(draft.contacto_nombre).trim();
+  if (contactoNombre) {
+    payload.contacto_nombre = contactoNombre;
+  }
+
+  const contactoApellido = draft.contacto_apellido && String(draft.contacto_apellido).trim();
+  if (contactoApellido) {
+    payload.contacto_apellido = contactoApellido;
+  }
+
+  const contactoTelefono = draft.contacto_telefono && String(draft.contacto_telefono).trim();
+  if (contactoTelefono) {
+    payload.contacto_telefono = contactoTelefono;
+  }
+
+  const contactoEmail = draft.contacto_email && String(draft.contacto_email).trim();
+  if (contactoEmail) {
+    payload.contacto_email = contactoEmail;
+  }
+
+  if (tipoReserva === 'relacionada') {
+    const jugadorCandidate =
+      draft.jugador_usuario_id ?? draft.jugador?.id ?? draft.jugador?.jugador_id ?? null;
+    if (jugadorCandidate !== null && jugadorCandidate !== undefined) {
+      const jugadorId = Number(jugadorCandidate);
+      if (!Number.isNaN(jugadorId)) {
+        payload.jugador_usuario_id = jugadorId;
+      }
+    }
+  }
+
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+}
+
 function buildTimeSlots(reservations, slotMinutes = SLOT_MINUTES) {
   const minutesList = Array.isArray(reservations)
     ? reservations
@@ -282,11 +372,6 @@ export default function ReservasScreen({ summary, go }) {
     return options;
   }, []);
 
-  const durationOptions = useMemo(
-    () => [30, 45, 60, 75, 90, 120].map((minutes) => ({ value: minutes, label: `${minutes} minutos` })),
-    []
-  );
-
   const handleChangeDateBy = useCallback(
     (offset) => {
       const current = selectedDateObj || new Date();
@@ -307,14 +392,16 @@ export default function ReservasScreen({ summary, go }) {
   }, [dateInput, selectedDate]);
 
   const handleCreateReservation = useCallback(
-    async (payload) => {
-      if (!payload) return;
+    async (draft) => {
+      if (!draft) return;
+      const normalizedPayload = normalizeReservationDraft(draft, selectedDate);
+      if (!normalizedPayload) return;
+
       try {
         setCreating(true);
-        const fecha = payload.fecha || selectedDate;
-        await createClubReservation({ ...payload, fecha });
+        await createClubReservation(normalizedPayload);
         setShowModal(false);
-        setSelectedDate(fecha);
+        setSelectedDate(normalizedPayload.fecha || selectedDate);
         setRefreshToken((token) => token + 1);
       } catch (err) {
         Alert.alert('No pudimos crear la reserva', err?.message || 'Intentá de nuevo en unos minutos.');
@@ -654,7 +741,7 @@ export default function ReservasScreen({ summary, go }) {
         courts={courts}
         availableDates={availableDates}
         availableStartTimes={availableStartTimes}
-        durationOptions={durationOptions}
+        cameraPrice={panelData?.club?.precioGrabacion}
       />
     </>
   );

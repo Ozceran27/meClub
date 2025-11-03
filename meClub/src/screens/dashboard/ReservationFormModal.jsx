@@ -26,15 +26,24 @@ const DEFAULT_VALUES = {
   cancha_id: null,
   fecha: null,
   hora_inicio: null,
-  duracion: null,
+  duracion_horas: null,
   monto_base: null,
   monto_grabacion: null,
   con_grabacion: false,
   contacto_nombre: '',
+  contacto_apellido: '',
   contacto_telefono: '',
   contacto_email: '',
   jugador: null,
 };
+
+const DURATION_HOURS_OPTIONS = Array.from({ length: 8 }, (_, index) => {
+  const hours = index + 1;
+  return {
+    value: hours,
+    label: `${hours} hora${hours === 1 ? '' : 's'}`,
+  };
+});
 
 function useInitialValues(initialValues) {
   return useMemo(() => {
@@ -44,13 +53,27 @@ function useInitialValues(initialValues) {
 
     const safe = { ...DEFAULT_VALUES, ...initialValues };
 
+    const hoursValue = Number(safe.duracion_horas);
+    const minutesValue = Number(safe.duracion);
+    let normalizedHours = null;
+    if (safe.duracion_horas !== null && safe.duracion_horas !== undefined && Number.isFinite(hoursValue)) {
+      if (hoursValue > 0) {
+        normalizedHours = Math.min(Math.max(Math.round(hoursValue), 1), 8);
+      }
+    } else if (safe.duracion !== null && safe.duracion !== undefined && Number.isFinite(minutesValue)) {
+      const derived = minutesValue / 60;
+      if (derived > 0) {
+        normalizedHours = Math.min(Math.max(Math.round(derived), 1), 8);
+      }
+    }
+
     return {
       ...safe,
       tipo_reserva: safe.tipo_reserva === 'relacionada' ? 'relacionada' : 'privada',
       cancha_id: safe.cancha_id ?? null,
       fecha: safe.fecha ?? null,
       hora_inicio: safe.hora_inicio ?? null,
-      duracion: safe.duracion ?? null,
+      duracion_horas: normalizedHours,
       monto_base:
         safe.monto_base === null || safe.monto_base === undefined
           ? null
@@ -59,8 +82,9 @@ function useInitialValues(initialValues) {
         safe.monto_grabacion === null || safe.monto_grabacion === undefined
           ? null
           : Number(safe.monto_grabacion),
-      con_grabacion: !!safe.con_grabacion,
+      con_grabacion: safe.grabacion_solicitada != null ? !!safe.grabacion_solicitada : !!safe.con_grabacion,
       contacto_nombre: safe.contacto_nombre || '',
+      contacto_apellido: safe.contacto_apellido || '',
       contacto_telefono: safe.contacto_telefono || '',
       contacto_email: safe.contacto_email || '',
       jugador: safe.jugador || null,
@@ -97,7 +121,7 @@ export default function ReservationFormModal({
   courts = [],
   availableDates = [],
   availableStartTimes = [],
-  durationOptions = [],
+  cameraPrice = 0,
   fetchPlayers = searchPlayers,
 }) {
   const parsedInitialValues = useInitialValues(initialValues);
@@ -131,20 +155,14 @@ export default function ReservationFormModal({
   }, [courts, form.cancha_id]);
 
   const cameraFee = useMemo(() => {
-    if (form.monto_grabacion !== null && Number.isFinite(Number(form.monto_grabacion))) {
-      return Number(form.monto_grabacion);
-    }
-    if (selectedCourt?.monto_grabacion !== undefined && selectedCourt?.monto_grabacion !== null) {
-      return Number(selectedCourt.monto_grabacion);
+    if (cameraPrice !== null && cameraPrice !== undefined && Number.isFinite(Number(cameraPrice))) {
+      return Number(cameraPrice);
     }
     if (parsedInitialValues.monto_grabacion !== null && parsedInitialValues.monto_grabacion !== undefined) {
       return Number(parsedInitialValues.monto_grabacion);
     }
-    if (selectedCourt?.precio_grabacion !== undefined && selectedCourt?.precio_grabacion !== null) {
-      return Number(selectedCourt.precio_grabacion);
-    }
     return 0;
-  }, [form.monto_grabacion, parsedInitialValues.monto_grabacion, selectedCourt]);
+  }, [cameraPrice, parsedInitialValues.monto_grabacion]);
 
   const baseAmount = useMemo(() => {
     if (form.monto_base !== null && Number.isFinite(Number(form.monto_base))) {
@@ -225,6 +243,7 @@ export default function ReservationFormModal({
       tipo_reserva: value,
       jugador: value === 'relacionada' ? prev.jugador : null,
       contacto_nombre: value === 'privada' ? prev.contacto_nombre : '',
+      contacto_apellido: value === 'privada' ? prev.contacto_apellido : '',
       contacto_telefono: value === 'privada' ? prev.contacto_telefono : '',
       contacto_email: value === 'privada' ? prev.contacto_email : '',
     }));
@@ -232,6 +251,7 @@ export default function ReservationFormModal({
       ...prev,
       jugador: null,
       contacto_nombre: null,
+      contacto_apellido: null,
       contacto_telefono: null,
     }));
   };
@@ -254,13 +274,19 @@ export default function ReservationFormModal({
       nextErrors.hora_inicio = 'Seleccioná un horario';
     }
 
-    if (!form.duracion) {
-      nextErrors.duracion = 'Seleccioná una duración';
+    const duracionHoras = Number(form.duracion_horas);
+    if (!duracionHoras) {
+      nextErrors.duracion_horas = 'Seleccioná una duración';
+    } else if (!Number.isInteger(duracionHoras) || duracionHoras < 1 || duracionHoras > 8) {
+      nextErrors.duracion_horas = 'La duración debe ser un entero entre 1 y 8 horas';
     }
 
     if (form.tipo_reserva === 'privada') {
       if (!form.contacto_nombre || !String(form.contacto_nombre).trim()) {
         nextErrors.contacto_nombre = 'Ingresá un nombre de contacto';
+      }
+      if (!form.contacto_apellido || !String(form.contacto_apellido).trim()) {
+        nextErrors.contacto_apellido = 'Ingresá un apellido de contacto';
       }
       if (!form.contacto_telefono || !String(form.contacto_telefono).trim()) {
         nextErrors.contacto_telefono = 'Ingresá un teléfono de contacto';
@@ -268,7 +294,8 @@ export default function ReservationFormModal({
     }
 
     if (form.tipo_reserva === 'relacionada') {
-      if (!form.jugador || !form.jugador.id) {
+      const jugadorId = form.jugador?.id ?? form.jugador?.jugador_id;
+      if (!jugadorId) {
         nextErrors.jugador = 'Seleccioná un jugador';
       }
     }
@@ -282,14 +309,21 @@ export default function ReservationFormModal({
     if (!validate()) return;
 
     const payload = {
-      ...form,
+      tipo_reserva: form.tipo_reserva,
       cancha_id: form.cancha_id ? Number(form.cancha_id) : null,
-      duracion: form.duracion ? Number(form.duracion) : null,
-      monto_base: Number(baseAmount) || 0,
-      monto_grabacion: form.con_grabacion ? Number(cameraFee) || 0 : 0,
-      monto_total: Number(totalAmount) || 0,
-      jugador_id: form.jugador?.id ?? form.jugador?.jugador_id ?? null,
+      fecha: form.fecha,
+      hora_inicio: form.hora_inicio,
+      duracion_horas: form.duracion_horas ? Number(form.duracion_horas) : null,
+      grabacion_solicitada: !!form.con_grabacion,
+      contacto_nombre: form.contacto_nombre?.trim() || '',
+      contacto_apellido: form.contacto_apellido?.trim() || '',
+      contacto_telefono: form.contacto_telefono?.trim() || '',
+      contacto_email: form.contacto_email?.trim() || '',
     };
+
+    if (form.tipo_reserva === 'relacionada') {
+      payload.jugador_usuario_id = form.jugador?.id ?? form.jugador?.jugador_id ?? null;
+    }
 
     onSubmit?.(payload);
   };
@@ -493,18 +527,18 @@ export default function ReservationFormModal({
                 </View>
 
                 <View className="flex-1 min-w-[160px]">
-                  <Text className="text-white/70 text-sm mb-2">Duración (minutos) *</Text>
+                  <Text className="text-white/70 text-sm mb-2">Duración (horas) *</Text>
                   <Pressable
                     onPress={() => setShowDurationPicker(true)}
                     className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   >
                     <Text className="text-white text-sm">
-                      {ensureArray(durationOptions).find((option) => String(option.value ?? option.id ?? option) === String(form.duracion))?.label ||
-                        (form.duracion ? `${form.duracion} minutos` : 'Seleccioná duración')}
+                      {ensureArray(DURATION_HOURS_OPTIONS).find((option) => String(option.value ?? option.id ?? option) === String(form.duracion_horas))?.label ||
+                        (form.duracion_horas ? `${form.duracion_horas} hora${Number(form.duracion_horas) === 1 ? '' : 's'}` : 'Seleccioná duración')}
                     </Text>
                   </Pressable>
-                  {errors.duracion ? (
-                    <Text className="text-mc-warn text-xs mt-1">{errors.duracion}</Text>
+                  {errors.duracion_horas ? (
+                    <Text className="text-mc-warn text-xs mt-1">{errors.duracion_horas}</Text>
                   ) : null}
                 </View>
               </View>
@@ -515,7 +549,7 @@ export default function ReservationFormModal({
                   <View>
                     <Text className="text-white text-sm font-medium">Agregar grabación del turno</Text>
                     <Text className="text-white/50 text-xs">
-                      Se sumará el costo adicional solo si activás la grabación.
+                      Se sumará el costo adicional fijo de {formatCurrency(cameraFee)} solo si activás la grabación.
                     </Text>
                   </View>
                   <Switch
@@ -552,12 +586,25 @@ export default function ReservationFormModal({
                     <TextInput
                       value={form.contacto_nombre}
                       onChangeText={(text) => handleChange('contacto_nombre', text)}
-                      placeholder="Nombre y apellido"
+                      placeholder="Nombre"
                       placeholderTextColor="#94A3B8"
                       className={FIELD_STYLES}
                     />
                     {errors.contacto_nombre ? (
                       <Text className="text-mc-warn text-xs mt-1">{errors.contacto_nombre}</Text>
+                    ) : null}
+                  </View>
+                  <View>
+                    <Text className="text-white/70 text-xs mb-1">Apellido *</Text>
+                    <TextInput
+                      value={form.contacto_apellido}
+                      onChangeText={(text) => handleChange('contacto_apellido', text)}
+                      placeholder="Apellido"
+                      placeholderTextColor="#94A3B8"
+                      className={FIELD_STYLES}
+                    />
+                    {errors.contacto_apellido ? (
+                      <Text className="text-mc-warn text-xs mt-1">{errors.contacto_apellido}</Text>
                     ) : null}
                   </View>
                   <View>
@@ -663,9 +710,6 @@ export default function ReservationFormModal({
             } else if (option?.raw?.precio !== undefined) {
               handleChange('monto_base', Number(option.raw.precio));
             }
-            if (option?.raw?.monto_grabacion !== undefined) {
-              handleChange('monto_grabacion', Number(option.raw.monto_grabacion));
-            }
           },
           title: 'Seleccioná una cancha',
           emptyText: 'No encontramos canchas disponibles',
@@ -691,10 +735,10 @@ export default function ReservationFormModal({
         {renderPickerModal({
           visible: showDurationPicker,
           onClose: () => setShowDurationPicker(false),
-          options: ensureArray(durationOptions),
-          selectedValue: form.duracion,
+          options: ensureArray(DURATION_HOURS_OPTIONS),
+          selectedValue: form.duracion_horas,
           onSelect: (value, option) =>
-            handleSelectValue('duracion', Number(option?.value ?? option?.id ?? option)),
+            handleSelectValue('duracion_horas', Number(option?.value ?? option?.id ?? option)),
           title: 'Seleccioná la duración',
           emptyText: 'No encontramos duraciones disponibles',
         })}
