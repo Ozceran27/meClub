@@ -757,6 +757,15 @@ export async function createClubReservation(payload) {
   return extractReservation(response);
 }
 
+export async function deleteClubReservation(reservaId) {
+  if (reservaId === undefined || reservaId === null || reservaId === '') {
+    throw new Error('Identificador de reserva inválido');
+  }
+  const response = await api.del(`/reservas/${encodeURIComponent(reservaId)}`);
+  const normalized = extractReservation(response);
+  return normalized ?? null;
+}
+
 export async function searchPlayers(term, { limit } = {}) {
   const params = new URLSearchParams();
   if (term) {

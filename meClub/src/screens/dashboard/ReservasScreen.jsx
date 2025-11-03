@@ -11,7 +11,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import ReservationFormModal from './ReservationFormModal';
-import { createClubReservation, getReservationsPanel } from '../../lib/api';
+import {
+  createClubReservation,
+  deleteClubReservation,
+  getReservationsPanel,
+} from '../../lib/api';
 
 const COURT_COLORS = [
   { bg: 'bg-emerald-500/20', border: 'border-emerald-400/40', text: 'text-emerald-200' },
@@ -412,6 +416,36 @@ export default function ReservasScreen({ summary, go }) {
     [selectedDate]
   );
 
+  const handleDeleteReservation = useCallback((reservaId) => {
+    if (reservaId === undefined || reservaId === null) {
+      return;
+    }
+
+    Alert.alert(
+      'Eliminar reserva',
+      '¿Querés eliminar esta reserva?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteClubReservation(reservaId);
+              setRefreshToken((token) => token + 1);
+            } catch (err) {
+              Alert.alert(
+                'No pudimos eliminar la reserva',
+                err?.message || 'Intentá de nuevo en unos minutos.'
+              );
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [setRefreshToken]);
+
   const renderTimeline = () => {
     if (!panelData?.agenda?.length) {
       return (
@@ -493,7 +527,18 @@ export default function ReservasScreen({ summary, go }) {
                               <Text className={`text-sm font-semibold ${color.text}`} numberOfLines={1}>
                                 {contactName || 'Reserva privada'}
                               </Text>
-                              {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
+                              <View className="flex-row items-center gap-2">
+                                {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
+                                {reservation.reservaId != null ? (
+                                  <Pressable
+                                    onPress={() => handleDeleteReservation(reservation.reservaId)}
+                                    hitSlop={8}
+                                    className="h-7 w-7 items-center justify-center rounded-full bg-white/10"
+                                  >
+                                    <Ionicons name="trash" size={14} color="#F8FAFC" />
+                                  </Pressable>
+                                ) : null}
+                              </View>
                             </View>
                             <Text className="text-white text-[13px] mt-1">{timeRange}</Text>
                             <Text className="text-white/60 text-[11px] mt-1" numberOfLines={2}>
@@ -561,11 +606,22 @@ export default function ReservasScreen({ summary, go }) {
               {reservation.canchaNombre || `Cancha ${reservation.canchaId}`}
             </Text>
           </View>
-          {camera ? (
-            <View className="h-8 w-8 items-center justify-center rounded-xl bg-mc-warn/20">
-              <Ionicons name="videocam" size={16} color="#FACC15" />
-            </View>
-          ) : null}
+          <View className="flex-row items-center gap-2">
+            {camera ? (
+              <View className="h-8 w-8 items-center justify-center rounded-xl bg-mc-warn/20">
+                <Ionicons name="videocam" size={16} color="#FACC15" />
+              </View>
+            ) : null}
+            {reservation.reservaId != null ? (
+              <Pressable
+                onPress={() => handleDeleteReservation(reservation.reservaId)}
+                hitSlop={8}
+                className="h-8 w-8 items-center justify-center rounded-xl bg-white/10"
+              >
+                <Ionicons name="trash" size={16} color="#F8FAFC" />
+              </Pressable>
+            ) : null}
+          </View>
         </View>
         <Text className="text-white text-sm mt-3">{timeRange}</Text>
         {reservation.contactoTelefono ? (
