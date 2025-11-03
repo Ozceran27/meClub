@@ -29,6 +29,24 @@ const formatTime = (date) => {
   return `${hours}:${minutes}:${seconds}`;
 };
 
+const parseFechaYYYYMMDD = (value) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  const [year, month, day] = trimmed.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+  return parsed;
+};
+
 const startOfWeek = (date) => {
   const current = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const day = current.getDay();
@@ -243,20 +261,38 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
 router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res) => {
   try {
     const hoy = new Date();
-    const fechaHoy = formatDate(hoy);
     const horaActual = formatTime(hoy);
+    const { fecha: fechaQuery } = req.query;
+    let fechaReferencia = hoy;
+    let fechaSeleccionada = formatDate(hoy);
+
+    if (typeof fechaQuery === 'string' && fechaQuery.trim()) {
+      const fechaParseada = parseFechaYYYYMMDD(fechaQuery);
+      if (!fechaParseada) {
+        return res.status(400).json({
+          mensaje: 'Parámetro fecha inválido. Use el formato YYYY-MM-DD.',
+        });
+      }
+      fechaReferencia = fechaParseada;
+      fechaSeleccionada = formatDate(fechaParseada);
+    }
+
     const { club } = req;
     const clubId = club.club_id;
 
     const [resumenHoy, agendaFilas, enCursoFilas] = await Promise.all([
-      ReservasModel.resumenReservasClub({ club_id: clubId, fecha: fechaHoy }),
-      ReservasModel.reservasAgendaClub({ club_id: clubId, fecha: fechaHoy }),
-      ReservasModel.reservasEnCurso({ club_id: clubId, fecha: fechaHoy, ahora: horaActual }),
+      ReservasModel.resumenReservasClub({ club_id: clubId, fecha: fechaSeleccionada }),
+      ReservasModel.reservasAgendaClub({ club_id: clubId, fecha: fechaSeleccionada }),
+      ReservasModel.reservasEnCurso({
+        club_id: clubId,
+        fecha: fechaSeleccionada,
+        ahora: horaActual,
+      }),
     ]);
 
     const totalesHoy = acumularTotales(buildTotalesAccumulator(), resumenHoy);
 
-    const inicioSemana = startOfWeek(hoy);
+    const inicioSemana = startOfWeek(fechaReferencia);
     const fechasSemana = Array.from({ length: 7 }, (_, index) => formatDate(addDays(inicioSemana, index)));
     const resumenSemana = await Promise.all(
       fechasSemana.map((fecha) => ReservasModel.resumenReservasClub({ club_id: clubId, fecha }))
@@ -294,7 +330,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
     const proximos = enCursoFilas.filter((fila) => fila.estado_temporal === 'pendiente');
 
     return res.json({
-      fecha: fechaHoy,
+      fecha: fechaSeleccionada,
       hora_actual: horaActual,
       totales: {
         hoy: totalesHoy,
