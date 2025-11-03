@@ -281,7 +281,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
     const { club } = req;
     const clubId = club.club_id;
 
-    const [resumenHoy, agendaFilas, enCursoFilas] = await Promise.all([
+    const [resumenHoy, agendaFilas, enCursoFilas, canchasClub] = await Promise.all([
       ReservasModel.resumenReservasClub({ club_id: clubId, fecha: fechaSeleccionada }),
       ReservasModel.reservasAgendaClub({ club_id: clubId, fecha: fechaSeleccionada }),
       ReservasModel.reservasEnCurso({
@@ -289,6 +289,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
         fecha: fechaSeleccionada,
         ahora: horaActual,
       }),
+      CanchasModel.listarPorClub(clubId),
     ]);
 
     const totalesHoy = acumularTotales(buildTotalesAccumulator(), resumenHoy);
@@ -315,6 +316,23 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
       acc[canchaKey].reservas.push(reserva);
       return acc;
     }, {});
+
+    const canchasDisponibles = Array.isArray(canchasClub)
+      ? canchasClub.filter((cancha) => cancha && cancha.estado === 'disponible')
+      : [];
+
+    canchasDisponibles.forEach((cancha) => {
+      const canchaKey = String(cancha.cancha_id);
+      if (!agendaAgrupada[canchaKey]) {
+        agendaAgrupada[canchaKey] = {
+          cancha_id: cancha.cancha_id,
+          cancha_nombre: cancha.nombre,
+          reservas: [],
+        };
+      } else if (!agendaAgrupada[canchaKey].cancha_nombre) {
+        agendaAgrupada[canchaKey].cancha_nombre = cancha.nombre;
+      }
+    });
 
     const agendaOrdenada = Object.values(agendaAgrupada)
       .map((grupo) => ({

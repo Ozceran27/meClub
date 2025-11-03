@@ -21,7 +21,12 @@ jest.mock('../models/reservas.model', () => ({
   reservasEnCurso: jest.fn(),
 }));
 
+jest.mock('../models/canchas.model', () => ({
+  listarPorClub: jest.fn(),
+}));
+
 const ReservasModel = require('../models/reservas.model');
+const CanchasModel = require('../models/canchas.model');
 const reservasRoutes = require('../routes/reservas.routes');
 
 const buildApp = () => {
@@ -37,6 +42,7 @@ describe('GET /reservas/panel con parámetro de fecha', () => {
     ReservasModel.resumenReservasClub.mockResolvedValue([]);
     ReservasModel.reservasAgendaClub.mockResolvedValue([]);
     ReservasModel.reservasEnCurso.mockResolvedValue([]);
+    CanchasModel.listarPorClub.mockResolvedValue([]);
   });
 
   it('utiliza la fecha solicitada y ajusta el rango semanal', async () => {
@@ -64,5 +70,29 @@ describe('GET /reservas/panel con parámetro de fecha', () => {
     expect(ReservasModel.reservasEnCurso).toHaveBeenCalledWith(
       expect.objectContaining({ club_id: 77, fecha: '2025-11-02', ahora: expect.any(String) })
     );
+
+    expect(CanchasModel.listarPorClub).toHaveBeenCalledWith(77);
+  });
+
+  it('incluye las canchas disponibles aunque no tengan reservas', async () => {
+    const app = buildApp();
+
+    CanchasModel.listarPorClub.mockResolvedValue([
+      { cancha_id: 1, nombre: 'Cancha Principal', estado: 'disponible' },
+      { cancha_id: 2, nombre: 'Cancha Secundaria', estado: 'mantenimiento' },
+    ]);
+
+    ReservasModel.reservasAgendaClub.mockResolvedValue([]);
+
+    const response = await request(app).get('/reservas/panel');
+
+    expect(response.status).toBe(200);
+    expect(response.body.agenda).toEqual([
+      {
+        cancha_id: 1,
+        cancha_nombre: 'Cancha Principal',
+        reservas: [],
+      },
+    ]);
   });
 });
