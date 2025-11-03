@@ -188,8 +188,8 @@ function buildTimeSlots(reservations, slotMinutes = SLOT_MINUTES) {
 
   const defaultStart = 8 * 60;
   const defaultEnd = 23 * 60;
-  const minMinutes = minutesList.length > 0 ? Math.min(...minutesList) : defaultStart;
-  const maxMinutes = minutesList.length > 0 ? Math.max(...minutesList) : defaultEnd;
+  const minMinutes = Math.min(defaultStart, ...minutesList);
+  const maxMinutes = Math.max(defaultEnd, ...minutesList);
 
   const start = Math.floor(minMinutes / slotMinutes) * slotMinutes;
   const end = Math.ceil(maxMinutes / slotMinutes) * slotMinutes;
