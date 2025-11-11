@@ -192,7 +192,7 @@ const ReservasModel = {
        JOIN canchas c ON c.cancha_id = r.cancha_id
        LEFT JOIN usuarios u ON u.usuario_id = r.usuario_id
        LEFT JOIN usuarios uc ON uc.usuario_id = r.creado_por_id
-       WHERE r.club_id = ? AND r.fecha = ?
+       WHERE c.club_id = ? AND r.fecha = ?
        ORDER BY r.hora_inicio ASC, c.cancha_id ASC`,
       [club_id, fecha]
     );
