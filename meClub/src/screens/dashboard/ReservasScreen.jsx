@@ -541,14 +541,6 @@ export default function ReservasScreen({ summary, go }) {
                               </View>
                             </View>
                             <Text className="text-white text-[13px] mt-1">{timeRange}</Text>
-                            <Text className="text-white/60 text-[11px] mt-1" numberOfLines={2}>
-                              Estado: {reservation.estado || 'sin estado'}
-                            </Text>
-                            {reservation.contactoTelefono ? (
-                              <Text className="text-white/40 text-[11px] mt-1">
-                                {reservation.contactoTelefono}
-                              </Text>
-                            ) : null}
                           </View>
                         </View>
                       );
