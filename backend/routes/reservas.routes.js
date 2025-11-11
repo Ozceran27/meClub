@@ -193,20 +193,32 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     let usuarioReservaId = null;
 
     if (tipoReservaNormalizado === 'relacionada') {
-      const jugadorId = jugador_usuario_id ? Number.parseInt(jugador_usuario_id, 10) : null;
+      const jugadorIdBruto =
+        jugador_usuario_id ?? (req.usuario && req.usuario.rol !== 'club' ? usuarioIdToken : null);
+      const jugadorId =
+        jugadorIdBruto === null || jugadorIdBruto === undefined
+          ? null
+          : Number.parseInt(jugadorIdBruto, 10);
+
       if (!Number.isInteger(jugadorId) || jugadorId <= 0) {
         return res.status(400).json({ mensaje: 'jugador_usuario_id es requerido para reservas relacionadas' });
       }
 
-      const jugador = await UsuariosModel.buscarPorId(jugadorId);
-      if (!jugador) {
-        return res.status(404).json({ mensaje: 'Jugador no encontrado' });
-      }
+      if (jugadorId === usuarioIdToken) {
+        usuarioReservaId = usuarioIdToken;
+      } else {
+        const jugador = await UsuariosModel.buscarPorId(jugadorId);
+        if (!jugador) {
+          return res.status(404).json({ mensaje: 'Jugador no encontrado' });
+        }
 
-      usuarioReservaId = jugador.usuario_id;
-      if (!contactoNombre || !String(contactoNombre).trim()) contactoNombre = jugador.nombre || contactoNombre;
-      if (!contactoApellido || !String(contactoApellido).trim()) contactoApellido = jugador.apellido || contactoApellido;
-      if (!contactoTelefono || !String(contactoTelefono).trim()) contactoTelefono = jugador.telefono || contactoTelefono;
+        usuarioReservaId = jugador.usuario_id;
+        if (!contactoNombre || !String(contactoNombre).trim()) contactoNombre = jugador.nombre || contactoNombre;
+        if (!contactoApellido || !String(contactoApellido).trim())
+          contactoApellido = jugador.apellido || contactoApellido;
+        if (!contactoTelefono || !String(contactoTelefono).trim())
+          contactoTelefono = jugador.telefono || contactoTelefono;
+      }
     } else {
       if (!contactoNombre || !String(contactoNombre).trim()) {
         return res
