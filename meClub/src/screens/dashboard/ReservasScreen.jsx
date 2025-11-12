@@ -534,6 +534,7 @@ export default function ReservasScreen({ summary, go }) {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creationError, setCreationError] = useState('');
   const [refreshToken, setRefreshToken] = useState(0);
 
   const allReservations = useMemo(() => {
@@ -677,19 +678,37 @@ export default function ReservasScreen({ summary, go }) {
       if (!normalizedPayload) return;
 
       try {
+        setCreationError('');
         setCreating(true);
         await createClubReservation(normalizedPayload);
         setShowModal(false);
         setSelectedDate(normalizedPayload.fecha || selectedDate);
         setRefreshToken((token) => token + 1);
       } catch (err) {
-        Alert.alert('No pudimos crear la reserva', err?.message || 'Intentá de nuevo en unos minutos.');
+        const message = err?.message || 'Intentá de nuevo en unos minutos.';
+        setCreationError(message);
+        Alert.alert('No pudimos crear la reserva', message);
       } finally {
         setCreating(false);
       }
     },
     [selectedDate]
   );
+
+  const handleOpenModal = useCallback(() => {
+    setCreationError('');
+    setShowModal(true);
+  }, []);
+
+  const handleDismissModal = useCallback(() => {
+    if (creating) return;
+    setShowModal(false);
+    setCreationError('');
+  }, [creating]);
+
+  const handleClearCreationError = useCallback(() => {
+    setCreationError('');
+  }, []);
 
   const handleDeleteReservation = useCallback(
     (reservaId) => {
@@ -919,7 +938,7 @@ export default function ReservasScreen({ summary, go }) {
           ) : null}
         </View>
         <Pressable
-          onPress={() => setShowModal(true)}
+          onPress={handleOpenModal}
           className="flex-row items-center gap-2 rounded-2xl bg-mc-warn px-4 py-2 shadow-lg hover:bg-mc-warn/80"
         >
           <Ionicons name="add" size={18} color="#0A0F1D" />
@@ -1064,9 +1083,7 @@ export default function ReservasScreen({ summary, go }) {
 
       <ReservationFormModal
         visible={showModal}
-        onDismiss={() => {
-          if (!creating) setShowModal(false);
-        }}
+        onDismiss={handleDismissModal}
         onSubmit={handleCreateReservation}
         loading={creating}
         initialValues={{ fecha: selectedDate }}
@@ -1076,6 +1093,8 @@ export default function ReservasScreen({ summary, go }) {
         cameraPrice={panelData?.club?.precioGrabacion}
         nightStart={nightStartValue}
         nightEnd={nightEndValue}
+        submissionError={creationError}
+        onClearSubmissionError={handleClearCreationError}
       />
     </>
   );

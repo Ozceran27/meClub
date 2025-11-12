@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -136,6 +136,8 @@ export default function ReservationFormModal({
   fetchPlayers = searchPlayers,
   nightStart = null,
   nightEnd = null,
+  submissionError = '',
+  onClearSubmissionError,
 }) {
   const parsedInitialValues = useInitialValues(initialValues);
   const [form, setForm] = useState(parsedInitialValues);
@@ -148,6 +150,12 @@ export default function ReservationFormModal({
   const [playerResults, setPlayerResults] = useState([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
   const [playerSearchError, setPlayerSearchError] = useState('');
+
+  const handleFormInteraction = useCallback(() => {
+    if (submissionError) {
+      onClearSubmissionError?.();
+    }
+  }, [onClearSubmissionError, submissionError]);
 
   useEffect(() => {
     if (!visible) return;
@@ -261,15 +269,18 @@ export default function ReservationFormModal({
   }, [fetchPlayers, form.tipo_reserva, playerQuery]);
 
   const handleChange = (key, value) => {
+    handleFormInteraction();
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSelectValue = (key, value) => {
+    handleFormInteraction();
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: null }));
   };
 
   const handleTypeChange = (value) => {
+    handleFormInteraction();
     setForm((prev) => ({
       ...prev,
       tipo_reserva: value,
@@ -337,6 +348,7 @@ export default function ReservationFormModal({
   };
 
   const handleSubmit = () => {
+    handleFormInteraction();
     if (loading) return;
     if (!validate()) return;
 
@@ -461,6 +473,7 @@ export default function ReservationFormModal({
       transparent
       visible={visible}
       onRequestClose={() => {
+        handleFormInteraction();
         if (!loading) onDismiss?.();
       }}
     >
@@ -475,6 +488,7 @@ export default function ReservationFormModal({
             </View>
             <Pressable
               onPress={() => {
+                handleFormInteraction();
                 if (!loading) onDismiss?.();
               }}
               className="h-10 w-10 items-center justify-center rounded-full bg-white/5"
@@ -673,7 +687,10 @@ export default function ReservationFormModal({
                   <Text className="text-white/70 text-sm mb-2">Buscar jugador *</Text>
                   <TextInput
                     value={playerQuery}
-                    onChangeText={(text) => setPlayerQuery(text)}
+                    onChangeText={(text) => {
+                      handleFormInteraction();
+                      setPlayerQuery(text);
+                    }}
                     placeholder="Buscá por nombre o email"
                     placeholderTextColor="#94A3B8"
                     className={FIELD_STYLES}
@@ -704,25 +721,33 @@ export default function ReservationFormModal({
             </View>
           </ScrollView>
 
-          <View className="flex-row items-center justify-end gap-3 border-t border-white/5 pt-4">
-            <Pressable
-              onPress={() => {
-                if (!loading) onDismiss?.();
-              }}
-              disabled={loading}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 hover:bg-white/10"
-            >
-              <Text className="text-white/80 text-sm font-medium">Cancelar</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={loading}
-              className="rounded-2xl bg-mc-warn px-5 py-2 hover:bg-mc-warn/80"
-            >
-              <Text className="text-[#0A0F1D] text-sm font-semibold">
-                {loading ? 'Guardando...' : 'Guardar reserva'}
-              </Text>
-            </Pressable>
+          <View className="border-t border-white/5 pt-4">
+            {submissionError ? (
+              <View className="mb-3 rounded-2xl border border-mc-warn/40 bg-mc-warn/10 px-4 py-3">
+                <Text className="text-mc-warn text-sm font-medium">{submissionError}</Text>
+              </View>
+            ) : null}
+            <View className="flex-row items-center justify-end gap-3">
+              <Pressable
+                onPress={() => {
+                  handleFormInteraction();
+                  if (!loading) onDismiss?.();
+                }}
+                disabled={loading}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 hover:bg-white/10"
+              >
+                <Text className="text-white/80 text-sm font-medium">Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSubmit}
+                disabled={loading}
+                className="rounded-2xl bg-mc-warn px-5 py-2 hover:bg-mc-warn/80"
+              >
+                <Text className="text-[#0A0F1D] text-sm font-semibold">
+                  {loading ? 'Guardando...' : 'Guardar reserva'}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </Card>
         {renderPickerModal({
