@@ -185,6 +185,8 @@ const ReservasModel = {
               r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
               r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
               c.nombre AS cancha_nombre,
+              c.precio_dia AS cancha_precio_dia,
+              c.precio_noche AS cancha_precio_noche,
               u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email,
               uc.nombre AS creado_por_nombre, uc.apellido AS creado_por_apellido,
               uc.email AS creado_por_email

@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import { searchPlayers } from '../../lib/api';
+import { calculateBaseAmount, toNumberOrNull } from './pricing';
 
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
@@ -44,6 +45,16 @@ const DURATION_HOURS_OPTIONS = Array.from({ length: 8 }, (_, index) => {
     label: `${hours} hora${hours === 1 ? '' : 's'}`,
   };
 });
+
+const pickFirstNumber = (...values) => {
+  for (const value of values) {
+    const numeric = toNumberOrNull(value);
+    if (numeric !== null) {
+      return numeric;
+    }
+  }
+  return null;
+};
 
 function useInitialValues(initialValues) {
   return useMemo(() => {
@@ -123,6 +134,8 @@ export default function ReservationFormModal({
   availableStartTimes = [],
   cameraPrice = 0,
   fetchPlayers = searchPlayers,
+  nightStart = null,
+  nightEnd = null,
 }) {
   const parsedInitialValues = useInitialValues(initialValues);
   const [form, setForm] = useState(parsedInitialValues);
@@ -164,24 +177,43 @@ export default function ReservationFormModal({
     return 0;
   }, [cameraPrice, parsedInitialValues.monto_grabacion]);
 
+  const pricingClub = useMemo(
+    () => ({
+      hora_nocturna_inicio: nightStart ?? null,
+      hora_nocturna_fin: nightEnd ?? null,
+      horaNocturnaInicio: nightStart ?? null,
+      horaNocturnaFin: nightEnd ?? null,
+    }),
+    [nightStart, nightEnd]
+  );
+
   const baseAmount = useMemo(() => {
-    if (form.monto_base !== null && Number.isFinite(Number(form.monto_base))) {
-      return Number(form.monto_base);
-    }
-    if (selectedCourt?.monto_base !== undefined && selectedCourt?.monto_base !== null) {
-      return Number(selectedCourt.monto_base);
-    }
-    if (selectedCourt?.precio !== undefined && selectedCourt?.precio !== null) {
-      return Number(selectedCourt.precio);
-    }
-    if (selectedCourt?.precio_dia !== undefined && selectedCourt?.precio_dia !== null) {
-      return Number(selectedCourt.precio_dia);
-    }
-    if (parsedInitialValues.monto_base !== null && parsedInitialValues.monto_base !== undefined) {
-      return Number(parsedInitialValues.monto_base);
-    }
-    return 0;
-  }, [form.monto_base, parsedInitialValues.monto_base, selectedCourt]);
+    const explicitBase = pickFirstNumber(form.monto_base, parsedInitialValues.monto_base);
+    const fallbackPrice = pickFirstNumber(
+      selectedCourt?.monto_base,
+      selectedCourt?.precio,
+      selectedCourt?.precioDia,
+      selectedCourt?.precio_dia,
+      selectedCourt?.precioNoche,
+      selectedCourt?.precio_noche
+    );
+
+    return calculateBaseAmount({
+      cancha: selectedCourt || {},
+      club: pricingClub,
+      horaInicio: form.hora_inicio,
+      duracionHoras: form.duracion_horas,
+      explicitAmount: explicitBase,
+      fallbackAmount: fallbackPrice,
+    });
+  }, [
+    form.monto_base,
+    form.hora_inicio,
+    form.duracion_horas,
+    parsedInitialValues.monto_base,
+    pricingClub,
+    selectedCourt,
+  ]);
 
   const totalAmount = useMemo(() => {
     const base = Number(baseAmount) || 0;
@@ -703,13 +735,8 @@ export default function ReservationFormModal({
             raw: court,
           })),
           selectedValue: form.cancha_id,
-          onSelect: (value, option) => {
+          onSelect: (value) => {
             handleSelectValue('cancha_id', value);
-            if (option?.raw?.monto_base !== undefined) {
-              handleChange('monto_base', Number(option.raw.monto_base));
-            } else if (option?.raw?.precio !== undefined) {
-              handleChange('monto_base', Number(option.raw.precio));
-            }
           },
           title: 'Seleccioná una cancha',
           emptyText: 'No encontramos canchas disponibles',

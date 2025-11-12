@@ -257,6 +257,9 @@ function extractReservationsPanel(payload) {
     ? data.agenda.map((item) => ({
         canchaId: toNumberOrNull(item?.cancha_id),
         canchaNombre: item?.cancha_nombre ?? null,
+        precio: toNumberOrNull(item?.precio),
+        precioDia: toNumberOrNull(item?.precio_dia ?? item?.precioDia),
+        precioNoche: toNumberOrNull(item?.precio_noche ?? item?.precioNoche),
         reservas: normalizeReservationList(item?.reservas),
       }))
     : [];
@@ -267,6 +270,18 @@ function extractReservationsPanel(payload) {
   const siguiente = enCursoData.siguiente ? normalizeReservation(enCursoData.siguiente) : null;
 
   const clubData = data.club && typeof data.club === 'object' ? data.club : {};
+  const nightStart =
+    typeof clubData.horaNocturnaInicio === 'string'
+      ? clubData.horaNocturnaInicio
+      : typeof clubData.hora_nocturna_inicio === 'string'
+      ? clubData.hora_nocturna_inicio
+      : null;
+  const nightEnd =
+    typeof clubData.horaNocturnaFin === 'string'
+      ? clubData.horaNocturnaFin
+      : typeof clubData.hora_nocturna_fin === 'string'
+      ? clubData.hora_nocturna_fin
+      : null;
 
   return {
     fecha: typeof data.fecha === 'string' ? data.fecha : '',
@@ -285,6 +300,10 @@ function extractReservationsPanel(payload) {
     club: {
       clubId: toNumberOrNull(clubData.club_id),
       precioGrabacion: toNumberOrZero(clubData.precio_grabacion),
+      horaNocturnaInicio: nightStart,
+      horaNocturnaFin: nightEnd,
+      hora_nocturna_inicio: nightStart,
+      hora_nocturna_fin: nightEnd,
     },
   };
 }

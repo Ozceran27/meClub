@@ -412,15 +412,55 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
       buildTotalesAccumulator()
     );
 
+    const mergePricingIntoGroup = (grupo, source = {}) => {
+      if (!grupo) return;
+
+      const precioDia = toNullableNumber(
+        source.precio_dia ?? source.precioDia ?? source.cancha_precio_dia
+      );
+      const precioNoche = toNullableNumber(
+        source.precio_noche ?? source.precioNoche ?? source.cancha_precio_noche
+      );
+      const precioGenerico = toNullableNumber(source.precio ?? source.monto_base);
+
+      if (precioDia !== null && (grupo.precio_dia === null || grupo.precio_dia === undefined)) {
+        grupo.precio_dia = precioDia;
+      }
+
+      if (
+        precioNoche !== null &&
+        (grupo.precio_noche === null || grupo.precio_noche === undefined)
+      ) {
+        grupo.precio_noche = precioNoche;
+      }
+
+      const fallbackGenerico =
+        precioGenerico !== null
+          ? precioGenerico
+          : precioDia !== null
+          ? precioDia
+          : precioNoche !== null
+          ? precioNoche
+          : null;
+
+      if (fallbackGenerico !== null && (grupo.precio === null || grupo.precio === undefined)) {
+        grupo.precio = fallbackGenerico;
+      }
+    };
+
     const agendaAgrupada = agendaFilas.reduce((acc, reserva) => {
       const canchaKey = String(reserva.cancha_id);
       if (!acc[canchaKey]) {
         acc[canchaKey] = {
           cancha_id: reserva.cancha_id,
           cancha_nombre: reserva.cancha_nombre,
+          precio: null,
+          precio_dia: null,
+          precio_noche: null,
           reservas: [],
         };
       }
+      mergePricingIntoGroup(acc[canchaKey], reserva);
       acc[canchaKey].reservas.push(reserva);
       return acc;
     }, {});
@@ -435,17 +475,24 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
         agendaAgrupada[canchaKey] = {
           cancha_id: cancha.cancha_id,
           cancha_nombre: cancha.nombre,
+          precio: null,
+          precio_dia: null,
+          precio_noche: null,
           reservas: [],
         };
       } else if (!agendaAgrupada[canchaKey].cancha_nombre) {
         agendaAgrupada[canchaKey].cancha_nombre = cancha.nombre;
       }
+      mergePricingIntoGroup(agendaAgrupada[canchaKey], cancha);
     });
 
     const agendaOrdenada = Object.values(agendaAgrupada)
       .map((grupo) => ({
         ...grupo,
         cancha_id: Number(grupo.cancha_id),
+        precio: toNullableNumber(grupo.precio),
+        precio_dia: toNullableNumber(grupo.precio_dia),
+        precio_noche: toNullableNumber(grupo.precio_noche),
         reservas: grupo.reservas.sort((a, b) => (a.hora_inicio < b.hora_inicio ? -1 : a.hora_inicio > b.hora_inicio ? 1 : 0)),
       }))
       .sort((a, b) => {
