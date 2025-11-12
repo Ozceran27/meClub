@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { ESTADOS_RESERVA_ACTIVOS, esEstadoReservaActivo } = require('../constants/reservasEstados');
 
 const RESERVA_SOLAPADA_CODE = 'RESERVA_SOLAPADA';
+const RESERVA_NO_ENCONTRADA_CODE = 'RESERVA_NO_ENCONTRADA';
 
 const ReservasModel = {
   existeSolape: async ({ cancha_id, fecha, hora_inicio, hora_fin }) => {
@@ -132,6 +133,46 @@ const ReservasModel = {
         console.error('Error al revertir la transacción de reserva', rollbackError);
       }
 
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+
+  eliminar: async ({ reserva_id, club_id }) => {
+    if (reserva_id === undefined || reserva_id === null) {
+      throw new Error('reserva_id es requerido');
+    }
+    if (club_id === undefined || club_id === null) {
+      throw new Error('club_id es requerido');
+    }
+
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      await connection.query('DELETE FROM grabaciones WHERE reserva_id = ?', [reserva_id]);
+
+      const [resultadoReserva] = await connection.query(
+        'DELETE FROM reservas WHERE reserva_id = ? AND club_id = ?',
+        [reserva_id, club_id]
+      );
+
+      if (!resultadoReserva || resultadoReserva.affectedRows === 0) {
+        const error = new Error('Reserva no encontrada');
+        error.code = RESERVA_NO_ENCONTRADA_CODE;
+        throw error;
+      }
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Error al revertir la transacción de eliminación de reserva', rollbackError);
+      }
       throw error;
     } finally {
       connection.release();
@@ -283,5 +324,6 @@ const ReservasModel = {
 };
 
 ReservasModel.RESERVA_SOLAPADA_CODE = RESERVA_SOLAPADA_CODE;
+ReservasModel.RESERVA_NO_ENCONTRADA_CODE = RESERVA_NO_ENCONTRADA_CODE;
 
 module.exports = ReservasModel;
