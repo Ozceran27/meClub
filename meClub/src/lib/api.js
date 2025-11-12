@@ -788,6 +788,30 @@ export async function deleteClubReservation(reservaId) {
   return true;
 }
 
+export async function updateReservationStatus({ reservaId, estado, estado_pago }) {
+  if (reservaId === undefined || reservaId === null || reservaId === '') {
+    throw new Error('Identificador de reserva inválido');
+  }
+
+  const payload = {};
+  if (estado !== undefined) {
+    payload.estado = estado;
+  }
+  if (estado_pago !== undefined) {
+    payload.estado_pago = estado_pago;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error('No hay datos para actualizar');
+  }
+
+  const response = await api.patch(
+    `/reservas/${encodeURIComponent(reservaId)}/estado`,
+    payload
+  );
+  return extractReservation(response);
+}
+
 export async function searchPlayers(term, { limit } = {}) {
   const params = new URLSearchParams();
   if (term) {

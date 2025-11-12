@@ -12,7 +12,11 @@ const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime, normalizeHour, isTimeInRange } = require('../utils/datetime');
 const { getUserId } = require('../utils/auth');
-const { esEstadoReservaActivo } = require('../constants/reservasEstados');
+const {
+  esEstadoReservaActivo,
+  esEstadoReservaValido,
+  esEstadoPagoValido,
+} = require('../constants/reservasEstados');
 // -----------------------------------------------------------------------------------------------
 
 const formatDate = (date) => {
@@ -592,6 +596,106 @@ router.delete('/:reserva_id', verifyToken, requireRole('club'), loadClub, async 
     return res.status(500).json({ mensaje: 'Error interno del servidor' });
   }
 });
+
+router.patch(
+  '/:reserva_id/estado',
+  verifyToken,
+  requireRole('club'),
+  loadClub,
+  async (req, res) => {
+    const { reserva_id: reservaIdParam } = req.params;
+    const reservaId = Number.parseInt(reservaIdParam, 10);
+
+    if (!Number.isInteger(reservaId) || reservaId <= 0) {
+      return res.status(400).json({ mensaje: 'Identificador de reserva inválido' });
+    }
+
+    const { estado: estadoRaw, estado_pago: estadoPagoRaw } = req.body || {};
+
+    const normalizar = (valor) => {
+      if (valor === undefined) return undefined;
+      if (valor === null) return null;
+      const texto = typeof valor === 'string' ? valor.trim() : String(valor).trim();
+      if (!texto) return null;
+      return texto.toLowerCase();
+    };
+
+    const estadoNormalizado = normalizar(estadoRaw);
+    const estadoPagoNormalizado = normalizar(estadoPagoRaw);
+
+    if (estadoNormalizado === undefined && estadoPagoNormalizado === undefined) {
+      return res
+        .status(400)
+        .json({ mensaje: 'Debes enviar al menos un campo (estado o estado_pago)' });
+    }
+
+    if (estadoNormalizado === null) {
+      return res.status(400).json({ mensaje: 'Estado inválido' });
+    }
+
+    if (estadoPagoNormalizado === null) {
+      return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+    }
+
+    if (estadoNormalizado !== undefined && !esEstadoReservaValido(estadoNormalizado)) {
+      return res.status(400).json({ mensaje: 'Estado inválido' });
+    }
+
+    if (estadoPagoNormalizado !== undefined && !esEstadoPagoValido(estadoPagoNormalizado)) {
+      return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+    }
+
+    try {
+      const reserva = await ReservasModel.getByIdConClub(reservaId);
+      if (!reserva) {
+        return res.status(404).json({ mensaje: 'Reserva no encontrada' });
+      }
+
+      const clubId = Number(req.club?.club_id);
+      if (!Number.isInteger(clubId)) {
+        return res.status(404).json({ mensaje: 'No tienes club relacionado' });
+      }
+
+      if (Number(reserva.club_id) !== clubId) {
+        return res.status(403).json({ mensaje: 'La reserva no pertenece a tu club' });
+      }
+
+      const resultado = await ReservasModel.actualizarEstados({
+        reserva_id: reservaId,
+        ...(estadoNormalizado !== undefined ? { estado: estadoNormalizado } : {}),
+        ...(estadoPagoNormalizado !== undefined ? { estado_pago: estadoPagoNormalizado } : {}),
+      });
+
+      if (!resultado?.updated) {
+        return res.status(404).json({ mensaje: 'Reserva no encontrada' });
+      }
+
+      const reservaActualizada = {
+        ...reserva,
+        ...(resultado.estado ? { estado: resultado.estado } : {}),
+        ...(resultado.estado_pago ? { estado_pago: resultado.estado_pago } : {}),
+      };
+
+      return res.json({
+        mensaje: 'Estado de reserva actualizado',
+        reserva: reservaActualizada,
+      });
+    } catch (err) {
+      if (err?.code === 'RESERVA_ESTADO_INVALIDO') {
+        return res.status(400).json({ mensaje: 'Estado inválido' });
+      }
+      if (err?.code === 'RESERVA_ESTADO_PAGO_INVALIDO') {
+        return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+      }
+      if (err?.code === 'RESERVA_ID_INVALIDO') {
+        return res.status(400).json({ mensaje: 'Identificador de reserva inválido' });
+      }
+
+      console.error(err);
+      return res.status(500).json({ mensaje: 'Error interno del servidor' });
+    }
+  }
+);
 
 // PATCH cancelar (usuario o club dueño)
 router.patch('/:reserva_id/cancelar', verifyToken, async (req, res) => {

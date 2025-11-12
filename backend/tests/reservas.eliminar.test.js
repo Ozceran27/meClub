@@ -44,6 +44,7 @@ jest.mock('../models/reservas.model', () => ({
   getByIdConClub: jest.fn(),
   updateEstado: jest.fn(),
   eliminar: jest.fn(),
+  actualizarEstados: jest.fn(),
   RESERVA_SOLAPADA_CODE: 'RESERVA_SOLAPADA',
   RESERVA_NO_ENCONTRADA_CODE: 'RESERVA_NO_ENCONTRADA',
 }));
