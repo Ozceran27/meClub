@@ -583,6 +583,24 @@ export default function ReservasScreen({ summary, go }) {
     const estados = panelData?.resumenEstadosHoy || [];
     const canceladas = hoy.canceladas ?? estados.find((item) => item.estado === 'cancelada')?.total ?? 0;
     const activas = hoy.activas ?? estados.find((item) => item.estado === 'activa')?.total ?? 0;
+    const incomeStates = new Set([
+      'pendiente',
+      'pagada',
+      'pagado',
+      'finalizada',
+      'finalizado',
+      'completada',
+      'completado',
+    ]);
+    const ingresosEstimados = estados.length
+      ? estados.reduce((total, item) => {
+          const estado = String(item?.estado ?? '').trim().toLowerCase();
+          if (!incomeStates.has(estado)) {
+            return total;
+          }
+          return total + (Number.isFinite(item?.montoTotal) ? item.montoTotal : 0);
+        }, 0)
+      : hoy.montoTotal ?? 0;
     return [
       {
         label: 'Reservas de hoy',
@@ -601,7 +619,7 @@ export default function ReservasScreen({ summary, go }) {
       },
       {
         label: 'Ingresos estimados',
-        value: formatCurrency(hoy.montoTotal ?? 0),
+        value: formatCurrency(ingresosEstimados),
         icon: 'cash',
       },
     ];
