@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -24,6 +25,45 @@ const COURT_COLORS = [
   { bg: 'bg-orange-500/20', border: 'border-orange-400/40', text: 'text-orange-200' },
   { bg: 'bg-rose-500/20', border: 'border-rose-400/40', text: 'text-rose-200' },
 ];
+
+const STATUS_STYLES = {
+  activa: {
+    bg: 'bg-emerald-500/20',
+    border: 'border-emerald-400/40',
+    text: 'text-emerald-100',
+  },
+  confirmada: {
+    bg: 'bg-sky-500/20',
+    border: 'border-sky-400/40',
+    text: 'text-sky-100',
+  },
+  cancelada: {
+    bg: 'bg-rose-500/20',
+    border: 'border-rose-400/40',
+    text: 'text-rose-100',
+  },
+  pendiente: {
+    bg: 'bg-amber-500/20',
+    border: 'border-amber-400/40',
+    text: 'text-amber-100',
+  },
+};
+
+function getStatusBadgeClasses(status) {
+  if (!status) {
+    return {
+      bg: 'bg-slate-500/20',
+      border: 'border-slate-400/30',
+      text: 'text-slate-100',
+    };
+  }
+  const normalized = String(status).trim().toLowerCase();
+  return STATUS_STYLES[normalized] || {
+    bg: 'bg-slate-500/20',
+    border: 'border-slate-400/30',
+    text: 'text-slate-100',
+  };
+}
 
 const SLOT_MINUTES = 60;
 const SLOT_HEIGHT = 68;
@@ -92,6 +132,116 @@ function formatCurrency(value) {
   } catch (err) {
     return `$${Math.round(amount)}`;
   }
+}
+
+function TimelineReservationCard({ reservation, color, containerHeight, onDelete }) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  if (!reservation) {
+    return null;
+  }
+
+  const camera = reservation.grabacionSolicitada;
+  const contactName =
+    [reservation.contactoNombre, reservation.contactoApellido]
+      .filter(Boolean)
+      .join(' ') ||
+    [reservation.usuarioNombre, reservation.usuarioApellido]
+      .filter(Boolean)
+      .join(' ') ||
+    'Reserva privada';
+  const timeRange = `${formatTime(reservation.horaInicio)} - ${formatTime(reservation.horaFin)}`;
+  const statusClasses = getStatusBadgeClasses(reservation.estado);
+  const statusLabel = reservation.estado
+    ? String(reservation.estado)
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : 'Sin estado';
+  const tooltipEnabled = Platform.OS === 'web';
+  const showTooltip = tooltipEnabled && isHovered;
+  const creatorName =
+    [reservation.creadoPorNombre, reservation.creadoPorApellido].filter(Boolean).join(' ') ||
+    reservation.creadoPorEmail ||
+    'Sin datos';
+
+  const handleHoverIn = tooltipEnabled ? () => setIsHovered(true) : undefined;
+  const handleHoverOut = tooltipEnabled ? () => setIsHovered(false) : undefined;
+  const handleFocus = tooltipEnabled ? () => setIsHovered(true) : undefined;
+  const handleBlur = tooltipEnabled ? () => setIsHovered(false) : undefined;
+
+  return (
+    <View style={{ height: containerHeight }} className="border-b border-white/5 px-3 py-2">
+      <Pressable
+        className={`relative flex-1 overflow-hidden rounded-2xl border px-4 py-3 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.bg} ${color.border}`}
+        onHoverIn={handleHoverIn}
+        onHoverOut={handleHoverOut}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+      >
+        <View className="flex-row items-center justify-between">
+          <Text
+            className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {contactName}
+          </Text>
+          <View className="flex-row items-center gap-2">
+            {reservation.estado ? (
+              <View
+                className={`rounded-full border px-2 py-0.5 ${statusClasses.bg} ${statusClasses.border}`}
+              >
+                <Text
+                  className={`text-[10px] font-semibold uppercase tracking-wide ${statusClasses.text}`}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {statusLabel}
+                </Text>
+              </View>
+            ) : null}
+            {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
+            {onDelete ? (
+              <Pressable
+                onPress={onDelete}
+                hitSlop={8}
+                className="h-7 w-7 items-center justify-center rounded-full bg-white/10"
+              >
+                <Ionicons name="trash" size={14} color="#F8FAFC" />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+        <Text className="text-white text-[13px] mt-1" numberOfLines={1} ellipsizeMode="tail">
+          {timeRange}
+        </Text>
+
+        {showTooltip ? (
+          <View pointerEvents="none" className="absolute left-0 right-0 top-full z-20 mt-2 px-2">
+            <View className="overflow-hidden rounded-xl border border-white/20 bg-slate-950/95 p-3 shadow-xl shadow-black/40">
+              <Text className="text-white text-xs font-semibold" numberOfLines={2} ellipsizeMode="tail">
+                {contactName}
+              </Text>
+              <View className="mt-2 space-y-1">
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Estado: <Text className="text-white">{statusLabel}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Teléfono: <Text className="text-white">{reservation.contactoTelefono || 'Sin teléfono'}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Monto: <Text className="text-white">{formatCurrency(reservation.monto)}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Creador: <Text className="text-white">{creatorName}</Text>
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+      </Pressable>
+    </View>
+  );
 }
 
 function ensureTimeWithSeconds(value) {
@@ -505,45 +655,19 @@ export default function ReservasScreen({ summary, go }) {
 
                     if (segment.type === 'reservation' && segment.reservation) {
                       const { reservation } = segment;
-                      const camera = reservation.grabacionSolicitada;
-                      const contactName =
-                        [reservation.contactoNombre, reservation.contactoApellido]
-                          .filter(Boolean)
-                          .join(' ') ||
-                        [reservation.usuarioNombre, reservation.usuarioApellido]
-                          .filter(Boolean)
-                          .join(' ');
-                      const timeRange = `${formatTime(reservation.horaInicio)} - ${formatTime(reservation.horaFin)}`;
 
                       return (
-                        <View
+                        <TimelineReservationCard
                           key={segment.key || `reservation-${segmentIndex}`}
-                          style={{ height: containerHeight }}
-                          className="border-b border-white/5 px-3 py-2"
-                        >
-                          <View
-                            className={`flex-1 rounded-2xl border px-4 py-3 shadow-sm ${color.bg} ${color.border}`}
-                          >
-                            <View className="flex-row items-center justify-between">
-                              <Text className={`text-sm font-semibold ${color.text}`} numberOfLines={1}>
-                                {contactName || 'Reserva privada'}
-                              </Text>
-                              <View className="flex-row items-center gap-2">
-                                {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
-                                {reservation.reservaId != null ? (
-                                  <Pressable
-                                    onPress={() => handleDeleteReservation(reservation.reservaId)}
-                                    hitSlop={8}
-                                    className="h-7 w-7 items-center justify-center rounded-full bg-white/10"
-                                  >
-                                    <Ionicons name="trash" size={14} color="#F8FAFC" />
-                                  </Pressable>
-                                ) : null}
-                              </View>
-                            </View>
-                            <Text className="text-white text-[13px] mt-1">{timeRange}</Text>
-                          </View>
-                        </View>
+                          reservation={reservation}
+                          color={color}
+                          containerHeight={containerHeight}
+                          onDelete={
+                            reservation.reservaId != null
+                              ? () => handleDeleteReservation(reservation.reservaId)
+                              : undefined
+                          }
+                        />
                       );
                     }
 
