@@ -673,35 +673,51 @@ export default function ReservasScreen({ summary, go }) {
     [selectedDate]
   );
 
-  const handleDeleteReservation = useCallback((reservaId) => {
-    if (reservaId === undefined || reservaId === null) {
-      return;
-    }
+  const handleDeleteReservation = useCallback(
+    (reservaId) => {
+      if (reservaId === undefined || reservaId === null) {
+        return;
+      }
 
-    Alert.alert(
-      'Eliminar reserva',
-      '¿Querés eliminar esta reserva?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteClubReservation(reservaId);
-              setRefreshToken((token) => token + 1);
-            } catch (err) {
-              Alert.alert(
-                'No pudimos eliminar la reserva',
-                err?.message || 'Intentá de nuevo en unos minutos.'
-              );
-            }
+      const confirmDeletion = async () => {
+        try {
+          await deleteClubReservation(reservaId);
+          setRefreshToken((token) => token + 1);
+        } catch (err) {
+          Alert.alert(
+            'No pudimos eliminar la reserva',
+            err?.message || 'Intentá de nuevo en unos minutos.'
+          );
+        }
+      };
+
+      if (Platform.OS === 'web') {
+        const confirmed =
+          typeof window !== 'undefined'
+            ? window.confirm('¿Querés eliminar esta reserva?')
+            : false;
+        if (confirmed) {
+          confirmDeletion();
+        }
+        return;
+      }
+
+      Alert.alert(
+        'Eliminar reserva',
+        '¿Querés eliminar esta reserva?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Eliminar',
+            style: 'destructive',
+            onPress: confirmDeletion,
           },
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [setRefreshToken]);
+        ],
+        { cancelable: true }
+      );
+    },
+    [setRefreshToken]
+  );
 
   const renderTimeline = () => {
     if (!panelData?.agenda?.length) {
