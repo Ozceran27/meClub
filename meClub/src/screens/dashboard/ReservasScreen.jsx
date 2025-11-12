@@ -445,6 +445,8 @@ function getReservationSegments(reservations, slots, slotMinutes = SLOT_MINUTES)
   const segments = [];
   const skip = new Set();
   const list = Array.isArray(reservations) ? reservations : [];
+  const effectiveSlotMinutes = Number.isFinite(slotMinutes) && slotMinutes > 0 ? slotMinutes : SLOT_MINUTES;
+  const timelineStart = slots?.[0]?.start ?? 0;
 
   slots.forEach((slot, index) => {
     if (skip.has(index)) {
@@ -456,7 +458,11 @@ function getReservationSegments(reservations, slots, slotMinutes = SLOT_MINUTES)
       const start = timeToMinutes(item?.horaInicio);
       const end = timeToMinutes(item?.horaFin);
       if (start == null || end == null) return false;
-      return start <= slot.start && end > slot.start;
+      if (!(start < slot.end && end > slot.start)) {
+        return false;
+      }
+      const anchorIndex = Math.max(0, Math.floor((start - timelineStart) / effectiveSlotMinutes));
+      return anchorIndex === index;
     });
 
     if (!reservation) {
@@ -464,18 +470,24 @@ function getReservationSegments(reservations, slots, slotMinutes = SLOT_MINUTES)
       return;
     }
 
-    const start = timeToMinutes(reservation.horaInicio) ?? slot.start;
-    const end = timeToMinutes(reservation.horaFin) ?? slot.end;
-    const duration = Math.max(end - slot.start, slotMinutes);
-    const slotsCovered = Math.max(1, Math.ceil(duration / slotMinutes));
+    const start = timeToMinutes(reservation.horaInicio);
+    const end = timeToMinutes(reservation.horaFin);
+    const validStart = Number.isFinite(start) ? start : slot.start;
+    const validEnd = Number.isFinite(end) ? end : validStart + effectiveSlotMinutes;
+    const rawDuration = validEnd - validStart;
+    const duration = rawDuration > 0 ? rawDuration : effectiveSlotMinutes;
+    const slotsCovered = Math.max(1, Math.ceil(duration / effectiveSlotMinutes));
 
     for (let i = 1; i < slotsCovered; i += 1) {
-      skip.add(index + i);
+      const skipIndex = index + i;
+      if (skipIndex < slots.length) {
+        skip.add(skipIndex);
+      }
     }
 
     segments.push({
       type: 'reservation',
-      key: `reservation-${reservation.reservaId ?? `${start}-${end}`}`,
+      key: `reservation-${reservation.reservaId ?? `${validStart}-${validEnd}`}`,
       reservation,
       slotsCovered,
     });
