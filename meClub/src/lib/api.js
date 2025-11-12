@@ -173,6 +173,10 @@ function normalizeReservation(raw) {
     horaFin: typeof raw.hora_fin === 'string' ? raw.hora_fin : null,
     duracionHoras: toPositiveIntOrZero(raw.duracion_horas),
     estado: raw.estado ?? null,
+    estadoPago:
+      raw.estado_pago !== undefined && raw.estado_pago !== null
+        ? String(raw.estado_pago).trim() || null
+        : null,
     monto: toNumberOrZero(raw.monto),
     montoBase: toNumberOrZero(raw.monto_base),
     montoGrabacion: toNumberOrZero(raw.monto_grabacion),

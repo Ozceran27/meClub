@@ -210,6 +210,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contacto_nombre_payload = null,
       contacto_apellido: contacto_apellido_payload = null,
       contacto_telefono: contacto_telefono_payload = null,
+      estado_pago = 'sin_abonar',
     } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {
@@ -358,6 +359,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contactoNombre,
       contacto_apellido: contactoApellido,
       contacto_telefono: contactoTelefono,
+      estado_pago,
     });
 
     return res.status(201).json({
@@ -367,6 +369,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
         monto_base: montoBase,
         monto_grabacion: montoGrabacion,
         monto: total,
+        estado_pago,
       },
     });
   } catch (err) {
