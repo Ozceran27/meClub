@@ -38,6 +38,16 @@ const STATUS_STYLES = {
     border: 'border-sky-400/40',
     text: 'text-sky-100',
   },
+  pagada: {
+    bg: 'bg-emerald-500/20',
+    border: 'border-emerald-400/40',
+    text: 'text-emerald-100',
+  },
+  pagado: {
+    bg: 'bg-emerald-500/20',
+    border: 'border-emerald-400/40',
+    text: 'text-emerald-100',
+  },
   cancelada: {
     bg: 'bg-rose-500/20',
     border: 'border-rose-400/40',
@@ -403,6 +413,15 @@ function normalizeReservationDraft(draft, fallbackDate) {
   const contactoEmail = draft.contacto_email && String(draft.contacto_email).trim();
   if (contactoEmail) {
     payload.contacto_email = contactoEmail;
+  }
+
+  const estadoPagoRaw =
+    draft.estado_pago ?? draft.estadoPago ?? draft.estado?.pago ?? draft.estado?.estado_pago ?? null;
+  if (estadoPagoRaw !== null && estadoPagoRaw !== undefined) {
+    const estadoPago = String(estadoPagoRaw).trim();
+    if (estadoPago) {
+      payload.estado_pago = estadoPago;
+    }
   }
 
   if (tipoReserva === 'relacionada') {

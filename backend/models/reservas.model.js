@@ -36,6 +36,7 @@ const ReservasModel = {
     contacto_apellido = null,
     contacto_telefono = null,
     grabacion_solicitada = 0,
+    estado_pago = 'sin_abonar',
   }) => {
     if (!creado_por_id) throw new Error('creado_por_id es requerido');
     if (!cancha_id) throw new Error('cancha_id es requerido');
@@ -82,9 +83,9 @@ const ReservasModel = {
       const [result] = await connection.query(
         `INSERT INTO reservas
          (usuario_id, club_id, cancha_id, fecha, hora_inicio, hora_fin, monto, grabacion_solicitada, duracion_horas,
-          tipo_reserva, contacto_nombre, contacto_apellido, contacto_telefono, creado_por_id,
+          tipo_reserva, contacto_nombre, contacto_apellido, contacto_telefono, creado_por_id, estado_pago,
           monto_base, monto_grabacion)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           usuario_id,
           club_id,
@@ -100,6 +101,7 @@ const ReservasModel = {
           contactoApellidoValue,
           contactoTelefonoValue,
           creado_por_id,
+          estado_pago,
           monto_base,
           monto_grabacion,
         ]
@@ -120,6 +122,7 @@ const ReservasModel = {
         monto,
         monto_base,
         monto_grabacion,
+        estado_pago,
         grabacion_solicitada: !!grabacion_solicitada,
         tipo_reserva: tipoReservaNormalizado,
         contacto_nombre: contactoNombreValue,
@@ -182,7 +185,7 @@ const ReservasModel = {
   misReservas: async (usuario_id) => {
     const [rows] = await db.query(
       `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha,
-              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.monto,
+              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.estado_pago, r.monto,
               r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
               r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
               c.nombre AS cancha_nombre,
@@ -203,7 +206,7 @@ const ReservasModel = {
   reservasPorCanchaFecha: async (cancha_id, fecha) => {
     const [rows] = await db.query(
       `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha, r.hora_inicio, r.hora_fin,
-              r.duracion_horas, r.estado, r.monto, r.grabacion_solicitada,
+              r.duracion_horas, r.estado, r.estado_pago, r.monto, r.grabacion_solicitada,
               r.tipo_reserva, r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
               r.monto_base, r.monto_grabacion,
               u.nombre AS usuario_nombre, u.apellido AS usuario_apellido, u.email AS usuario_email,
@@ -222,7 +225,7 @@ const ReservasModel = {
   reservasAgendaClub: async ({ club_id, fecha }) => {
     const [rows] = await db.query(
       `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha,
-              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.monto,
+              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.estado_pago, r.monto,
               r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
               r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
               c.nombre AS cancha_nombre,
@@ -268,7 +271,7 @@ const ReservasModel = {
     const horaActual = ahora || '00:00:00';
     const [rows] = await db.query(
       `SELECT r.reserva_id, r.usuario_id, r.creado_por_id, r.cancha_id, r.fecha,
-              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.monto,
+              r.hora_inicio, r.hora_fin, r.duracion_horas, r.estado, r.estado_pago, r.monto,
               r.monto_base, r.monto_grabacion, r.grabacion_solicitada, r.tipo_reserva,
               r.contacto_nombre, r.contacto_apellido, r.contacto_telefono,
               c.nombre AS cancha_nombre,
