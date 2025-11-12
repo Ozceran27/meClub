@@ -164,4 +164,42 @@ describe('ClubesModel.actualizarPorId', () => {
       ClubesModel.actualizarPorId(1, { nombre: 'Club', provincia_id: 'abc' })
     ).rejects.toThrow('provincia_id debe ser numérico o null');
   });
+
+  it('normaliza horarios nocturnos cuando se actualizan', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ club_id: 5 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([
+        [
+          {
+            club_id: 5,
+            nombre: 'Club Night',
+            hora_nocturna_inicio: '20:00',
+            hora_nocturna_fin: '04:30:00',
+          },
+        ],
+      ]);
+
+    const result = await ClubesModel.actualizarPorId(5, {
+      nombre: 'Club Night',
+      hora_nocturna_inicio: '20:00',
+      hora_nocturna_fin: '04:30',
+    });
+
+    expect(mockQuery).toHaveBeenNthCalledWith(
+      2,
+      'UPDATE clubes SET nombre = ?, hora_nocturna_inicio = ?, hora_nocturna_fin = ? WHERE club_id = ?',
+      ['Club Night', '20:00:00', '04:30:00', 5]
+    );
+    expect(result.hora_nocturna_inicio).toBe('20:00:00');
+    expect(result.hora_nocturna_fin).toBe('04:30:00');
+  });
+
+  it('lanza error si la hora nocturna es inválida', async () => {
+    mockQuery.mockResolvedValueOnce([[{ club_id: 6 }]]);
+
+    await expect(
+      ClubesModel.actualizarPorId(6, { nombre: 'Club', hora_nocturna_inicio: '99:00' })
+    ).rejects.toThrow('hora_nocturna_inicio debe tener el formato HH:MM o HH:MM:SS');
+  });
 });
