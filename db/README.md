@@ -36,3 +36,15 @@ El middleware sigue restringiendo las cargas a `image/png`, `image/jpeg` y `imag
 
 El archivo [`dump-meclub-202509261708.txt`](./dump-meclub-202509261708.txt) refleja la estructura actualizada utilizando `LONGBLOB` para `foto_logo` en las tablas `clubes` y `clubs_usuarios`. Si regenerás el dump o escribís nuevas migraciones, recordá mantener el mismo tipo de columna según la estrategia elegida.
 
+## Ampliar horario nocturno de los clubes
+
+Cuando necesites habilitar tarifas nocturnas en el panel de reservas asegurate de agregar las columnas `hora_nocturna_inicio` y `hora_nocturna_fin` en la tabla `clubes`. Desde DBeaver (o cualquier cliente MySQL compatible) podés ejecutar el siguiente script:
+
+```sql
+ALTER TABLE clubes
+  ADD COLUMN hora_nocturna_inicio TIME NULL AFTER precio_grabacion,
+  ADD COLUMN hora_nocturna_fin TIME NULL AFTER hora_nocturna_inicio;
+```
+
+Ambos campos aceptan valores nulos para conservar el comportamiento actual en instalaciones que todavía no definen un rango nocturno. Una vez ejecutado el cambio, recordá actualizar los formularios del panel para completar las horas utilizando el formato `HH:MM`.
+

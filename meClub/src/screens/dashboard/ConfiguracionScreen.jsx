@@ -44,6 +44,7 @@ import {
   buildFormState,
   composeAddress,
   splitAddress,
+  normalizeTimeToHHMM,
 } from './configurationState';
 
 const FIELD_STYLES =
@@ -67,6 +68,10 @@ export default function ConfiguracionScreen({ go }) {
   const [logoAsset, setLogoAsset] = useState(null);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [saveStatus, setSaveStatus] = useState(initialSaveStatus);
+  const [timeErrors, setTimeErrors] = useState({
+    hora_nocturna_inicio: '',
+    hora_nocturna_fin: '',
+  });
 
   useEffect(() => {
     let alive = true;
@@ -103,6 +108,7 @@ export default function ConfiguracionScreen({ go }) {
             clubRes,
           ),
         );
+        setTimeErrors({ hora_nocturna_inicio: '', hora_nocturna_fin: '' });
         setLogoAsset(null);
         setRemoveLogo(false);
         setError('');
@@ -182,11 +188,22 @@ export default function ConfiguracionScreen({ go }) {
           direccion: composeAddress(nextStreet, nextNumber),
         };
       }
+      if (key === 'hora_nocturna_inicio' || key === 'hora_nocturna_fin') {
+        const digits = typeof value === 'string' ? value.replace(/\D/g, '').slice(0, 4) : '';
+        let formatted = digits;
+        if (digits.length > 2) {
+          formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+        }
+        return { ...prev, [key]: formatted };
+      }
       return { ...prev, [key]: value };
     });
     if (key === 'provincia_id') {
       setLocalityQuery('');
       setShowLocalityMenu(false);
+    }
+    if (key === 'hora_nocturna_inicio' || key === 'hora_nocturna_fin') {
+      setTimeErrors((prev) => ({ ...prev, [key]: '' }));
     }
   };
 
@@ -197,6 +214,28 @@ export default function ConfiguracionScreen({ go }) {
       localidad_nombre: locality?.nombre ?? '',
     }));
     setShowLocalityMenu(false);
+  };
+
+  const handleTimeBlur = (key) => {
+    const value = form?.[key];
+    if (!value) {
+      setTimeErrors((prev) => ({ ...prev, [key]: '' }));
+      if (value !== '') {
+        setForm((prev) => ({ ...prev, [key]: '' }));
+      }
+      return;
+    }
+
+    const normalized = normalizeTimeToHHMM(value);
+    if (!normalized) {
+      setTimeErrors((prev) => ({ ...prev, [key]: 'Ingresá una hora válida (HH:MM)' }));
+      return;
+    }
+
+    setTimeErrors((prev) => ({ ...prev, [key]: '' }));
+    if (normalized !== value) {
+      setForm((prev) => ({ ...prev, [key]: normalized }));
+    }
   };
 
   const handleToggleService = (serviceId) => {
@@ -381,6 +420,40 @@ export default function ConfiguracionScreen({ go }) {
     setSuccess('');
     setSaveStatus(initialSaveStatus);
 
+    const nightStartNormalized = form.hora_nocturna_inicio
+      ? normalizeTimeToHHMM(form.hora_nocturna_inicio)
+      : '';
+    const nightEndNormalized = form.hora_nocturna_fin
+      ? normalizeTimeToHHMM(form.hora_nocturna_fin)
+      : '';
+
+    const nextTimeErrors = {
+      hora_nocturna_inicio:
+        form.hora_nocturna_inicio && !nightStartNormalized
+          ? 'Ingresá una hora válida (HH:MM)'
+          : '',
+      hora_nocturna_fin:
+        form.hora_nocturna_fin && !nightEndNormalized ? 'Ingresá una hora válida (HH:MM)' : '',
+    };
+
+    if (
+      nightStartNormalized &&
+      nightEndNormalized &&
+      nightStartNormalized === nightEndNormalized
+    ) {
+      nextTimeErrors.hora_nocturna_fin = 'Las horas deben definir un rango válido';
+    }
+
+    const hasTimeErrors = Object.values(nextTimeErrors).some(Boolean);
+    if (hasTimeErrors) {
+      setTimeErrors(nextTimeErrors);
+      setSaving(false);
+      setError('Corregí las tarifas nocturnas antes de guardar.');
+      return;
+    }
+
+    setTimeErrors({ hora_nocturna_inicio: '', hora_nocturna_fin: '' });
+
     const operations = [];
 
     operations.push(
@@ -403,6 +476,8 @@ export default function ConfiguracionScreen({ go }) {
           latitud: form.latitud != null ? Number(form.latitud) : null,
           longitud: form.longitud != null ? Number(form.longitud) : null,
           google_place_id: form.google_place_id || null,
+          hora_nocturna_inicio: nightStartNormalized || null,
+          hora_nocturna_fin: nightEndNormalized || null,
         };
         if (removeLogo) {
           payload.foto_logo = null;
@@ -433,6 +508,12 @@ export default function ConfiguracionScreen({ go }) {
           longitud: parseMaybeNumber(updated?.longitud ?? payload.longitud ?? prev.longitud),
           google_place_id:
             updated?.google_place_id ?? payload.google_place_id ?? prev.google_place_id,
+          hora_nocturna_inicio: normalizeTimeToHHMM(
+            updated?.hora_nocturna_inicio ?? payload.hora_nocturna_inicio ?? prev.hora_nocturna_inicio
+          ),
+          hora_nocturna_fin: normalizeTimeToHHMM(
+            updated?.hora_nocturna_fin ?? payload.hora_nocturna_fin ?? prev.hora_nocturna_fin
+          ),
           foto_logo: removeLogo ? null : nextLogoPath ?? updated?.foto_logo ?? prev.foto_logo,
         }));
         setLogoAsset(null);
@@ -722,6 +803,48 @@ export default function ConfiguracionScreen({ go }) {
                 className={FIELD_STYLES}
                 autoCapitalize="none"
               />
+            </View>
+          </View>
+
+          <View>
+            <Text className="text-white text-lg font-semibold">Tarifas nocturnas</Text>
+            <Text className="text-white/60 text-sm mt-1">
+              Indicá desde qué hora comienza la tarifa nocturna y hasta cuándo se aplica. Los valores usan el
+              formato HH:MM en horario 24 h.
+            </Text>
+            <View className="mt-4 grid gap-6 md:grid-cols-2">
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Inicio horario nocturno</Text>
+                <TextInput
+                  value={form.hora_nocturna_inicio}
+                  onChangeText={(text) => handleChange('hora_nocturna_inicio', text)}
+                  onBlur={() => handleTimeBlur('hora_nocturna_inicio')}
+                  placeholder="Ej. 22:00"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                  className={FIELD_STYLES}
+                />
+                {timeErrors.hora_nocturna_inicio ? (
+                  <Text className="text-red-300 text-xs mt-2">{timeErrors.hora_nocturna_inicio}</Text>
+                ) : null}
+              </View>
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Fin horario nocturno</Text>
+                <TextInput
+                  value={form.hora_nocturna_fin}
+                  onChangeText={(text) => handleChange('hora_nocturna_fin', text)}
+                  onBlur={() => handleTimeBlur('hora_nocturna_fin')}
+                  placeholder="Ej. 06:00"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                  className={FIELD_STYLES}
+                />
+                {timeErrors.hora_nocturna_fin ? (
+                  <Text className="text-red-300 text-xs mt-2">{timeErrors.hora_nocturna_fin}</Text>
+                ) : null}
+              </View>
             </View>
           </View>
 

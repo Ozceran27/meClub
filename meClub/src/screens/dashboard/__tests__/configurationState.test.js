@@ -5,6 +5,7 @@ import {
   buildFormState,
   denormalizeSchedule,
   normalizeSchedule,
+  normalizeTimeToHHMM,
 } from '../configurationState.js';
 
 const sampleSchedule = [
@@ -37,4 +38,16 @@ test('buildFormState preserves normalized schedule objects across reloads', () =
   assert.strictEqual(reloadedState.horarios, normalizedSchedule);
   assert.deepEqual(denormalizeSchedule(reloadedState.horarios), payload);
   assert.deepEqual(normalizeSchedule(payload), normalizedSchedule);
+});
+
+test('buildFormState normalizes night tariff hours to HH:MM', () => {
+  const state = buildFormState({
+    hora_nocturna_inicio: '22:15:30',
+    hora_nocturna_fin: '06:00',
+  });
+
+  assert.equal(state.hora_nocturna_inicio, '22:15');
+  assert.equal(state.hora_nocturna_fin, '06:00');
+  assert.equal(normalizeTimeToHHMM('5:7'), '05:07');
+  assert.equal(normalizeTimeToHHMM('invalid'), '');
 });

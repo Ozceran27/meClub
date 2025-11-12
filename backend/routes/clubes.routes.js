@@ -16,6 +16,7 @@ const LocalidadesModel = require('../models/localidades.model');
 const ServiciosModel = require('../models/servicios.model');
 const ClubesServiciosModel = require('../models/clubesServicios.model');
 const ClubesImpuestosModel = require('../models/clubesImpuestos.model');
+const { normalizeHour } = require('../utils/datetime');
 
 // Aplica middlewares de autenticación/rol y carga de club
 router.use(
@@ -92,6 +93,22 @@ const parseDecimal = (value, fieldName, { required = false } = {}) => {
     throwValidationError(`${fieldName} debe ser un número positivo`);
   }
   return Math.round(numeric * 100) / 100;
+};
+
+const parseOptionalTime = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
+  if (typeof value !== 'string') {
+    throwValidationError(`${fieldName} debe ser una cadena en formato HH:MM`);
+  }
+
+  const normalized = normalizeHour(value);
+  if (!normalized) {
+    throwValidationError(`${fieldName} debe tener el formato HH:MM o HH:MM:SS`);
+  }
+
+  return normalized;
 };
 
 const parseBooleanLike = (value, fieldName) => {
@@ -249,6 +266,8 @@ router.patch('/mis-datos', async (req, res) => {
       latitud,
       longitud,
       google_place_id,
+      hora_nocturna_inicio,
+      hora_nocturna_fin,
     } = req.body || {};
 
     if (typeof nombre !== 'string' || nombre.trim() === '') {
@@ -383,6 +402,31 @@ router.patch('/mis-datos', async (req, res) => {
       return res.status(400).json({ mensaje: e.message });
     }
 
+    let horaNocturnaInicioValue;
+    let horaNocturnaFinValue;
+    try {
+      horaNocturnaInicioValue = parseOptionalTime(hora_nocturna_inicio, 'hora_nocturna_inicio');
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+    try {
+      horaNocturnaFinValue = parseOptionalTime(hora_nocturna_fin, 'hora_nocturna_fin');
+    } catch (e) {
+      return res.status(400).json({ mensaje: e.message });
+    }
+
+    if (
+      horaNocturnaInicioValue !== undefined &&
+      horaNocturnaFinValue !== undefined &&
+      horaNocturnaInicioValue !== null &&
+      horaNocturnaFinValue !== null &&
+      horaNocturnaInicioValue === horaNocturnaFinValue
+    ) {
+      return res.status(400).json({
+        mensaje: 'hora_nocturna_inicio y hora_nocturna_fin no pueden ser iguales',
+      });
+    }
+
     if (localidadIdValue !== undefined && localidadIdValue !== null) {
       let provinciaParaValidar = req.club.provincia_id;
       if (provincia_id !== undefined) {
@@ -422,6 +466,8 @@ router.patch('/mis-datos', async (req, res) => {
     if (latitud !== undefined) payload.latitud = latitudValue;
     if (longitud !== undefined) payload.longitud = longitudValue;
     if (google_place_id !== undefined) payload.google_place_id = placeIdValue;
+    if (hora_nocturna_inicio !== undefined) payload.hora_nocturna_inicio = horaNocturnaInicioValue;
+    if (hora_nocturna_fin !== undefined) payload.hora_nocturna_fin = horaNocturnaFinValue;
 
     const clubActualizado = await ClubesModel.actualizarPorId(req.club.club_id, payload);
 

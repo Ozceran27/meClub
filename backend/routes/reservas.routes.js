@@ -473,6 +473,8 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
       club: {
         club_id: clubId,
         precio_grabacion: toNumberOrZero(club.precio_grabacion),
+        hora_nocturna_inicio: club.hora_nocturna_inicio || null,
+        hora_nocturna_fin: club.hora_nocturna_fin || null,
       },
     });
   } catch (err) {

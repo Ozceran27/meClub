@@ -90,6 +90,8 @@ describe('PATCH /mis-datos', () => {
       descripcion: 'Desc',
       provincia_id: 1,
       localidad_id: 5,
+      hora_nocturna_inicio: '22:00:00',
+      hora_nocturna_fin: '06:00:00',
     });
 
     const res = await request(app)
@@ -106,6 +108,8 @@ describe('PATCH /mis-datos', () => {
         latitud: -34.6,
         longitud: -58.4,
         google_place_id: 'ChIJ123',
+        hora_nocturna_inicio: '22:00',
+        hora_nocturna_fin: '06:00',
       });
 
     expect(res.status).toBe(200);
@@ -121,10 +125,14 @@ describe('PATCH /mis-datos', () => {
       latitud: -34.6,
       longitud: -58.4,
       google_place_id: 'ChIJ123',
+      hora_nocturna_inicio: '22:00:00',
+      hora_nocturna_fin: '06:00:00',
     });
     expect(res.body).toHaveProperty('mensaje');
     expect(res.body).toHaveProperty('club');
     expect(res.body.club.nombre).toBe('Club');
+    expect(res.body.club.hora_nocturna_inicio).toBe('22:00:00');
+    expect(res.body.club.hora_nocturna_fin).toBe('06:00:00');
   });
 
   it('rechaza teléfono inválido', async () => {
@@ -144,6 +152,28 @@ describe('PATCH /mis-datos', () => {
     const res = await request(app)
       .patch('/mis-datos')
       .send({ nombre: 'Club', precio_grabacion: -10 });
+
+    expect(res.status).toBe(400);
+    expect(ClubesModel.actualizarPorId).not.toHaveBeenCalled();
+  });
+
+  it('rechaza horarios nocturnos con formato inválido', async () => {
+    const app = buildApp();
+
+    const res = await request(app)
+      .patch('/mis-datos')
+      .send({ nombre: 'Club', hora_nocturna_inicio: '25:61' });
+
+    expect(res.status).toBe(400);
+    expect(ClubesModel.actualizarPorId).not.toHaveBeenCalled();
+  });
+
+  it('rechaza horarios nocturnos iguales', async () => {
+    const app = buildApp();
+
+    const res = await request(app)
+      .patch('/mis-datos')
+      .send({ nombre: 'Club', hora_nocturna_inicio: '22:00', hora_nocturna_fin: '22:00' });
 
     expect(res.status).toBe(400);
     expect(ClubesModel.actualizarPorId).not.toHaveBeenCalled();

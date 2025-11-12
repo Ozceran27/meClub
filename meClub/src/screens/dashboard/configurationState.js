@@ -85,6 +85,35 @@ export const normalizeTaxes = (taxes) => {
   }));
 };
 
+export const normalizeTimeToHHMM = (value) => {
+  if (value === undefined || value === null) return '';
+  const str = String(value).trim();
+  if (!str) return '';
+
+  const match = str.match(/^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?$/);
+  if (!match) return '';
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2] ?? '0');
+  const seconds = Number(match[3] ?? '0');
+
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    Number.isNaN(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return '';
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 export const extractRanges = (ranges) => {
   if (!Array.isArray(ranges)) return [];
   return ranges
@@ -234,6 +263,13 @@ export const buildFormState = (source = {}, fallback = {}) => {
   const direccion = source?.direccion ?? fallback?.direccion ?? '';
   const { street: direccion_calle, number: direccion_numero } = splitAddress(direccion);
 
+  const hora_nocturna_inicio = normalizeTimeToHHMM(
+    source?.hora_nocturna_inicio ?? fallback?.hora_nocturna_inicio ?? null
+  );
+  const hora_nocturna_fin = normalizeTimeToHHMM(
+    source?.hora_nocturna_fin ?? fallback?.hora_nocturna_fin ?? null
+  );
+
   return {
     nombre: source?.nombre ?? fallback?.nombre ?? '',
     descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
@@ -253,5 +289,7 @@ export const buildFormState = (source = {}, fallback = {}) => {
     servicios,
     impuestos,
     horarios,
+    hora_nocturna_inicio,
+    hora_nocturna_fin,
   };
 };

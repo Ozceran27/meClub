@@ -1,11 +1,27 @@
 const db = require('../config/db');
 const { normalizeLogoValue, prepareLogoValue } = require('../utils/logoStorage');
 const { normalizeCourtImage } = require('../utils/courtImage');
+const { normalizeHour } = require('../utils/datetime');
 
 const toNullableNumber = (value) => {
   if (value === undefined || value === null) return null;
   const asNumber = Number(value);
   return Number.isFinite(asNumber) ? asNumber : null;
+};
+
+const mapNullableTime = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  if (value instanceof Date) {
+    const hours = String(value.getHours()).padStart(2, '0');
+    const minutes = String(value.getMinutes()).padStart(2, '0');
+    const seconds = String(value.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  const normalized = normalizeHour(String(value));
+  return normalized;
 };
 
 const mapClubRow = (row) => {
@@ -27,6 +43,8 @@ const mapClubRow = (row) => {
       row.precio_grabacion === undefined || row.precio_grabacion === null
         ? null
         : toNullableNumber(row.precio_grabacion),
+    hora_nocturna_inicio: mapNullableTime(row.hora_nocturna_inicio),
+    hora_nocturna_fin: mapNullableTime(row.hora_nocturna_fin),
   };
 };
 
@@ -68,6 +86,26 @@ const normalizeNullableFloat = (value, fieldName) => {
   }
 
   return numeric;
+};
+
+const normalizeNullableTime = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  if (value instanceof Date) {
+    return mapNullableTime(value);
+  }
+
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    throw new Error(`${fieldName} debe ser una hora en formato HH:MM o HH:MM:SS`);
+  }
+
+  const normalized = normalizeHour(String(value));
+  if (!normalized) {
+    throw new Error(`${fieldName} debe tener el formato HH:MM o HH:MM:SS`);
+  }
+
+  return normalized;
 };
 
 const ClubesModel = {
@@ -206,6 +244,8 @@ const ClubesModel = {
       latitud,
       longitud,
       google_place_id,
+      hora_nocturna_inicio,
+      hora_nocturna_fin,
     } = {}
   ) => {
     const existente = await ClubesModel.obtenerClubPorId(club_id);
@@ -236,6 +276,8 @@ const ClubesModel = {
     setField('precio_grabacion', normalizeNullableFloat(precio_grabacion, 'precio_grabacion'));
     setField('direccion', normalizeNullableTrimmedString(direccion, 'direccion'));
     setField('google_place_id', normalizeNullableTrimmedString(google_place_id, 'google_place_id'));
+    setField('hora_nocturna_inicio', normalizeNullableTime(hora_nocturna_inicio, 'hora_nocturna_inicio'));
+    setField('hora_nocturna_fin', normalizeNullableTime(hora_nocturna_fin, 'hora_nocturna_fin'));
 
     if (foto_logo !== undefined) {
       const { value: logoValue, shouldUpdate } = prepareLogoValue(foto_logo);
