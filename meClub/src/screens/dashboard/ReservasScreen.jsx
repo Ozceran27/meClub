@@ -27,6 +27,7 @@ const COURT_COLORS = [
 
 const SLOT_MINUTES = 60;
 const SLOT_HEIGHT = 68;
+const TIME_COLUMN_WIDTH = 220;
 
 function pad(value) {
   return String(value).padStart(2, '0');
@@ -461,17 +462,17 @@ export default function ReservasScreen({ summary, go }) {
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-5" contentContainerClassName="px-5">
         <View className="flex-row">
-          <View className="w-20">
-            <View className="border-b border-white/5 px-2 py-3">
+          <View style={{ width: TIME_COLUMN_WIDTH }}>
+            <View className="border-b border-white/5 px-4 py-3">
               <Text className="text-white/60 text-xs uppercase tracking-widest">Hora</Text>
             </View>
             {timeSlots.map((slot) => (
               <View
                 key={`slot-${slot.start}`}
                 style={{ height: SLOT_HEIGHT }}
-                className="border-b border-white/5 px-2"
+                className="border-b border-white/5 px-4 justify-center"
               >
-                <Text className="text-white/50 text-xs mt-2">{slot.label}</Text>
+                <Text className="text-white/50 text-xs">{slot.label}</Text>
               </View>
             ))}
           </View>
@@ -481,7 +482,7 @@ export default function ReservasScreen({ summary, go }) {
             const segments = getReservationSegments(court.reservas, timeSlots);
 
             return (
-              <View key={court.canchaId} className="min-w-[220px] border-l border-white/5">
+              <View key={court.canchaId} style={{ minWidth: TIME_COLUMN_WIDTH }} className="border-l border-white/5">
                 <View className="border-b border-white/5 px-4 py-3 flex-row items-center gap-2">
                   <View className={`h-9 w-9 items-center justify-center rounded-xl border ${color.border} ${color.bg}`}>
                     <Ionicons name="tennisball" size={18} color="#FACC15" />
