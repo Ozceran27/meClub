@@ -543,6 +543,41 @@ router.get('/mias', verifyToken, async (req, res) => {
   }
 });
 
+router.delete('/:reserva_id', verifyToken, requireRole('club'), loadClub, async (req, res) => {
+  const { reserva_id: reservaIdParam } = req.params;
+  const reservaId = Number.parseInt(reservaIdParam, 10);
+
+  if (!Number.isInteger(reservaId) || reservaId <= 0) {
+    return res.status(400).json({ mensaje: 'Identificador de reserva inválido' });
+  }
+
+  try {
+    const reserva = await ReservasModel.getByIdConClub(reservaId);
+    if (!reserva) {
+      return res.status(404).json({ mensaje: 'Reserva no encontrada' });
+    }
+
+    const clubId = Number(req.club?.club_id);
+    if (!Number.isInteger(clubId)) {
+      return res.status(404).json({ mensaje: 'No tienes club relacionado' });
+    }
+
+    if (Number(reserva.club_id) !== clubId) {
+      return res.status(403).json({ mensaje: 'La reserva no pertenece a tu club' });
+    }
+
+    await ReservasModel.eliminar({ reserva_id: reservaId, club_id: clubId });
+    return res.json({ mensaje: 'Reserva eliminada' });
+  } catch (err) {
+    if (err && err.code === ReservasModel.RESERVA_NO_ENCONTRADA_CODE) {
+      return res.status(404).json({ mensaje: 'Reserva no encontrada' });
+    }
+
+    console.error(err);
+    return res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
 // PATCH cancelar (usuario o club dueño)
 router.patch('/:reserva_id/cancelar', verifyToken, async (req, res) => {
   try {
