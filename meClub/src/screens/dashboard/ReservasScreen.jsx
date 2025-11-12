@@ -245,49 +245,53 @@ function TimelineReservationCard({
   return (
     <View style={{ height: containerHeight }} className="border-b border-white/5 px-3 py-2">
       <Pressable
-        className={`relative flex-1 overflow-hidden rounded-2xl border px-4 py-3 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.bg} ${color.border}`}
+        className={`relative flex-1 rounded-2xl border shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.border}`}
         onHoverIn={handleHoverIn}
         onHoverOut={handleHoverOut}
         onFocus={handleFocus}
         onBlur={handleBlur}
       >
-        <View className="flex-row items-center justify-between">
-          <Text
-            className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {contactName}
-          </Text>
-          <View className="flex-row items-center gap-2">
-            {reservation.estado ? (
-              <View
-                className={`rounded-full border px-2 py-0.5 ${statusClasses.bg} ${statusClasses.border}`}
+        <View className={`overflow-hidden rounded-2xl ${color.bg}`}>
+          <View className="px-4 py-3">
+            <View className="flex-row items-center justify-between">
+              <Text
+                className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
-                <Text
-                  className={`text-[10px] font-semibold uppercase tracking-wide ${statusClasses.text}`}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {statusLabel}
-                </Text>
+                {contactName}
+              </Text>
+              <View className="flex-row items-center gap-2">
+                {reservation.estado ? (
+                  <View
+                    className={`rounded-full border px-2 py-0.5 ${statusClasses.bg} ${statusClasses.border}`}
+                  >
+                    <Text
+                      className={`text-[10px] font-semibold uppercase tracking-wide ${statusClasses.text}`}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {statusLabel}
+                    </Text>
+                  </View>
+                ) : null}
+                {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
+                {onDelete ? (
+                  <Pressable
+                    onPress={onDelete}
+                    hitSlop={8}
+                    className="h-7 w-7 items-center justify-center rounded-full bg-white/10"
+                  >
+                    <Ionicons name="trash" size={14} color="#F8FAFC" />
+                  </Pressable>
+                ) : null}
               </View>
-            ) : null}
-            {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
-            {onDelete ? (
-              <Pressable
-                onPress={onDelete}
-                hitSlop={8}
-                className="h-7 w-7 items-center justify-center rounded-full bg-white/10"
-              >
-                <Ionicons name="trash" size={14} color="#F8FAFC" />
-              </Pressable>
-            ) : null}
+            </View>
+            <Text className="text-white text-[13px] mt-1" numberOfLines={1} ellipsizeMode="tail">
+              {timeRange}
+            </Text>
           </View>
         </View>
-        <Text className="text-white text-[13px] mt-1" numberOfLines={1} ellipsizeMode="tail">
-          {timeRange}
-        </Text>
 
         {showTooltip ? (
           <View pointerEvents="none" className="absolute left-0 right-0 top-full z-20 mt-2 px-2">
