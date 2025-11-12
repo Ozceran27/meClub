@@ -17,6 +17,7 @@ import {
   deleteClubReservation,
   getReservationsPanel,
 } from '../../lib/api';
+import { calculateBaseAmount, determineRateType, toNumberOrNull } from './pricing';
 
 const COURT_COLORS = [
   { bg: 'bg-emerald-500/20', border: 'border-emerald-400/40', text: 'text-emerald-200' },
@@ -47,6 +48,16 @@ const STATUS_STYLES = {
     border: 'border-amber-400/40',
     text: 'text-amber-100',
   },
+};
+
+const pickFirstNumber = (...values) => {
+  for (const value of values) {
+    const numeric = toNumberOrNull(value);
+    if (numeric !== null) {
+      return numeric;
+    }
+  }
+  return null;
 };
 
 function getStatusBadgeClasses(status) {
@@ -134,7 +145,15 @@ function formatCurrency(value) {
   }
 }
 
-function TimelineReservationCard({ reservation, color, containerHeight, onDelete }) {
+function TimelineReservationCard({
+  reservation,
+  color,
+  containerHeight,
+  onDelete,
+  court,
+  nightStart,
+  nightEnd,
+}) {
   const [isHovered, setIsHovered] = useState(false);
 
   if (!reservation) {
@@ -163,6 +182,60 @@ function TimelineReservationCard({ reservation, color, containerHeight, onDelete
     [reservation.creadoPorNombre, reservation.creadoPorApellido].filter(Boolean).join(' ') ||
     reservation.creadoPorEmail ||
     'Sin datos';
+
+  const pricingClub = useMemo(
+    () => ({
+      hora_nocturna_inicio: nightStart ?? null,
+      hora_nocturna_fin: nightEnd ?? null,
+      horaNocturnaInicio: nightStart ?? null,
+      horaNocturnaFin: nightEnd ?? null,
+    }),
+    [nightEnd, nightStart]
+  );
+
+  const durationHours = useMemo(() => {
+    const normalized = toNumberOrNull(reservation.duracionHoras);
+    if (normalized !== null) {
+      return normalized;
+    }
+    const startMinutes = timeToMinutes(reservation.horaInicio);
+    const endMinutes = timeToMinutes(reservation.horaFin);
+    if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
+      return (endMinutes - startMinutes) / 60;
+    }
+    return null;
+  }, [reservation.duracionHoras, reservation.horaFin, reservation.horaInicio]);
+
+  const explicitBase = toNumberOrNull(reservation.montoBase);
+  const fallbackPrice = pickFirstNumber(
+    court?.monto_base,
+    court?.precio,
+    court?.precioDia,
+    court?.precio_dia,
+    court?.precioNoche,
+    court?.precio_noche
+  );
+
+  const derivedBaseAmount = useMemo(
+    () =>
+      calculateBaseAmount({
+        cancha: court || {},
+        club: pricingClub,
+        horaInicio: reservation.horaInicio,
+        duracionHoras: durationHours,
+        explicitAmount: explicitBase,
+        fallbackAmount: fallbackPrice,
+      }),
+    [court, explicitBase, fallbackPrice, pricingClub, reservation.horaInicio, durationHours]
+  );
+
+  const appliedRateType = determineRateType({ horaInicio: reservation.horaInicio, club: pricingClub });
+  const rateLabel =
+    appliedRateType === 'night'
+      ? 'Tarifa nocturna'
+      : appliedRateType === 'day'
+      ? 'Tarifa diurna'
+      : 'Tarifa estándar';
 
   const handleHoverIn = tooltipEnabled ? () => setIsHovered(true) : undefined;
   const handleHoverOut = tooltipEnabled ? () => setIsHovered(false) : undefined;
@@ -230,7 +303,15 @@ function TimelineReservationCard({ reservation, color, containerHeight, onDelete
                   Teléfono: <Text className="text-white">{reservation.contactoTelefono || 'Sin teléfono'}</Text>
                 </Text>
                 <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
-                  Monto: <Text className="text-white">{formatCurrency(reservation.monto)}</Text>
+                  Ingreso estimado:{' '}
+                  <Text className="text-white">{formatCurrency(derivedBaseAmount)}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Tarifa aplicada: <Text className="text-white">{rateLabel}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Monto registrado:{' '}
+                  <Text className="text-white">{formatCurrency(reservation.monto)}</Text>
                 </Text>
                 <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
                   Creador: <Text className="text-white">{creatorName}</Text>
@@ -448,6 +529,10 @@ export default function ReservasScreen({ summary, go }) {
 
   const selectedDateObj = useMemo(() => parseDateString(selectedDate), [selectedDate]);
 
+  const nightStartValue =
+    panelData?.club?.horaNocturnaInicio ?? panelData?.club?.hora_nocturna_inicio ?? null;
+  const nightEndValue = panelData?.club?.horaNocturnaFin ?? panelData?.club?.hora_nocturna_fin ?? null;
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -511,6 +596,11 @@ export default function ReservasScreen({ summary, go }) {
       (panelData?.agenda || []).map((item) => ({
         cancha_id: item.canchaId,
         nombre: item.canchaNombre || `Cancha ${item.canchaId}`,
+        precio: toNumberOrNull(item?.precio),
+        precioDia: pickFirstNumber(item?.precioDia, item?.precio_dia),
+        precioNoche: pickFirstNumber(item?.precioNoche, item?.precio_noche),
+        precio_dia: pickFirstNumber(item?.precioDia, item?.precio_dia),
+        precio_noche: pickFirstNumber(item?.precioNoche, item?.precio_noche),
       })),
     [panelData]
   );
@@ -667,6 +757,9 @@ export default function ReservasScreen({ summary, go }) {
                               ? () => handleDeleteReservation(reservation.reservaId)
                               : undefined
                           }
+                          court={court}
+                          nightStart={nightStartValue}
+                          nightEnd={nightEndValue}
                         />
                       );
                     }
@@ -925,6 +1018,8 @@ export default function ReservasScreen({ summary, go }) {
         availableDates={availableDates}
         availableStartTimes={availableStartTimes}
         cameraPrice={panelData?.club?.precioGrabacion}
+        nightStart={nightStartValue}
+        nightEnd={nightEndValue}
       />
     </>
   );

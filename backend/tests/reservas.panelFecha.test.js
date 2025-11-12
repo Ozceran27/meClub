@@ -11,7 +11,12 @@ jest.mock('../middleware/roles.middleware', () => ({
 }));
 
 jest.mock('../middleware/club.middleware', () => (req, _res, next) => {
-  req.club = { club_id: 77, precio_grabacion: 500 };
+  req.club = {
+    club_id: 77,
+    precio_grabacion: 500,
+    hora_nocturna_inicio: '22:00:00',
+    hora_nocturna_fin: '06:00:00',
+  };
   next();
 });
 
@@ -53,6 +58,13 @@ describe('GET /reservas/panel con parámetro de fecha', () => {
     expect(response.status).toBe(200);
     expect(response.body.fecha).toBe('2025-11-02');
 
+    expect(response.body.club).toMatchObject({
+      club_id: 77,
+      precio_grabacion: 500,
+      hora_nocturna_inicio: '22:00:00',
+      hora_nocturna_fin: '06:00:00',
+    });
+
     expect(ReservasModel.resumenReservasClub).toHaveBeenCalledWith({
       club_id: 77,
       fecha: '2025-11-02',
@@ -91,6 +103,9 @@ describe('GET /reservas/panel con parámetro de fecha', () => {
       {
         cancha_id: 1,
         cancha_nombre: 'Cancha Principal',
+        precio: null,
+        precio_dia: null,
+        precio_noche: null,
         reservas: [],
       },
     ]);
