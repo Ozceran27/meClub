@@ -226,6 +226,37 @@ describe('Gestión de solapes de reservas', () => {
     delete global.__TEST_CLUB__;
   });
 
+  it('rechaza reservas que superan el horario de cierre', async () => {
+    const app = buildApp();
+
+    ClubesHorarioModel.getPorClubYDia.mockResolvedValueOnce({
+      activo: true,
+      abre: '08:00:00',
+      cierra: '23:00:00',
+    });
+
+    const payload = {
+      cancha_id: 5,
+      fecha: '2099-05-10',
+      hora_inicio: '22:00:00',
+      duracion_horas: 2,
+      tipo_reserva: 'privada',
+      contacto_nombre: 'Mario',
+      contacto_apellido: 'Rossi',
+      contacto_telefono: '1234-5678',
+    };
+
+    const respuesta = await request(app).post('/reservas').send(payload);
+
+    expect(respuesta.status).toBe(400);
+    expect(respuesta.body.mensaje).toMatch(/fuera del horario comercial/i);
+
+    const intentoInsercion = db.query.mock.calls.find(
+      ([sql]) => typeof sql === 'string' && sql.startsWith('INSERT INTO reservas')
+    );
+    expect(intentoInsercion).toBeUndefined();
+  });
+
   it('libera el horario cuando una reserva activa pasa a cancelada', async () => {
     const app = buildApp();
 
@@ -370,7 +401,7 @@ describe('Gestión de solapes de reservas', () => {
       const payload = {
         cancha_id: 5,
         fecha: '2099-02-02',
-        hora_inicio: '23:00:00',
+        hora_inicio: '22:30:00',
         duracion_horas: 1,
         tipo_reserva: 'privada',
         contacto_nombre: 'Laura',
@@ -392,7 +423,7 @@ describe('Gestión de solapes de reservas', () => {
       const payload = {
         cancha_id: 5,
         fecha: '2099-02-03',
-        hora_inicio: '23:30:00',
+        hora_inicio: '22:30:00',
         duracion_horas: 1,
         tipo_reserva: 'privada',
         contacto_nombre: 'Laura',

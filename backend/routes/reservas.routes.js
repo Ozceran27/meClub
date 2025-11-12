@@ -252,7 +252,19 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     if (!horarioDia || !horarioDia.activo) {
       return res.status(400).json({ mensaje: 'El club está cerrado ese día' });
     }
-    if (hora_inicio < horarioDia.abre || hora_fin > horarioDia.cierra) {
+    const horaInicioMs = new Date(`${fecha}T${hora_inicio}`).getTime();
+    const horaFinMs = horaInicioMs + duracionHorasNumero * 60 * 60 * 1000;
+    const horarioAbreMs = new Date(`${fecha}T${horarioDia.abre}`).getTime();
+    const horarioCierraMs = new Date(`${fecha}T${horarioDia.cierra}`).getTime();
+
+    const horariosInvalidos = [horaInicioMs, horaFinMs, horarioAbreMs, horarioCierraMs].some((value) =>
+      Number.isNaN(value)
+    );
+    if (horariosInvalidos) {
+      return res.status(400).json({ mensaje: 'Reserva fuera del horario comercial del club' });
+    }
+
+    if (horaInicioMs < horarioAbreMs || horaFinMs > horarioCierraMs) {
       return res.status(400).json({ mensaje: 'Reserva fuera del horario comercial del club' });
     }
 
