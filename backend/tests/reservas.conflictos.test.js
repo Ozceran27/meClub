@@ -85,7 +85,12 @@ describe('Gestión de solapes de reservas', () => {
     ];
 
     global.__TEST_AUTH_USER__ = { id: 99, rol: 'usuario' };
-    global.__TEST_CLUB__ = { club_id: 3, precio_grabacion: null };
+    global.__TEST_CLUB__ = {
+      club_id: 3,
+      precio_grabacion: null,
+      rango_nocturno_inicio: '22:00:00',
+      rango_nocturno_fin: '06:00:00',
+    };
 
     connectionMock = {
       beginTransaction: jest.fn().mockResolvedValue(),
@@ -100,16 +105,20 @@ describe('Gestión de solapes de reservas', () => {
       club_id: 3,
       nombre: 'Central',
       precio: 2000,
+      precio_dia: 2000,
+      precio_noche: 2500,
     });
     TarifasModel.obtenerTarifaAplicable.mockResolvedValue(null);
     ClubesHorarioModel.getPorClubYDia.mockResolvedValue({
       activo: true,
-      abre: '08:00:00',
-      cierra: '23:00:00',
+      abre: '00:00:00',
+      cierra: '23:59:59',
     });
     ClubesModel.obtenerClubPorId.mockResolvedValue({
       club_id: 3,
       precio_grabacion: null,
+      rango_nocturno_inicio: '22:00:00',
+      rango_nocturno_fin: '06:00:00',
     });
     ClubesModel.obtenerClubPorPropietario.mockResolvedValue({ club_id: 3 });
     UsuariosModel.buscarPorId.mockReset();
@@ -252,7 +261,12 @@ describe('Gestión de solapes de reservas', () => {
     const app = buildApp();
 
     global.__TEST_AUTH_USER__ = { id: 777, rol: 'club' };
-    global.__TEST_CLUB__ = { club_id: 3, precio_grabacion: 500 };
+    global.__TEST_CLUB__ = {
+      club_id: 3,
+      precio_grabacion: 500,
+      rango_nocturno_inicio: '22:00:00',
+      rango_nocturno_fin: '06:00:00',
+    };
 
     const payload = {
       cancha_id: 5,
@@ -287,7 +301,12 @@ describe('Gestión de solapes de reservas', () => {
     const app = buildApp();
 
     global.__TEST_AUTH_USER__ = { id: 888, rol: 'club' };
-    global.__TEST_CLUB__ = { club_id: 3, precio_grabacion: 600 };
+    global.__TEST_CLUB__ = {
+      club_id: 3,
+      precio_grabacion: 600,
+      rango_nocturno_inicio: '22:00:00',
+      rango_nocturno_fin: '06:00:00',
+    };
 
     UsuariosModel.buscarPorId.mockResolvedValue({
       usuario_id: 555,
@@ -321,6 +340,70 @@ describe('Gestión de solapes de reservas', () => {
       contacto_nombre: 'Ada',
       contacto_apellido: 'Lovelace',
       contacto_telefono: '123456789',
+    });
+  });
+
+  describe('cálculo de monto base según horario nocturno', () => {
+    it('usa el precio diurno cuando el inicio cae fuera del rango nocturno y no hay tarifa', async () => {
+      const app = buildApp();
+
+      const payload = {
+        cancha_id: 5,
+        fecha: '2099-02-01',
+        hora_inicio: '10:00:00',
+        duracion_horas: 1,
+        tipo_reserva: 'privada',
+        contacto_nombre: 'Laura',
+        contacto_apellido: 'Suarez',
+        contacto_telefono: '111-222',
+      };
+
+      const respuesta = await request(app).post('/reservas').send(payload);
+
+      expect(respuesta.status).toBe(201);
+      expect(respuesta.body.reserva).toMatchObject({ monto_base: 2000, monto: 2000 });
+    });
+
+    it('usa el precio nocturno cuando el inicio cae dentro del rango nocturno sin tarifa personalizada', async () => {
+      const app = buildApp();
+
+      const payload = {
+        cancha_id: 5,
+        fecha: '2099-02-02',
+        hora_inicio: '23:00:00',
+        duracion_horas: 1,
+        tipo_reserva: 'privada',
+        contacto_nombre: 'Laura',
+        contacto_apellido: 'Suarez',
+        contacto_telefono: '111-222',
+      };
+
+      const respuesta = await request(app).post('/reservas').send(payload);
+
+      expect(respuesta.status).toBe(201);
+      expect(respuesta.body.reserva).toMatchObject({ monto_base: 2500, monto: 2500 });
+    });
+
+    it('prioriza la tarifa personalizada por sobre los precios de la cancha', async () => {
+      const app = buildApp();
+
+      TarifasModel.obtenerTarifaAplicable.mockResolvedValueOnce({ tarifa_id: 99, precio: 1800 });
+
+      const payload = {
+        cancha_id: 5,
+        fecha: '2099-02-03',
+        hora_inicio: '23:30:00',
+        duracion_horas: 1,
+        tipo_reserva: 'privada',
+        contacto_nombre: 'Laura',
+        contacto_apellido: 'Suarez',
+        contacto_telefono: '111-222',
+      };
+
+      const respuesta = await request(app).post('/reservas').send(payload);
+
+      expect(respuesta.status).toBe(201);
+      expect(respuesta.body.reserva).toMatchObject({ monto_base: 1800, monto: 1800 });
     });
   });
 

@@ -10,7 +10,7 @@ const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
-const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
+const { diaSemana1a7, addHoursHHMMSS, isPastDateTime, normalizeHour, isTimeInRange } = require('../utils/datetime');
 const { getUserId } = require('../utils/auth');
 const { esEstadoReservaActivo } = require('../constants/reservasEstados');
 // -----------------------------------------------------------------------------------------------
@@ -99,6 +99,96 @@ const toNumberOrZero = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const toNullableNumber = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const NIGHT_START_KEYS = [
+  'rango_nocturno_inicio',
+  'rango_nocturno_desde',
+  'horario_nocturno_inicio',
+  'horario_nocturno_desde',
+  'hora_nocturna_inicio',
+  'hora_noche_inicio',
+];
+
+const NIGHT_END_KEYS = [
+  'rango_nocturno_fin',
+  'rango_nocturno_hasta',
+  'horario_nocturno_fin',
+  'horario_nocturno_hasta',
+  'hora_nocturna_fin',
+  'hora_noche_fin',
+];
+
+const extractNightRange = (club) => {
+  if (!club || typeof club !== 'object') return null;
+
+  const configs = Array.isArray(club?.configuracion_nocturna)
+    ? club.configuracion_nocturna
+    : [club?.configuracion_nocturna];
+
+  const startCandidates = [
+    ...NIGHT_START_KEYS.map((key) => club?.[key]),
+    ...(configs || []).map((cfg) => cfg && cfg.inicio),
+    ...(configs || []).map((cfg) => cfg && cfg.desde),
+  ];
+
+  const endCandidates = [
+    ...NIGHT_END_KEYS.map((key) => club?.[key]),
+    ...(configs || []).map((cfg) => cfg && cfg.fin),
+    ...(configs || []).map((cfg) => cfg && cfg.hasta),
+  ];
+
+  const startRaw = startCandidates.find((value) => typeof value === 'string' && value.trim());
+  const endRaw = endCandidates.find((value) => typeof value === 'string' && value.trim());
+
+  const start = normalizeHour(startRaw);
+  const end = normalizeHour(endRaw);
+
+  if (!start || !end) return null;
+
+  return { start, end };
+};
+
+const selectHourlyPrice = ({ cancha = {}, club = {}, horaInicio, horaFin, tarifa }) => {
+  const tarifaPrecio = toNullableNumber(tarifa && tarifa.precio);
+  if (tarifaPrecio !== null) {
+    return tarifaPrecio;
+  }
+
+  const precioDia = toNullableNumber(cancha.precio_dia);
+  const precioNoche = toNullableNumber(cancha.precio_noche);
+  const precioGenerico = toNullableNumber(cancha.precio);
+
+  const horaInicioNormalizada = normalizeHour(horaInicio);
+  const nightRange = extractNightRange(club);
+
+  let esHorarioNocturno = false;
+  if (horaInicioNormalizada && nightRange) {
+    esHorarioNocturno = isTimeInRange(horaInicioNormalizada, nightRange.start, nightRange.end);
+  }
+
+  const chooseNight = () => {
+    if (precioNoche !== null) return precioNoche;
+    if (precioDia !== null) return precioDia;
+    if (precioGenerico !== null) return precioGenerico;
+    return 0;
+  };
+
+  const chooseDay = () => {
+    if (precioDia !== null) return precioDia;
+    if (precioNoche !== null) return precioNoche;
+    if (precioGenerico !== null) return precioGenerico;
+    return 0;
+  };
+
+  const precioSeleccionado = esHorarioNocturno ? chooseNight() : chooseDay();
+  return Number.isFinite(precioSeleccionado) ? precioSeleccionado : 0;
+};
+
 // POST crear reserva
 const ensureClubContext = async (req, res, next) => {
   if (req.usuario && req.usuario.rol === 'club') {
@@ -179,7 +269,13 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
 
     const tarifa = await TarifasModel.obtenerTarifaAplicable(cancha.club_id, dia, hora_inicio, hora_fin);
-    const precioHora = tarifa ? toNumberOrZero(tarifa.precio) : toNumberOrZero(cancha.precio);
+    const precioHora = selectHourlyPrice({
+      cancha,
+      club,
+      horaInicio: hora_inicio,
+      horaFin: hora_fin,
+      tarifa,
+    });
     const montoBase = precioHora * duracionHorasNumero;
 
     const grabacionSolicitada = parseBoolean(grabacion_solicitada);
