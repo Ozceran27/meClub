@@ -715,7 +715,10 @@ export default function ReservasScreen({ summary, go }) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-5" contentContainerClassName="px-5">
         <View className="flex-row">
           <View style={{ width: TIME_COLUMN_WIDTH }}>
-            <View className="border-b border-white/5 px-4 py-3">
+            <View
+              style={{ height: SLOT_HEIGHT }}
+              className="border-b border-white/5 px-4 items-center justify-center"
+            >
               <Text className="text-white/60 text-xs uppercase tracking-widest">Hora</Text>
             </View>
             {timeSlots.map((slot) => (
@@ -735,7 +738,10 @@ export default function ReservasScreen({ summary, go }) {
 
             return (
               <View key={court.canchaId} style={{ minWidth: TIME_COLUMN_WIDTH }} className="border-l border-white/5">
-                <View className="border-b border-white/5 px-4 py-3 flex-row items-center gap-2">
+                <View
+                  style={{ height: SLOT_HEIGHT }}
+                  className="border-b border-white/5 px-4 flex-row items-center gap-2"
+                >
                   <View className={`h-9 w-9 items-center justify-center rounded-xl border ${color.border} ${color.bg}`}>
                     <Ionicons name="tennisball" size={18} color="#FACC15" />
                   </View>
