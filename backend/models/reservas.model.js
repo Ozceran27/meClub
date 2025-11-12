@@ -1,5 +1,10 @@
 const db = require('../config/db');
-const { ESTADOS_RESERVA_ACTIVOS, esEstadoReservaActivo } = require('../constants/reservasEstados');
+const {
+  ESTADOS_RESERVA_ACTIVOS,
+  esEstadoReservaActivo,
+  esEstadoReservaValido,
+  esEstadoPagoValido,
+} = require('../constants/reservasEstados');
 
 const RESERVA_SOLAPADA_CODE = 'RESERVA_SOLAPADA';
 const RESERVA_NO_ENCONTRADA_CODE = 'RESERVA_NO_ENCONTRADA';
@@ -323,6 +328,86 @@ const ReservasModel = {
       [nuevoEstado, reserva_id]
     );
     return esEstadoReservaActivo(nuevoEstado);
+  },
+
+  actualizarEstados: async ({ reserva_id, estado, estado_pago }) => {
+    const reservaId = Number.parseInt(reserva_id, 10);
+    if (!Number.isInteger(reservaId) || reservaId <= 0) {
+      const error = new Error('reserva_id inválido');
+      error.code = 'RESERVA_ID_INVALIDO';
+      throw error;
+    }
+
+    const actualizaciones = [];
+    const parametros = [];
+
+    let nuevoEstado;
+    if (estado !== undefined) {
+      if (estado === null) {
+        const error = new Error('Estado inválido');
+        error.code = 'RESERVA_ESTADO_INVALIDO';
+        throw error;
+      }
+      const rawEstado = typeof estado === 'string' ? estado : String(estado);
+      const normalizado = rawEstado.trim().toLowerCase();
+      if (!normalizado) {
+        const error = new Error('Estado inválido');
+        error.code = 'RESERVA_ESTADO_INVALIDO';
+        throw error;
+      }
+      if (!esEstadoReservaValido(normalizado)) {
+        const error = new Error('Estado inválido');
+        error.code = 'RESERVA_ESTADO_INVALIDO';
+        throw error;
+      }
+      nuevoEstado = normalizado;
+      actualizaciones.push('estado = ?');
+      parametros.push(nuevoEstado);
+    }
+
+    let nuevoEstadoPago;
+    if (estado_pago !== undefined) {
+      if (estado_pago === null) {
+        const error = new Error('Estado de pago inválido');
+        error.code = 'RESERVA_ESTADO_PAGO_INVALIDO';
+        throw error;
+      }
+      const rawEstadoPago =
+        typeof estado_pago === 'string' ? estado_pago : String(estado_pago);
+      const normalizado = rawEstadoPago.trim().toLowerCase();
+      if (!normalizado) {
+        const error = new Error('Estado de pago inválido');
+        error.code = 'RESERVA_ESTADO_PAGO_INVALIDO';
+        throw error;
+      }
+      if (!esEstadoPagoValido(normalizado)) {
+        const error = new Error('Estado de pago inválido');
+        error.code = 'RESERVA_ESTADO_PAGO_INVALIDO';
+        throw error;
+      }
+      nuevoEstadoPago = normalizado;
+      actualizaciones.push('estado_pago = ?');
+      parametros.push(nuevoEstadoPago);
+    }
+
+    if (actualizaciones.length === 0) {
+      const error = new Error('No hay campos para actualizar');
+      error.code = 'RESERVA_SIN_ACTUALIZACION';
+      throw error;
+    }
+
+    parametros.push(reservaId);
+
+    const [resultado] = await db.query(
+      `UPDATE reservas SET ${actualizaciones.join(', ')} WHERE reserva_id = ?`,
+      parametros
+    );
+
+    return {
+      updated: Boolean(resultado && resultado.affectedRows),
+      estado: nuevoEstado,
+      estado_pago: nuevoEstadoPago,
+    };
   },
 };
 

@@ -24,6 +24,7 @@ jest.mock('../models/reservas.model', () => ({
   resumenReservasClub: jest.fn(),
   reservasAgendaClub: jest.fn(),
   reservasEnCurso: jest.fn(),
+  actualizarEstados: jest.fn(),
 }));
 
 jest.mock('../models/canchas.model', () => ({
