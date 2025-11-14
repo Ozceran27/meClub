@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import {
   createClubReservation,
   deleteClubReservation,
   getReservationsPanel,
+  updateReservationStatus,
 } from '../../lib/api';
 import { calculateBaseAmount, determineRateType, toNumberOrNull } from './pricing';
 
@@ -58,6 +60,129 @@ const STATUS_STYLES = {
     border: 'border-amber-400/40',
     text: 'text-amber-100',
   },
+  finalizada: {
+    bg: 'bg-indigo-500/20',
+    border: 'border-indigo-400/40',
+    text: 'text-indigo-100',
+  },
+  finalizado: {
+    bg: 'bg-indigo-500/20',
+    border: 'border-indigo-400/40',
+    text: 'text-indigo-100',
+  },
+  completada: {
+    bg: 'bg-sky-500/20',
+    border: 'border-sky-400/40',
+    text: 'text-sky-100',
+  },
+  completado: {
+    bg: 'bg-sky-500/20',
+    border: 'border-sky-400/40',
+    text: 'text-sky-100',
+  },
+  'en curso': {
+    bg: 'bg-emerald-500/20',
+    border: 'border-emerald-400/40',
+    text: 'text-emerald-100',
+  },
+  en_curso: {
+    bg: 'bg-emerald-500/20',
+    border: 'border-emerald-400/40',
+    text: 'text-emerald-100',
+  },
+  reprogramada: {
+    bg: 'bg-violet-500/20',
+    border: 'border-violet-400/40',
+    text: 'text-violet-100',
+  },
+  reprogramado: {
+    bg: 'bg-violet-500/20',
+    border: 'border-violet-400/40',
+    text: 'text-violet-100',
+  },
+};
+
+const PAYMENT_STATUS_DETAILS = {
+  pagado: {
+    label: 'Pagado',
+    icon: 'checkmark-circle',
+    iconColor: '#4ADE80',
+    badge: {
+      bg: 'bg-emerald-500/20',
+      border: 'border-emerald-400/40',
+      text: 'text-emerald-100',
+    },
+  },
+  pendiente: {
+    label: 'Pendiente',
+    icon: 'time-outline',
+    iconColor: '#FACC15',
+    badge: {
+      bg: 'bg-amber-500/20',
+      border: 'border-amber-400/40',
+      text: 'text-amber-100',
+    },
+  },
+  parcial: {
+    label: 'Pago parcial',
+    icon: 'cash-outline',
+    iconColor: '#38BDF8',
+    badge: {
+      bg: 'bg-sky-500/20',
+      border: 'border-sky-400/40',
+      text: 'text-sky-100',
+    },
+  },
+  cancelado: {
+    label: 'Cancelado',
+    icon: 'close-circle',
+    iconColor: '#FB7185',
+    badge: {
+      bg: 'bg-rose-500/20',
+      border: 'border-rose-400/40',
+      text: 'text-rose-100',
+    },
+  },
+};
+
+const PAYMENT_STATUS_ALIASES = {
+  pagada: 'pagado',
+  pagado: 'pagado',
+  pago: 'pagado',
+  parcialidad: 'parcial',
+  senia: 'parcial',
+  'seña': 'parcial',
+  parcial_pago: 'parcial',
+  parciales: 'parcial',
+  pendiente: 'pendiente',
+  cancelada: 'cancelado',
+  cancelado: 'cancelado',
+};
+
+const RESERVATION_STATUS_OPTIONS = [
+  { value: 'activa', label: 'Activa' },
+  { value: 'confirmada', label: 'Confirmada' },
+  { value: 'pendiente', label: 'Pendiente' },
+  { value: 'pagada', label: 'Pagada' },
+  { value: 'finalizada', label: 'Finalizada' },
+  { value: 'completada', label: 'Completada' },
+  { value: 'cancelada', label: 'Cancelada' },
+  { value: 'reprogramada', label: 'Reprogramada' },
+];
+
+const PAYMENT_STATUS_OPTIONS = Object.entries(PAYMENT_STATUS_DETAILS).map(([value, detail]) => ({
+  value,
+  label: detail.label,
+  icon: detail.icon,
+}));
+
+const DEFAULT_PAYMENT_BADGE = {
+  bg: 'bg-slate-500/20',
+  border: 'border-slate-400/30',
+  text: 'text-slate-100',
+  iconColor: '#E2E8F0',
+  icon: 'cash-outline',
+  label: 'Sin registrar',
 };
 
 const pickFirstNumber = (...values) => {
@@ -69,6 +194,23 @@ const pickFirstNumber = (...values) => {
   }
   return null;
 };
+
+function formatStatusLabel(value, { emptyLabel = 'Sin estado' } = {}) {
+  if (!value) {
+    return emptyLabel;
+  }
+  return String(value)
+    .replace(/_/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function normalizeStatusValue(value) {
+  if (!value) {
+    return null;
+  }
+  return String(value).trim().toLowerCase() || null;
+}
 
 function getStatusBadgeClasses(status) {
   if (!status) {
@@ -84,6 +226,19 @@ function getStatusBadgeClasses(status) {
     border: 'border-slate-400/30',
     text: 'text-slate-100',
   };
+}
+
+function getPaymentStatusDetails(status) {
+  if (!status) {
+    return null;
+  }
+  const normalized = String(status).trim().toLowerCase();
+  const resolved = PAYMENT_STATUS_ALIASES[normalized] || normalized;
+  const detail = PAYMENT_STATUS_DETAILS[resolved];
+  if (detail) {
+    return { ...detail, value: resolved };
+  }
+  return null;
 }
 
 const SLOT_MINUTES = 60;
@@ -160,6 +315,7 @@ function TimelineReservationCard({
   color,
   containerHeight,
   onDelete,
+  onPress,
   court,
   nightStart,
   nightEnd,
@@ -181,11 +337,14 @@ function TimelineReservationCard({
     'Reserva privada';
   const timeRange = `${formatTime(reservation.horaInicio)} - ${formatTime(reservation.horaFin)}`;
   const statusClasses = getStatusBadgeClasses(reservation.estado);
-  const statusLabel = reservation.estado
-    ? String(reservation.estado)
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (letter) => letter.toUpperCase())
-    : 'Sin estado';
+  const statusLabel = formatStatusLabel(reservation.estado, { emptyLabel: 'Sin estado' });
+  const paymentDetail = getPaymentStatusDetails(reservation.estadoPago);
+  const paymentBadgeClasses = paymentDetail?.badge ?? DEFAULT_PAYMENT_BADGE;
+  const paymentLabel = paymentDetail?.label ?? formatStatusLabel(reservation.estadoPago, {
+    emptyLabel: DEFAULT_PAYMENT_BADGE.label,
+  });
+  const paymentIconName = paymentDetail?.icon ?? DEFAULT_PAYMENT_BADGE.icon;
+  const paymentIconColor = paymentDetail?.iconColor ?? DEFAULT_PAYMENT_BADGE.iconColor;
   const tooltipEnabled = Platform.OS === 'web';
   const showTooltip = tooltipEnabled && isHovered;
   const creatorName =
@@ -246,6 +405,24 @@ function TimelineReservationCard({
       : appliedRateType === 'day'
       ? 'Tarifa diurna'
       : 'Tarifa estándar';
+  const rateBadgeLabel =
+    appliedRateType === 'night'
+      ? 'Nocturna'
+      : appliedRateType === 'day'
+      ? 'Diurna'
+      : 'Estándar';
+  const rateIconName =
+    appliedRateType === 'night'
+      ? 'flash'
+      : appliedRateType === 'day'
+      ? 'sunny'
+      : 'contrast-outline';
+  const rateIconColor =
+    appliedRateType === 'night'
+      ? '#FACC15'
+      : appliedRateType === 'day'
+      ? '#38BDF8'
+      : '#E2E8F0';
 
   const handleHoverIn = tooltipEnabled ? () => setIsHovered(true) : undefined;
   const handleHoverOut = tooltipEnabled ? () => setIsHovered(false) : undefined;
@@ -260,10 +437,11 @@ function TimelineReservationCard({
         onHoverOut={handleHoverOut}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onPress={onPress}
       >
-        <View className={`overflow-hidden rounded-2xl ${color.bg}`}>
-          <View className="px-4 py-3">
-            <View className="flex-row items-center justify-between">
+        <View className={`flex-1 overflow-hidden rounded-2xl ${color.bg}`}>
+          <View className="flex-1 px-3 py-2 justify-between gap-2">
+            <View className="flex-row items-start justify-between gap-2">
               <Text
                 className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
                 numberOfLines={1}
@@ -271,37 +449,62 @@ function TimelineReservationCard({
               >
                 {contactName}
               </Text>
-              <View className="flex-row items-center gap-2">
-                {reservation.estado ? (
-                  <View
-                    className={`rounded-full border px-2 py-0.5 ${statusClasses.bg} ${statusClasses.border}`}
+              {reservation.estado ? (
+                <View className={`rounded-full border px-2 py-0.5 ${statusClasses.bg} ${statusClasses.border}`}>
+                  <Text
+                    className={`text-[10px] font-semibold uppercase tracking-wide ${statusClasses.text}`}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
                   >
-                    <Text
-                      className={`text-[10px] font-semibold uppercase tracking-wide ${statusClasses.text}`}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {statusLabel}
-                    </Text>
+                    {statusLabel}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-row items-center gap-2">
+                {camera ? (
+                  <View className="h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/20">
+                    <Ionicons name="videocam" size={14} color="#FACC15" />
                   </View>
                 ) : null}
-                {camera ? <Ionicons name="videocam" size={16} color="#FACC15" /> : null}
-                {onDelete ? (
-                  <Pressable
-                    onPress={onDelete}
-                    hitSlop={8}
-                    className="h-7 w-7 items-center justify-center rounded-full bg-white/10"
+                <View className="flex-row items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-1">
+                  <Ionicons name={rateIconName} size={12} color={rateIconColor} />
+                  <Text className="text-[10px] font-semibold uppercase tracking-wide text-white/80">
+                    {rateBadgeLabel}
+                  </Text>
+                </View>
+                <View
+                  className={`flex-row items-center gap-1 rounded-full border px-2 py-1 ${paymentBadgeClasses.bg} ${paymentBadgeClasses.border}`}
+                >
+                  <Ionicons name={paymentIconName} size={12} color={paymentIconColor} />
+                  <Text
+                    className={`text-[10px] font-semibold uppercase tracking-wide ${paymentBadgeClasses.text}`}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
                   >
-                    <Ionicons name="trash" size={14} color="#F8FAFC" />
-                  </Pressable>
-                ) : null}
+                    {paymentLabel}
+                  </Text>
+                </View>
               </View>
+
+              <Text className="text-white text-[12px] font-medium" numberOfLines={1} ellipsizeMode="tail">
+                {timeRange}
+              </Text>
             </View>
-            <Text className="text-white text-[13px] mt-1" numberOfLines={1} ellipsizeMode="tail">
-              {timeRange}
-            </Text>
           </View>
         </View>
+
+        {onDelete ? (
+          <Pressable
+            onPress={onDelete}
+            hitSlop={8}
+            className="absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full bg-black/50"
+          >
+            <Ionicons name="trash" size={14} color="#F8FAFC" />
+          </Pressable>
+        ) : null}
 
         {showTooltip ? (
           <View pointerEvents="none" className="absolute left-0 right-0 top-full z-20 mt-2 px-2">
@@ -314,14 +517,17 @@ function TimelineReservationCard({
                   Estado: <Text className="text-white">{statusLabel}</Text>
                 </Text>
                 <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Estado de pago: <Text className="text-white">{paymentLabel}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
+                  Tarifa aplicada: <Text className="text-white">{rateLabel}</Text>
+                </Text>
+                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
                   Teléfono: <Text className="text-white">{reservation.contactoTelefono || 'Sin teléfono'}</Text>
                 </Text>
                 <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
                   Ingreso estimado:{' '}
                   <Text className="text-white">{formatCurrency(derivedBaseAmount)}</Text>
-                </Text>
-                <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
-                  Tarifa aplicada: <Text className="text-white">{rateLabel}</Text>
                 </Text>
                 <Text className="text-white/70 text-[11px]" numberOfLines={1} ellipsizeMode="tail">
                   Monto registrado:{' '}
@@ -336,6 +542,194 @@ function TimelineReservationCard({
         ) : null}
       </Pressable>
     </View>
+  );
+}
+
+function ReservationStatusMenu({
+  visible,
+  reservation,
+  onClose,
+  onSave,
+  saving,
+  error,
+}) {
+  const [selectedStatus, setSelectedStatus] = useState(() => normalizeStatusValue(reservation?.estado));
+  const [selectedPayment, setSelectedPayment] = useState(() => {
+    const detail = getPaymentStatusDetails(reservation?.estadoPago);
+    return detail?.value ?? null;
+  });
+
+  useEffect(() => {
+    setSelectedStatus(normalizeStatusValue(reservation?.estado));
+    const detail = getPaymentStatusDetails(reservation?.estadoPago);
+    setSelectedPayment(detail?.value ?? null);
+  }, [reservation, visible]);
+
+  const statusOptions = useMemo(() => {
+    const normalized = normalizeStatusValue(reservation?.estado);
+    const hasCurrent = normalized
+      ? RESERVATION_STATUS_OPTIONS.some((option) => option.value === normalized)
+      : true;
+    if (hasCurrent) {
+      return RESERVATION_STATUS_OPTIONS;
+    }
+    return [
+      { value: normalized, label: formatStatusLabel(normalized) },
+      ...RESERVATION_STATUS_OPTIONS,
+    ];
+  }, [reservation]);
+
+  const paymentOptions = useMemo(() => {
+    const detail = getPaymentStatusDetails(reservation?.estadoPago);
+    const normalized = detail?.value ?? null;
+    const hasCurrent = normalized
+      ? PAYMENT_STATUS_OPTIONS.some((option) => option.value === normalized)
+      : true;
+    if (hasCurrent) {
+      return PAYMENT_STATUS_OPTIONS;
+    }
+    return detail
+      ? [{ value: detail.value, label: detail.label, icon: detail.icon }, ...PAYMENT_STATUS_OPTIONS]
+      : PAYMENT_STATUS_OPTIONS;
+  }, [reservation]);
+
+  const handleSave = useCallback(() => {
+    onSave?.({ estado: selectedStatus, estadoPago: selectedPayment });
+  }, [onSave, selectedPayment, selectedStatus]);
+
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 items-center justify-center bg-slate-950/80 px-4">
+        <View className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-5">
+          <View className="flex-row items-start justify-between">
+            <View className="flex-1 pr-4">
+              <Text className="text-white text-lg font-semibold">Actualizar estado</Text>
+              <Text className="text-white/60 text-xs mt-1">
+                Seleccioná el estado general y de pago para la reserva.
+              </Text>
+              {reservation ? (
+                <View className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                  <Text className="text-white text-sm font-semibold" numberOfLines={1} ellipsizeMode="tail">
+                    {[
+                      reservation.contactoNombre,
+                      reservation.contactoApellido,
+                    ]
+                      .filter(Boolean)
+                      .join(' ') ||
+                      [reservation.usuarioNombre, reservation.usuarioApellido]
+                        .filter(Boolean)
+                        .join(' ') ||
+                      'Reserva privada'}
+                  </Text>
+                  <Text className="text-white/60 text-[11px] mt-1" numberOfLines={1} ellipsizeMode="tail">
+                    {reservation.horaInicio && reservation.horaFin
+                      ? `${formatTime(reservation.horaInicio)} - ${formatTime(reservation.horaFin)}`
+                      : reservation.horaInicio || 'Sin horario'}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Pressable
+              onPress={onClose}
+              disabled={saving}
+              hitSlop={8}
+              className="h-8 w-8 items-center justify-center rounded-full bg-white/5"
+            >
+              <Ionicons name="close" size={18} color="#E2E8F0" />
+            </Pressable>
+          </View>
+
+          <View className="mt-5">
+            <Text className="text-white/70 text-xs uppercase tracking-widest">Estado</Text>
+            <View className="mt-2 gap-2">
+              {statusOptions.map((option) => {
+                const isSelected = selectedStatus === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setSelectedStatus(option.value)}
+                    className={`flex-row items-center justify-between rounded-2xl border px-3 py-2 ${
+                      isSelected ? 'border-mc-warn bg-mc-warn/10' : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <Text className="text-white text-sm" numberOfLines={1} ellipsizeMode="tail">
+                      {option.label}
+                    </Text>
+                    {isSelected ? <Ionicons name="checkmark-circle" size={16} color="#FACC15" /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <View className="mt-5">
+            <Text className="text-white/70 text-xs uppercase tracking-widest">Estado de pago</Text>
+            <View className="mt-2 gap-2">
+              {paymentOptions.map((option) => {
+                const isSelected = selectedPayment === option.value;
+                const detail = PAYMENT_STATUS_DETAILS[option.value] ?? DEFAULT_PAYMENT_BADGE;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setSelectedPayment(option.value)}
+                    className={`flex-row items-center justify-between rounded-2xl border px-3 py-2 ${
+                      isSelected ? 'border-mc-warn bg-mc-warn/10' : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <View
+                        className={`h-8 w-8 items-center justify-center rounded-full border ${
+                          detail.badge?.border ?? DEFAULT_PAYMENT_BADGE.border
+                        } ${detail.badge?.bg ?? DEFAULT_PAYMENT_BADGE.bg}`}
+                      >
+                        <Ionicons
+                          name={option.icon}
+                          size={16}
+                          color={detail.iconColor ?? DEFAULT_PAYMENT_BADGE.iconColor}
+                        />
+                      </View>
+                      <Text className="text-white text-sm" numberOfLines={1} ellipsizeMode="tail">
+                        {option.label}
+                      </Text>
+                    </View>
+                    {isSelected ? <Ionicons name="checkmark-circle" size={16} color="#FACC15" /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {error ? (
+            <Text className="text-rose-300 text-xs mt-4" numberOfLines={2} ellipsizeMode="tail">
+              {error}
+            </Text>
+          ) : null}
+
+          <View className="mt-6 flex-row items-center justify-end gap-3">
+            <Pressable
+              onPress={onClose}
+              disabled={saving}
+              className="h-10 px-4 items-center justify-center rounded-2xl border border-white/10 bg-white/5"
+            >
+              <Text className="text-white text-sm font-medium">Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              disabled={saving}
+              className="h-10 min-w-[140px] flex-row items-center justify-center gap-2 rounded-2xl border border-mc-warn bg-mc-warn/10 px-4"
+            >
+              {saving ? <ActivityIndicator color="#FACC15" size="small" /> : null}
+              <Text className="text-mc-warn text-sm font-semibold">Guardar cambios</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -555,6 +949,10 @@ export default function ReservasScreen({ summary, go }) {
   const [creating, setCreating] = useState(false);
   const [creationError, setCreationError] = useState('');
   const [refreshToken, setRefreshToken] = useState(0);
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+  const [statusMenuReservation, setStatusMenuReservation] = useState(null);
+  const [updatingReservationStatus, setUpdatingReservationStatus] = useState(false);
+  const [statusUpdateError, setStatusUpdateError] = useState('');
 
   const allReservations = useMemo(() => {
     if (!panelData?.agenda) return [];
@@ -775,6 +1173,74 @@ export default function ReservasScreen({ summary, go }) {
     [setRefreshToken]
   );
 
+  const handleOpenStatusMenu = useCallback((reservation) => {
+    if (!reservation || reservation.reservaId == null) {
+      return;
+    }
+    setStatusMenuReservation(reservation);
+    setStatusUpdateError('');
+    setStatusMenuVisible(true);
+  }, []);
+
+  const handleCloseStatusMenu = useCallback(() => {
+    if (updatingReservationStatus) {
+      return;
+    }
+    setStatusMenuVisible(false);
+    setStatusMenuReservation(null);
+    setStatusUpdateError('');
+  }, [updatingReservationStatus]);
+
+  const handleSaveStatusMenu = useCallback(
+    async ({ estado, estadoPago }) => {
+      if (!statusMenuReservation || statusMenuReservation.reservaId == null) {
+        return;
+      }
+
+      const currentEstado = normalizeStatusValue(statusMenuReservation.estado);
+      const nextEstado = estado ?? currentEstado;
+      const currentEstadoPago = getPaymentStatusDetails(statusMenuReservation.estadoPago)?.value ?? null;
+      const nextEstadoPago = estadoPago ?? currentEstadoPago;
+      const hasEstadoChange = nextEstado !== currentEstado;
+      const hasPagoChange = nextEstadoPago !== currentEstadoPago;
+
+      if (!hasEstadoChange && !hasPagoChange) {
+        setStatusMenuVisible(false);
+        setStatusMenuReservation(null);
+        return;
+      }
+
+      const payload = { reservaId: statusMenuReservation.reservaId };
+      if (hasEstadoChange && nextEstado) {
+        payload.estado = nextEstado;
+      }
+      if (hasPagoChange && nextEstadoPago) {
+        payload.estado_pago = nextEstadoPago;
+      }
+
+      if (!payload.estado && !payload.estado_pago) {
+        setStatusMenuVisible(false);
+        setStatusMenuReservation(null);
+        return;
+      }
+
+      setStatusUpdateError('');
+      setUpdatingReservationStatus(true);
+
+      try {
+        await updateReservationStatus(payload);
+        setStatusMenuVisible(false);
+        setStatusMenuReservation(null);
+        setRefreshToken((token) => token + 1);
+      } catch (err) {
+        setStatusUpdateError(err?.message || 'No pudimos actualizar la reserva.');
+      } finally {
+        setUpdatingReservationStatus(false);
+      }
+    },
+    [setRefreshToken, statusMenuReservation]
+  );
+
   const renderTimeline = () => {
     if (!panelData?.agenda?.length) {
       return (
@@ -849,6 +1315,11 @@ export default function ReservasScreen({ summary, go }) {
                           onDelete={
                             reservation.reservaId != null
                               ? () => handleDeleteReservation(reservation.reservaId)
+                              : undefined
+                          }
+                          onPress={
+                            reservation.reservaId != null
+                              ? () => handleOpenStatusMenu(reservation)
                               : undefined
                           }
                           court={court}
@@ -1114,6 +1585,15 @@ export default function ReservasScreen({ summary, go }) {
         nightEnd={nightEndValue}
         submissionError={creationError}
         onClearSubmissionError={handleClearCreationError}
+      />
+
+      <ReservationStatusMenu
+        visible={statusMenuVisible}
+        reservation={statusMenuReservation}
+        onClose={handleCloseStatusMenu}
+        onSave={handleSaveStatusMenu}
+        saving={updatingReservationStatus}
+        error={statusUpdateError}
       />
     </>
   );
