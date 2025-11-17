@@ -30,30 +30,10 @@ const COURT_COLORS = [
 ];
 
 const STATUS_STYLES = {
-  activa: {
-    bg: 'bg-emerald-500/20',
-    border: 'border-emerald-400/40',
-    text: 'text-emerald-100',
-  },
   confirmada: {
-    bg: 'bg-sky-500/20',
-    border: 'border-sky-400/40',
-    text: 'text-sky-100',
-  },
-  pagada: {
     bg: 'bg-emerald-500/20',
     border: 'border-emerald-400/40',
     text: 'text-emerald-100',
-  },
-  pagado: {
-    bg: 'bg-emerald-500/20',
-    border: 'border-emerald-400/40',
-    text: 'text-emerald-100',
-  },
-  cancelada: {
-    bg: 'bg-rose-500/20',
-    border: 'border-rose-400/40',
-    text: 'text-rose-100',
   },
   pendiente: {
     bg: 'bg-amber-500/20',
@@ -65,41 +45,40 @@ const STATUS_STYLES = {
     border: 'border-indigo-400/40',
     text: 'text-indigo-100',
   },
-  finalizado: {
-    bg: 'bg-indigo-500/20',
-    border: 'border-indigo-400/40',
-    text: 'text-indigo-100',
+  cancelada: {
+    bg: 'bg-rose-500/20',
+    border: 'border-rose-400/40',
+    text: 'text-rose-100',
   },
-  completada: {
-    bg: 'bg-sky-500/20',
-    border: 'border-sky-400/40',
-    text: 'text-sky-100',
-  },
-  completado: {
-    bg: 'bg-sky-500/20',
-    border: 'border-sky-400/40',
-    text: 'text-sky-100',
-  },
-  'en curso': {
-    bg: 'bg-emerald-500/20',
-    border: 'border-emerald-400/40',
-    text: 'text-emerald-100',
-  },
-  en_curso: {
-    bg: 'bg-emerald-500/20',
-    border: 'border-emerald-400/40',
-    text: 'text-emerald-100',
-  },
-  reprogramada: {
-    bg: 'bg-violet-500/20',
-    border: 'border-violet-400/40',
-    text: 'text-violet-100',
-  },
-  reprogramado: {
-    bg: 'bg-violet-500/20',
-    border: 'border-violet-400/40',
-    text: 'text-violet-100',
-  },
+};
+
+const RESERVATION_STATUS_ALIASES = {
+  activa: 'confirmada',
+  'en curso': 'confirmada',
+  en_curso: 'confirmada',
+  pagada: 'confirmada',
+  pagado: 'confirmada',
+  pago: 'confirmada',
+  confirmada: 'confirmada',
+  pendiente: 'pendiente',
+  reprogramada: 'pendiente',
+  reprogramado: 'pendiente',
+  finalizada: 'finalizada',
+  finalizado: 'finalizada',
+  completada: 'finalizada',
+  completado: 'finalizada',
+  cancelada: 'cancelada',
+};
+
+const RESERVATION_STATUS_LABELS = {
+  confirmada: 'Confirmada',
+  pendiente: 'Pendiente',
+  finalizada: 'Finalizada',
+  cancelada: 'Cancelada',
+};
+
+const RESERVATION_STATUS_LABEL_OVERRIDES = {
+  activa: 'Activa',
 };
 
 const PAYMENT_STATUS_DETAILS = {
@@ -160,14 +139,10 @@ const PAYMENT_STATUS_ALIASES = {
 };
 
 const RESERVATION_STATUS_OPTIONS = [
-  { value: 'activa', label: 'Activa' },
-  { value: 'confirmada', label: 'Confirmada' },
+  { value: 'confirmada', label: 'Activa (Confirmada)' },
   { value: 'pendiente', label: 'Pendiente' },
-  { value: 'pagada', label: 'Pagada' },
   { value: 'finalizada', label: 'Finalizada' },
-  { value: 'completada', label: 'Completada' },
   { value: 'cancelada', label: 'Cancelada' },
-  { value: 'reprogramada', label: 'Reprogramada' },
 ];
 
 const PAYMENT_STATUS_OPTIONS = Object.entries(PAYMENT_STATUS_DETAILS).map(([value, detail]) => ({
@@ -199,6 +174,15 @@ function formatStatusLabel(value, { emptyLabel = 'Sin estado' } = {}) {
   if (!value) {
     return emptyLabel;
   }
+  const normalized = String(value).trim().toLowerCase();
+  const resolved = normalizeStatusValue(value);
+  const label =
+    RESERVATION_STATUS_LABEL_OVERRIDES[normalized] ||
+    RESERVATION_STATUS_LABEL_OVERRIDES[resolved] ||
+    RESERVATION_STATUS_LABELS[resolved];
+  if (label) {
+    return label;
+  }
   return String(value)
     .replace(/_/g, ' ')
     .trim()
@@ -209,7 +193,8 @@ function normalizeStatusValue(value) {
   if (!value) {
     return null;
   }
-  return String(value).trim().toLowerCase() || null;
+  const normalized = String(value).trim().toLowerCase();
+  return RESERVATION_STATUS_ALIASES[normalized] || normalized || null;
 }
 
 function getStatusBadgeClasses(status) {
@@ -220,7 +205,7 @@ function getStatusBadgeClasses(status) {
       text: 'text-slate-100',
     };
   }
-  const normalized = String(status).trim().toLowerCase();
+  const normalized = normalizeStatusValue(status);
   return STATUS_STYLES[normalized] || {
     bg: 'bg-slate-500/20',
     border: 'border-slate-400/30',
