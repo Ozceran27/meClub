@@ -1056,86 +1056,70 @@ export default function ReservasScreen({ summary, go }) {
     const estados = panelData?.resumenEstadosHoy || [];
     const canceladas = hoy.canceladas ?? estados.find((item) => item.estado === 'cancelada')?.total ?? 0;
     const activas = hoy.activas ?? estados.find((item) => item.estado === 'activa')?.total ?? 0;
-    const incomeStates = new Set([
-      'pendiente',
-      'pagada',
-      'pagado',
-      'finalizada',
-      'finalizado',
-      'completada',
-      'completado',
-    ]);
 
-    const hasReservations = panelData?.agenda?.some(
-      (court) => Array.isArray(court?.reservas) && court.reservas.length > 0
-    );
+    const ingresosDesdeReservas = (panelData?.agenda || []).reduce((total, court) => {
+      const reservas = Array.isArray(court?.reservas) ? court.reservas : [];
+      const fallbackAmount = pickFirstNumber(
+        court?.monto_base,
+        court?.precio,
+        court?.precioDia,
+        court?.precio_dia,
+        court?.precioNoche,
+        court?.precio_noche
+      );
 
-    const ingresosDesdeReservas = hasReservations
-      ? panelData.agenda.reduce((total, court) => {
-          const reservas = Array.isArray(court?.reservas) ? court.reservas : [];
-          const fallbackAmount = pickFirstNumber(
-            court?.monto_base,
-            court?.precio,
-            court?.precioDia,
-            court?.precio_dia,
-            court?.precioNoche,
-            court?.precio_noche
-          );
+      const courtTotal = reservas.reduce((subtotal, reserva) => {
+        if (!reserva) return subtotal;
 
-          const courtTotal = reservas.reduce((subtotal, reserva) => {
-            if (!reserva) return subtotal;
+        const normalizedStatus = normalizeStatusValue(reserva.estado);
+        if (normalizedStatus === 'cancelada') {
+          return subtotal;
+        }
 
-            const normalizedStatus = normalizeStatusValue(reserva.estado);
-            if (normalizedStatus === 'cancelada') {
-              return subtotal;
-            }
+        const explicitAmount = pickFirstNumber(
+          reserva?.monto,
+          reserva?.precio,
+          reserva?.precio_total,
+          reserva?.precioTotal,
+          reserva?.monto_total,
+          reserva?.montoTotal,
+          reserva?.montoBase,
+          reserva?.monto_base
+        );
+        if (explicitAmount !== null) {
+          return subtotal + explicitAmount;
+        }
 
-            const monto = toNumberOrNull(reserva.monto);
-            if (monto !== null) {
-              return subtotal + monto;
-            }
+        const duration = (() => {
+          const explicit = toNumberOrNull(reserva?.duracionHoras ?? reserva?.duracion_horas);
+          if (explicit !== null) {
+            return explicit;
+          }
+          const startMinutes = timeToMinutes(reserva?.horaInicio ?? reserva?.hora_inicio);
+          const endMinutes = timeToMinutes(reserva?.horaFin ?? reserva?.hora_fin);
+          if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
+            return (endMinutes - startMinutes) / 60;
+          }
+          return null;
+        })();
 
-            const duration = (() => {
-              const explicit = toNumberOrNull(reserva?.duracionHoras ?? reserva?.duracion_horas);
-              if (explicit !== null) {
-                return explicit;
-              }
-              const startMinutes = timeToMinutes(reserva?.horaInicio ?? reserva?.hora_inicio);
-              const endMinutes = timeToMinutes(reserva?.horaFin ?? reserva?.hora_fin);
-              if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
-                return (endMinutes - startMinutes) / 60;
-              }
-              return null;
-            })();
+        const derivedAmount = calculateBaseAmount({
+          cancha: court || {},
+          club: panelData?.club || {},
+          horaInicio: reserva?.horaInicio ?? reserva?.hora_inicio,
+          duracionHoras: duration,
+          explicitAmount: pickFirstNumber(reserva?.montoBase, reserva?.monto_base),
+          fallbackAmount,
+        });
 
-            const derivedAmount = calculateBaseAmount({
-              cancha: court || {},
-              club: panelData?.club || {},
-              horaInicio: reserva?.horaInicio ?? reserva?.hora_inicio,
-              duracionHoras: duration,
-              explicitAmount: pickFirstNumber(reserva?.montoBase, reserva?.monto_base),
-              fallbackAmount,
-            });
+        return subtotal + (Number.isFinite(derivedAmount) ? derivedAmount : 0);
+      }, 0);
 
-            return subtotal + (Number.isFinite(derivedAmount) ? derivedAmount : 0);
-          }, 0);
+      return total + courtTotal;
+    }, 0);
 
-          return total + courtTotal;
-        }, 0)
-      : null;
+    const ingresosEstimados = ingresosDesdeReservas;
 
-    const ingresosEstimados =
-      ingresosDesdeReservas !== null
-        ? ingresosDesdeReservas
-        : estados.length
-        ? estados.reduce((total, item) => {
-            const estado = String(item?.estado ?? '').trim().toLowerCase();
-            if (!incomeStates.has(estado)) {
-              return total;
-            }
-            return total + (Number.isFinite(item?.montoTotal) ? item.montoTotal : 0);
-          }, 0)
-        : hoy.montoTotal ?? 0;
     return [
       {
         label: 'Reservas de hoy',
