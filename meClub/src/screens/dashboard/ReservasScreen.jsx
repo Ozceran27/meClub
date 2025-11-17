@@ -82,136 +82,96 @@ const RESERVATION_STATUS_LABEL_OVERRIDES = {
 };
 
 const PAYMENT_STATUS_DETAILS = {
-  sin_abonar: {
-    label: 'Sin abonar',
+  pendiente: {
+    label: 'Pendiente de Pago',
     icon: 'remove-circle',
     iconColor: '#CBD5E1',
+    backendValue: 'sin_abonar',
+    backendValues: ['sin_abonar', 'pendiente', 'pendiente_pago', 'sin_pagar'],
     badge: {
       bg: 'bg-slate-500/20',
       border: 'border-slate-400/40',
       text: 'text-slate-100',
     },
   },
-  senia: {
-    label: 'Seña',
+  senado: {
+    label: 'Señado',
     icon: 'cash-outline',
     iconColor: '#38BDF8',
+    backendValue: 'senia',
+    backendValues: ['senia', 'senia_parcial', 'senia_total', 'seña'],
     badge: {
       bg: 'bg-sky-500/20',
       border: 'border-sky-400/40',
       text: 'text-sky-100',
     },
   },
-  senia_parcial: {
-    label: 'Seña parcial',
-    icon: 'cash-outline',
-    iconColor: '#38BDF8',
-    badge: {
-      bg: 'bg-sky-500/20',
-      border: 'border-sky-400/40',
-      text: 'text-sky-100',
-    },
-  },
-  senia_total: {
-    label: 'Seña total',
+  pagado: {
+    label: 'Pagado',
     icon: 'checkmark-circle',
-    iconColor: '#38BDF8',
-    badge: {
-      bg: 'bg-sky-500/20',
-      border: 'border-sky-400/40',
-      text: 'text-sky-100',
-    },
-  },
-  abonada: {
-    label: 'Abonada',
-    icon: 'wallet-outline',
-    iconColor: '#A855F7',
-    badge: {
-      bg: 'bg-violet-500/20',
-      border: 'border-violet-400/40',
-      text: 'text-violet-100',
-    },
-  },
-  abonada_parcial: {
-    label: 'Abonada parcial',
-    icon: 'wallet-outline',
-    iconColor: '#A855F7',
-    badge: {
-      bg: 'bg-violet-500/20',
-      border: 'border-violet-400/40',
-      text: 'text-violet-100',
-    },
-  },
-  abonada_total: {
-    label: 'Abonada total',
-    icon: 'checkmark-circle',
-    iconColor: '#A855F7',
-    badge: {
-      bg: 'bg-violet-500/20',
-      border: 'border-violet-400/40',
-      text: 'text-violet-100',
-    },
-  },
-  pagada: {
-    label: 'Pagada',
-    icon: 'card-outline',
     iconColor: '#4ADE80',
+    backendValue: 'pagada_total',
+    backendValues: [
+      'pagada_total',
+      'pagada',
+      'pagado',
+      'pago',
+      'pagada_parcial',
+      'pago_parcial',
+      'abonada',
+      'abonado',
+      'abonada_parcial',
+      'abonado_parcial',
+      'abonada_total',
+      'abono',
+    ],
     badge: {
       bg: 'bg-emerald-500/20',
       border: 'border-emerald-400/40',
       text: 'text-emerald-100',
     },
   },
-  pagada_parcial: {
-    label: 'Pagada parcial',
-    icon: 'card-outline',
-    iconColor: '#4ADE80',
+  cancelado: {
+    label: 'Cancelado',
+    icon: 'close-circle',
+    iconColor: '#F87171',
+    backendValue: 'sin_abonar',
+    backendValues: ['cancelada', 'cancelado'],
     badge: {
-      bg: 'bg-emerald-500/20',
-      border: 'border-emerald-400/40',
-      text: 'text-emerald-100',
-    },
-  },
-  pagada_total: {
-    label: 'Pagada total',
-    icon: 'checkmark-circle',
-    iconColor: '#4ADE80',
-    badge: {
-      bg: 'bg-emerald-500/20',
-      border: 'border-emerald-400/40',
-      text: 'text-emerald-100',
+      bg: 'bg-rose-500/20',
+      border: 'border-rose-400/40',
+      text: 'text-rose-100',
     },
   },
 };
 
 const PAYMENT_STATUS_ALIASES = {
-  sin_abonar: 'sin_abonar',
-  'sin abonar': 'sin_abonar',
-  pendiente: 'sin_abonar',
-  pendiente_pago: 'sin_abonar',
-  sin_pagar: 'sin_abonar',
-  cancelada: 'sin_abonar',
-  cancelado: 'sin_abonar',
-  pagada: 'pagada_total',
-  pagado: 'pagada_total',
-  pago: 'pagada_total',
-  pagada_parcial: 'pagada_parcial',
-  pago_parcial: 'pagada_parcial',
-  pagada_total: 'pagada_total',
-  parcial: 'pagada_parcial',
-  parcialidad: 'pagada_parcial',
-  parcial_pago: 'pagada_parcial',
-  parciales: 'pagada_parcial',
-  senia: 'senia_parcial',
-  'seña': 'senia_parcial',
-  senia_parcial: 'senia_parcial',
-  senia_total: 'senia_total',
-  abonada: 'abonada_total',
-  abonado: 'abonada_total',
-  abono: 'abonada',
-  abonada_parcial: 'abonada_parcial',
-  abonado_parcial: 'abonada_parcial',
-  abonada_total: 'abonada_total',
+  pendiente: 'pendiente',
+  'pendiente de pago': 'pendiente',
+  sin_abonar: 'pendiente',
+  'sin abonar': 'pendiente',
+  pendiente_pago: 'pendiente',
+  sin_pagar: 'pendiente',
+  senado: 'senado',
+  senia: 'senado',
+  'seña': 'senado',
+  'señado': 'senado',
+  senia_parcial: 'senado',
+  senia_total: 'senado',
+  pagada: 'pagado',
+  pagado: 'pagado',
+  pago: 'pagado',
+  pagada_parcial: 'pagado',
+  pago_parcial: 'pagado',
+  pagada_total: 'pagado',
+  abonada: 'pagado',
+  abonado: 'pagado',
+  abonada_parcial: 'pagado',
+  abonado_parcial: 'pagado',
+  abonada_total: 'pagado',
+  abono: 'pagado',
+  cancelada: 'cancelado',
+  cancelado: 'cancelado',
 };
 
 const RESERVATION_STATUS_OPTIONS = [
@@ -294,8 +254,24 @@ function normalizePaymentStatusValue(status) {
     return null;
   }
   const normalized = String(status).trim().toLowerCase();
-  const resolved = PAYMENT_STATUS_ALIASES[normalized] || normalized;
-  return PAYMENT_STATUS_DETAILS[resolved] ? resolved : null;
+  const alias = PAYMENT_STATUS_ALIASES[normalized];
+  if (alias && PAYMENT_STATUS_DETAILS[alias]) {
+    return alias;
+  }
+
+  for (const [key, detail] of Object.entries(PAYMENT_STATUS_DETAILS)) {
+    if (key === normalized) {
+      return key;
+    }
+    if (
+      Array.isArray(detail.backendValues) &&
+      detail.backendValues.some((value) => String(value).toLowerCase() === normalized)
+    ) {
+      return key;
+    }
+  }
+
+  return null;
 }
 
 function getPaymentStatusDetails(status) {
@@ -305,6 +281,19 @@ function getPaymentStatusDetails(status) {
   }
   const detail = PAYMENT_STATUS_DETAILS[resolved];
   return detail ? { ...detail, value: resolved } : null;
+}
+
+function getPaymentBackendValue(status) {
+  const resolved = normalizePaymentStatusValue(status);
+  if (!resolved) {
+    return null;
+  }
+  const detail = PAYMENT_STATUS_DETAILS[resolved];
+  if (!detail) {
+    return null;
+  }
+  const backendValue = detail.backendValue || detail.backendValues?.[0];
+  return backendValue || resolved;
 }
 
 const SLOT_MINUTES = 60;
@@ -878,7 +867,7 @@ function normalizeReservationDraft(draft, fallbackDate) {
   const estadoPagoRaw =
     draft.estado_pago ?? draft.estadoPago ?? draft.estado?.pago ?? draft.estado?.estado_pago ?? null;
   if (estadoPagoRaw !== null && estadoPagoRaw !== undefined) {
-    const estadoPago = normalizePaymentStatusValue(estadoPagoRaw);
+    const estadoPago = getPaymentBackendValue(estadoPagoRaw);
     if (estadoPago) {
       payload.estado_pago = estadoPago;
     }
@@ -1343,7 +1332,7 @@ export default function ReservasScreen({ summary, go }) {
         payload.estado = nextEstado;
       }
       if (hasPagoChange && nextEstadoPago) {
-        payload.estado_pago = nextEstadoPago;
+        payload.estado_pago = getPaymentBackendValue(nextEstadoPago);
       }
 
       if (!payload.estado && !payload.estado_pago) {
