@@ -82,28 +82,18 @@ const RESERVATION_STATUS_LABEL_OVERRIDES = {
 };
 
 const PAYMENT_STATUS_DETAILS = {
-  pagado: {
-    label: 'Pagado',
-    icon: 'checkmark-circle',
-    iconColor: '#4ADE80',
+  sin_abonar: {
+    label: 'Sin abonar',
+    icon: 'remove-circle',
+    iconColor: '#CBD5E1',
     badge: {
-      bg: 'bg-emerald-500/20',
-      border: 'border-emerald-400/40',
-      text: 'text-emerald-100',
+      bg: 'bg-slate-500/20',
+      border: 'border-slate-400/40',
+      text: 'text-slate-100',
     },
   },
-  pendiente: {
-    label: 'Pendiente',
-    icon: 'time-outline',
-    iconColor: '#FACC15',
-    badge: {
-      bg: 'bg-amber-500/20',
-      border: 'border-amber-400/40',
-      text: 'text-amber-100',
-    },
-  },
-  parcial: {
-    label: 'Pago parcial',
+  senia: {
+    label: 'Seña',
     icon: 'cash-outline',
     iconColor: '#38BDF8',
     badge: {
@@ -112,30 +102,116 @@ const PAYMENT_STATUS_DETAILS = {
       text: 'text-sky-100',
     },
   },
-  cancelado: {
-    label: 'Cancelado',
-    icon: 'close-circle',
-    iconColor: '#FB7185',
+  senia_parcial: {
+    label: 'Seña parcial',
+    icon: 'cash-outline',
+    iconColor: '#38BDF8',
     badge: {
-      bg: 'bg-rose-500/20',
-      border: 'border-rose-400/40',
-      text: 'text-rose-100',
+      bg: 'bg-sky-500/20',
+      border: 'border-sky-400/40',
+      text: 'text-sky-100',
+    },
+  },
+  senia_total: {
+    label: 'Seña total',
+    icon: 'checkmark-circle',
+    iconColor: '#38BDF8',
+    badge: {
+      bg: 'bg-sky-500/20',
+      border: 'border-sky-400/40',
+      text: 'text-sky-100',
+    },
+  },
+  abonada: {
+    label: 'Abonada',
+    icon: 'wallet-outline',
+    iconColor: '#A855F7',
+    badge: {
+      bg: 'bg-violet-500/20',
+      border: 'border-violet-400/40',
+      text: 'text-violet-100',
+    },
+  },
+  abonada_parcial: {
+    label: 'Abonada parcial',
+    icon: 'wallet-outline',
+    iconColor: '#A855F7',
+    badge: {
+      bg: 'bg-violet-500/20',
+      border: 'border-violet-400/40',
+      text: 'text-violet-100',
+    },
+  },
+  abonada_total: {
+    label: 'Abonada total',
+    icon: 'checkmark-circle',
+    iconColor: '#A855F7',
+    badge: {
+      bg: 'bg-violet-500/20',
+      border: 'border-violet-400/40',
+      text: 'text-violet-100',
+    },
+  },
+  pagada: {
+    label: 'Pagada',
+    icon: 'card-outline',
+    iconColor: '#4ADE80',
+    badge: {
+      bg: 'bg-emerald-500/20',
+      border: 'border-emerald-400/40',
+      text: 'text-emerald-100',
+    },
+  },
+  pagada_parcial: {
+    label: 'Pagada parcial',
+    icon: 'card-outline',
+    iconColor: '#4ADE80',
+    badge: {
+      bg: 'bg-emerald-500/20',
+      border: 'border-emerald-400/40',
+      text: 'text-emerald-100',
+    },
+  },
+  pagada_total: {
+    label: 'Pagada total',
+    icon: 'checkmark-circle',
+    iconColor: '#4ADE80',
+    badge: {
+      bg: 'bg-emerald-500/20',
+      border: 'border-emerald-400/40',
+      text: 'text-emerald-100',
     },
   },
 };
 
 const PAYMENT_STATUS_ALIASES = {
-  pagada: 'pagado',
-  pagado: 'pagado',
-  pago: 'pagado',
-  parcialidad: 'parcial',
-  senia: 'parcial',
-  'seña': 'parcial',
-  parcial_pago: 'parcial',
-  parciales: 'parcial',
-  pendiente: 'pendiente',
-  cancelada: 'cancelado',
-  cancelado: 'cancelado',
+  sin_abonar: 'sin_abonar',
+  'sin abonar': 'sin_abonar',
+  pendiente: 'sin_abonar',
+  pendiente_pago: 'sin_abonar',
+  sin_pagar: 'sin_abonar',
+  cancelada: 'sin_abonar',
+  cancelado: 'sin_abonar',
+  pagada: 'pagada_total',
+  pagado: 'pagada_total',
+  pago: 'pagada_total',
+  pagada_parcial: 'pagada_parcial',
+  pago_parcial: 'pagada_parcial',
+  pagada_total: 'pagada_total',
+  parcial: 'pagada_parcial',
+  parcialidad: 'pagada_parcial',
+  parcial_pago: 'pagada_parcial',
+  parciales: 'pagada_parcial',
+  senia: 'senia_parcial',
+  'seña': 'senia_parcial',
+  senia_parcial: 'senia_parcial',
+  senia_total: 'senia_total',
+  abonada: 'abonada_total',
+  abonado: 'abonada_total',
+  abono: 'abonada',
+  abonada_parcial: 'abonada_parcial',
+  abonado_parcial: 'abonada_parcial',
+  abonada_total: 'abonada_total',
 };
 
 const RESERVATION_STATUS_OPTIONS = [
@@ -213,17 +289,22 @@ function getStatusBadgeClasses(status) {
   };
 }
 
-function getPaymentStatusDetails(status) {
+function normalizePaymentStatusValue(status) {
   if (!status) {
     return null;
   }
   const normalized = String(status).trim().toLowerCase();
   const resolved = PAYMENT_STATUS_ALIASES[normalized] || normalized;
-  const detail = PAYMENT_STATUS_DETAILS[resolved];
-  if (detail) {
-    return { ...detail, value: resolved };
+  return PAYMENT_STATUS_DETAILS[resolved] ? resolved : null;
+}
+
+function getPaymentStatusDetails(status) {
+  const resolved = normalizePaymentStatusValue(status);
+  if (!resolved) {
+    return null;
   }
-  return null;
+  const detail = PAYMENT_STATUS_DETAILS[resolved];
+  return detail ? { ...detail, value: resolved } : null;
 }
 
 const SLOT_MINUTES = 60;
@@ -797,7 +878,7 @@ function normalizeReservationDraft(draft, fallbackDate) {
   const estadoPagoRaw =
     draft.estado_pago ?? draft.estadoPago ?? draft.estado?.pago ?? draft.estado?.estado_pago ?? null;
   if (estadoPagoRaw !== null && estadoPagoRaw !== undefined) {
-    const estadoPago = String(estadoPagoRaw).trim();
+    const estadoPago = normalizePaymentStatusValue(estadoPagoRaw);
     if (estadoPago) {
       payload.estado_pago = estadoPago;
     }
@@ -1184,8 +1265,8 @@ export default function ReservasScreen({ summary, go }) {
 
       const currentEstado = normalizeStatusValue(statusMenuReservation.estado);
       const nextEstado = estado ?? currentEstado;
-      const currentEstadoPago = getPaymentStatusDetails(statusMenuReservation.estadoPago)?.value ?? null;
-      const nextEstadoPago = estadoPago ?? currentEstadoPago;
+      const currentEstadoPago = normalizePaymentStatusValue(statusMenuReservation.estadoPago);
+      const nextEstadoPago = normalizePaymentStatusValue(estadoPago ?? currentEstadoPago);
       const hasEstadoChange = nextEstado !== currentEstado;
       const hasPagoChange = nextEstadoPago !== currentEstadoPago;
 
