@@ -430,9 +430,9 @@ function TimelineReservationCard({
   const handleBlur = tooltipEnabled ? () => setIsHovered(false) : undefined;
 
   return (
-    <View style={{ height: containerHeight }} className="border-b border-white/5 px-3 py-2">
+    <View style={{ height: containerHeight }} className="h-full border-b border-white/5 px-2 py-1">
       <Pressable
-        className={`relative flex-1 rounded-2xl border shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.border}`}
+        className={`relative h-full w-full flex-1 rounded-2xl border shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.border}`}
         onHoverIn={handleHoverIn}
         onHoverOut={handleHoverOut}
         onFocus={handleFocus}
@@ -440,7 +440,7 @@ function TimelineReservationCard({
         onPress={onPress}
       >
         <View className={`flex-1 overflow-hidden rounded-2xl ${color.bg}`}>
-          <View className="flex-1 px-3 py-2 justify-between gap-2">
+          <View className="flex-1 px-2 py-2 justify-between gap-2">
             <View className="flex-row items-start justify-between gap-2">
               <Text
                 className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
@@ -469,14 +469,14 @@ function TimelineReservationCard({
                     <Ionicons name="videocam" size={14} color="#FACC15" />
                   </View>
                 ) : null}
-                <View className="flex-row items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-1">
+                <View className="flex-row items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-0.5">
                   <Ionicons name={rateIconName} size={12} color={rateIconColor} />
                   <Text className="text-[10px] font-semibold uppercase tracking-wide text-white/80">
                     {rateBadgeLabel}
                   </Text>
                 </View>
                 <View
-                  className={`flex-row items-center gap-1 rounded-full border px-2 py-1 ${paymentBadgeClasses.bg} ${paymentBadgeClasses.border}`}
+                  className={`flex-row items-center gap-1 rounded-full border px-2 py-0.5 ${paymentBadgeClasses.bg} ${paymentBadgeClasses.border}`}
                 >
                   <Ionicons name={paymentIconName} size={12} color={paymentIconColor} />
                   <Text
