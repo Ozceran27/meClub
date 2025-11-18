@@ -819,7 +819,11 @@ function ensureTimeWithSeconds(value) {
   return trimmed;
 }
 
-function normalizeReservationDraft(draft, fallbackDate) {
+function normalizeReservationDraft(
+  draft,
+  fallbackDate,
+  { courts = [], club = {}, cameraPrice = null, nightStart = null, nightEnd = null } = {}
+) {
   if (!draft || typeof draft !== 'object') {
     return null;
   }
@@ -829,6 +833,54 @@ function normalizeReservationDraft(draft, fallbackDate) {
   const duracionHorasNumero = Number.parseInt(draft.duracion_horas, 10);
   const tipoReserva = draft.tipo_reserva === 'privada' ? 'privada' : 'relacionada';
 
+  const selectedCourt = Array.isArray(courts)
+    ? courts.find((court) => String(court?.cancha_id ?? court?.id) === String(draft.cancha_id))
+    : null;
+
+  const pricingClub = {
+    ...(club || {}),
+    hora_nocturna_inicio:
+      nightStart ?? club?.hora_nocturna_inicio ?? club?.horaNocturnaInicio ?? club?.horaNocturnaDesde ?? null,
+    hora_nocturna_fin: nightEnd ?? club?.hora_nocturna_fin ?? club?.horaNocturnaFin ?? club?.horaNocturnaHasta ?? null,
+    horaNocturnaInicio:
+      nightStart ?? club?.horaNocturnaInicio ?? club?.hora_nocturna_inicio ?? club?.horaNocturnaDesde ?? null,
+    horaNocturnaFin: nightEnd ?? club?.horaNocturnaFin ?? club?.hora_nocturna_fin ?? club?.horaNocturnaHasta ?? null,
+  };
+
+  const explicitBaseAmount = pickFirstNumber(draft.monto_base, draft.montoBase);
+  const fallbackPrice = pickFirstNumber(
+    selectedCourt?.monto_base,
+    selectedCourt?.precio,
+    selectedCourt?.precioDia,
+    selectedCourt?.precio_dia,
+    selectedCourt?.precioNoche,
+    selectedCourt?.precio_noche
+  );
+
+  const baseAmount = calculateBaseAmount({
+    cancha: selectedCourt || {},
+    club: pricingClub,
+    horaInicio,
+    duracionHoras: duracionHorasNumero,
+    explicitAmount: explicitBaseAmount,
+    fallbackAmount: fallbackPrice,
+  });
+
+  const cameraFee = toNumberOrNull(draft.monto_grabacion ?? cameraPrice) ?? 0;
+  const explicitTotalAmount = pickFirstNumber(draft.monto, draft.monto_total, draft.montoTotal);
+  const derivedTotalAmount = Number(baseAmount || 0) + (draft.grabacion_solicitada ? cameraFee : 0);
+
+  const resolvedBaseAmount = Number.isFinite(explicitBaseAmount)
+    ? explicitBaseAmount
+    : Number.isFinite(baseAmount)
+    ? baseAmount
+    : null;
+  const resolvedTotalAmount = Number.isFinite(explicitTotalAmount)
+    ? explicitTotalAmount
+    : Number.isFinite(derivedTotalAmount)
+    ? derivedTotalAmount
+    : null;
+
   const payload = {
     fecha,
     hora_inicio: horaInicio,
@@ -836,6 +888,14 @@ function normalizeReservationDraft(draft, fallbackDate) {
     grabacion_solicitada: !!draft.grabacion_solicitada,
     tipo_reserva: tipoReserva,
   };
+
+  if (resolvedBaseAmount !== null) {
+    payload.monto_base = resolvedBaseAmount;
+  }
+
+  if (resolvedTotalAmount !== null) {
+    payload.monto = resolvedTotalAmount;
+  }
 
   if (draft.cancha_id !== undefined && draft.cancha_id !== null) {
     const canchaNumero = Number(draft.cancha_id);
@@ -1192,7 +1252,13 @@ export default function ReservasScreen({ summary, go }) {
   const handleCreateReservation = useCallback(
     async (draft) => {
       if (!draft) return;
-      const normalizedPayload = normalizeReservationDraft(draft, selectedDate);
+      const normalizedPayload = normalizeReservationDraft(draft, selectedDate, {
+        courts,
+        club: panelData?.club,
+        cameraPrice: panelData?.club?.precioGrabacion,
+        nightStart: nightStartValue,
+        nightEnd: nightEndValue,
+      });
       if (!normalizedPayload) return;
 
       try {
@@ -1210,7 +1276,7 @@ export default function ReservasScreen({ summary, go }) {
         setCreating(false);
       }
     },
-    [selectedDate]
+    [courts, nightEndValue, nightStartValue, panelData?.club, selectedDate]
   );
 
   const handleOpenModal = useCallback(() => {
