@@ -35,6 +35,11 @@ const STATUS_STYLES = {
     border: 'border-emerald-400/40',
     text: 'text-emerald-100',
   },
+  pagada: {
+    bg: 'bg-emerald-600/25',
+    border: 'border-emerald-400/50',
+    text: 'text-emerald-50',
+  },
   pendiente: {
     bg: 'bg-amber-500/20',
     border: 'border-amber-400/40',
@@ -56,9 +61,9 @@ const RESERVATION_STATUS_ALIASES = {
   activa: 'confirmada',
   'en curso': 'confirmada',
   en_curso: 'confirmada',
-  pagada: 'confirmada',
-  pagado: 'confirmada',
-  pago: 'confirmada',
+  pagada: 'pagada',
+  pagado: 'pagada',
+  pago: 'pagada',
   confirmada: 'confirmada',
   pendiente: 'pendiente',
   reprogramada: 'pendiente',
@@ -72,6 +77,7 @@ const RESERVATION_STATUS_ALIASES = {
 
 const RESERVATION_STATUS_LABELS = {
   confirmada: 'Confirmada',
+  pagada: 'Pagada',
   pendiente: 'Pendiente',
   finalizada: 'Finalizada',
   cancelada: 'Cancelada',
@@ -176,6 +182,7 @@ const PAYMENT_STATUS_ALIASES = {
 
 const RESERVATION_STATUS_OPTIONS = [
   { value: 'confirmada', label: 'Activa (Confirmada)' },
+  { value: 'pagada', label: 'Pagada' },
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'finalizada', label: 'Finalizada' },
   { value: 'cancelada', label: 'Cancelada' },
@@ -431,6 +438,7 @@ function TimelineReservationCard({
   }, [reservation.duracionHoras, reservation.horaFin, reservation.horaInicio]);
 
   const explicitBase = toNumberOrNull(reservation.montoBase);
+  const recordedAmount = pickFirstNumber(reservation?.monto, reservation?.montoBase);
   const fallbackPrice = pickFirstNumber(
     court?.monto_base,
     court?.precio,
@@ -441,16 +449,21 @@ function TimelineReservationCard({
   );
 
   const derivedBaseAmount = useMemo(
-    () =>
-      calculateBaseAmount({
+    () => {
+      if (recordedAmount !== null) {
+        return recordedAmount;
+      }
+
+      return calculateBaseAmount({
         cancha: court || {},
         club: pricingClub,
         horaInicio: reservation.horaInicio,
         duracionHoras: durationHours,
         explicitAmount: explicitBase,
         fallbackAmount: fallbackPrice,
-      }),
-    [court, explicitBase, fallbackPrice, pricingClub, reservation.horaInicio, durationHours]
+      });
+    },
+    [court, explicitBase, fallbackPrice, pricingClub, recordedAmount, reservation.horaInicio, durationHours]
   );
 
   const appliedRateType = determineRateType({ horaInicio: reservation.horaInicio, club: pricingClub });

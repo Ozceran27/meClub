@@ -177,9 +177,9 @@ function normalizeReservation(raw) {
       raw.estado_pago !== undefined && raw.estado_pago !== null
         ? String(raw.estado_pago).trim() || null
         : null,
-    monto: toNumberOrZero(raw.monto),
-    montoBase: toNumberOrZero(raw.monto_base),
-    montoGrabacion: toNumberOrZero(raw.monto_grabacion),
+    monto: toNumberOrNull(raw.monto),
+    montoBase: toNumberOrNull(raw.monto_base),
+    montoGrabacion: toNumberOrNull(raw.monto_grabacion),
     grabacionSolicitada: toBoolean(raw.grabacion_solicitada),
     tipoReserva: raw.tipo_reserva ?? null,
     contactoNombre: raw.contacto_nombre ?? '',
