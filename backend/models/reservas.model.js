@@ -41,7 +41,7 @@ const ReservasModel = {
     contacto_apellido = null,
     contacto_telefono = null,
     grabacion_solicitada = 0,
-    estado_pago = 'pendiente_pago',
+    estado_pago = 'pendiente',
   }) => {
     if (!creado_por_id) throw new Error('creado_por_id es requerido');
     if (!cancha_id) throw new Error('cancha_id es requerido');

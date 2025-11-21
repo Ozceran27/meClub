@@ -11,12 +11,13 @@ const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime, normalizeHour, isTimeInRange } = require('../utils/datetime');
-const { getUserId } = require('../utils/auth');
-const {
-  esEstadoReservaActivo,
-  esEstadoReservaValido,
-  normalizarEstadoPago,
-} = require('../constants/reservasEstados');
+  const { getUserId } = require('../utils/auth');
+  const {
+    esEstadoReservaActivo,
+    esEstadoReservaValido,
+    ESTADOS_PAGO_PERMITIDOS,
+    normalizarEstadoPago,
+  } = require('../constants/reservasEstados');
 // -----------------------------------------------------------------------------------------------
 
 const formatDate = (date) => {
@@ -214,7 +215,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contacto_nombre_payload = null,
       contacto_apellido: contacto_apellido_payload = null,
       contacto_telefono: contacto_telefono_payload = null,
-      estado_pago = 'pendiente_pago',
+      estado_pago = 'pendiente',
     } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {
@@ -631,6 +632,8 @@ router.patch(
       return normalizarEstadoPago(valor);
     };
 
+    const mensajeEstadoPagoInvalido = `Estado de pago inválido. Valores permitidos: ${ESTADOS_PAGO_PERMITIDOS.join(', ')}`;
+
     const estadoNormalizado = normalizar(estadoRaw);
     const estadoPagoNormalizado = normalizarPago(estadoPagoRaw);
 
@@ -645,7 +648,7 @@ router.patch(
     }
 
     if (estadoPagoNormalizado === null) {
-      return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+      return res.status(400).json({ mensaje: mensajeEstadoPagoInvalido });
     }
 
     if (estadoNormalizado !== undefined && !esEstadoReservaValido(estadoNormalizado)) {
@@ -653,7 +656,7 @@ router.patch(
     }
 
     if (estadoPagoNormalizado !== undefined && !estadoPagoNormalizado) {
-      return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+      return res.status(400).json({ mensaje: mensajeEstadoPagoInvalido });
     }
 
     try {
@@ -696,7 +699,7 @@ router.patch(
         return res.status(400).json({ mensaje: 'Estado inválido' });
       }
       if (err?.code === 'RESERVA_ESTADO_PAGO_INVALIDO') {
-        return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+        return res.status(400).json({ mensaje: mensajeEstadoPagoInvalido });
       }
       if (err?.code === 'RESERVA_ID_INVALIDO') {
         return res.status(400).json({ mensaje: 'Identificador de reserva inválido' });

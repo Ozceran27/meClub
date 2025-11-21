@@ -130,7 +130,9 @@ describe('PATCH /reservas/:id/estado', () => {
       .send({ estado_pago: 'otro' });
 
     expect(response.status).toBe(400);
-    expect(response.body).toEqual({ mensaje: 'Estado de pago inválido' });
+    expect(response.body).toEqual({
+      mensaje: 'Estado de pago inválido. Valores permitidos: pendiente, senado, pagado, cancelado',
+    });
     expect(ReservasModel.getByIdConClub).not.toHaveBeenCalled();
   });
 
@@ -166,7 +168,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 5,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'pendiente_pago',
+      estado_pago: 'pendiente',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({
       updated: true,
@@ -201,7 +203,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 6,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'pendiente_pago',
+      estado_pago: 'pendiente',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({ updated: true, estado: 'pagada' });
 
@@ -212,7 +214,7 @@ describe('PATCH /reservas/:id/estado', () => {
     expect(ReservasModel.actualizarEstados).toHaveBeenCalledWith({
       reserva_id: 6,
       estado: 'pagada',
-      estado_pago: 'pendiente_pago',
+      estado_pago: 'pendiente',
     });
     expect(response.status).toBe(200);
   });
@@ -223,7 +225,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 5,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'pendiente_pago',
+      estado_pago: 'pendiente',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({ updated: false, estado: 'confirmada' });
 
