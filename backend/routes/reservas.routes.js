@@ -16,6 +16,7 @@ const {
   esEstadoReservaActivo,
   esEstadoReservaValido,
   esEstadoPagoValido,
+  normalizarEstadoPago,
 } = require('../constants/reservasEstados');
 // -----------------------------------------------------------------------------------------------
 
@@ -214,8 +215,15 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contacto_nombre_payload = null,
       contacto_apellido: contacto_apellido_payload = null,
       contacto_telefono: contacto_telefono_payload = null,
-      estado_pago = 'sin_abonar',
+      estado_pago,
     } = req.body;
+
+    // Compatibilidad: aceptamos valores legacy y almacenamos sólo los estados canónicos
+    const estadoPagoNormalizado = normalizarEstadoPago(estado_pago ?? 'pendiente');
+
+    if (!estadoPagoNormalizado) {
+      return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+    }
 
     if (!cancha_id || !fecha || !hora_inicio) {
       return res.status(400).json({ mensaje: 'Faltan campos requeridos (cancha_id, fecha, hora_inicio)' });
@@ -363,7 +371,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contactoNombre,
       contacto_apellido: contactoApellido,
       contacto_telefono: contactoTelefono,
-      estado_pago,
+      estado_pago: estadoPagoNormalizado,
     });
 
     return res.status(201).json({
@@ -373,7 +381,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
         monto_base: montoBase,
         monto_grabacion: montoGrabacion,
         monto: total,
-        estado_pago,
+        estado_pago: estadoPagoNormalizado,
       },
     });
   } catch (err) {
@@ -621,7 +629,7 @@ router.patch(
     };
 
     const estadoNormalizado = normalizar(estadoRaw);
-    const estadoPagoNormalizado = normalizar(estadoPagoRaw);
+    const estadoPagoNormalizado = normalizarEstadoPago(estadoPagoRaw);
 
     if (estadoNormalizado === undefined && estadoPagoNormalizado === undefined) {
       return res
@@ -634,6 +642,10 @@ router.patch(
     }
 
     if (estadoPagoNormalizado === null) {
+      return res.status(400).json({ mensaje: 'Estado de pago inválido' });
+    }
+
+    if (estadoPagoRaw !== undefined && estadoPagoNormalizado === undefined) {
       return res.status(400).json({ mensaje: 'Estado de pago inválido' });
     }
 

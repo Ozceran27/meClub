@@ -166,12 +166,12 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 5,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({
       updated: true,
       estado: 'confirmada',
-      estado_pago: 'pagada',
+      estado_pago: 'abonado',
     });
 
     const response = await request(app)
@@ -182,7 +182,7 @@ describe('PATCH /reservas/:id/estado', () => {
     expect(ReservasModel.actualizarEstados).toHaveBeenCalledWith({
       reserva_id: 5,
       estado: 'confirmada',
-      estado_pago: 'pagada',
+      estado_pago: 'abonado',
     });
     expect(response.body).toEqual({
       mensaje: 'Estado de reserva actualizado',
@@ -190,7 +190,7 @@ describe('PATCH /reservas/:id/estado', () => {
         reserva_id: 5,
         club_id: 10,
         estado: 'confirmada',
-        estado_pago: 'pagada',
+        estado_pago: 'abonado',
       },
     });
   });
@@ -201,9 +201,9 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 6,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente',
     });
-    ReservasModel.actualizarEstados.mockResolvedValue({ updated: true, estado: 'pagada' });
+    ReservasModel.actualizarEstados.mockResolvedValue({ updated: true, estado_pago: 'abonado' });
 
     const response = await request(app)
       .patch('/reservas/6/estado')
@@ -212,7 +212,7 @@ describe('PATCH /reservas/:id/estado', () => {
     expect(ReservasModel.actualizarEstados).toHaveBeenCalledWith({
       reserva_id: 6,
       estado: 'pagada',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente',
     });
     expect(response.status).toBe(200);
   });
@@ -223,7 +223,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 5,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({ updated: false, estado: 'confirmada' });
 
