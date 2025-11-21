@@ -16,17 +16,17 @@ describe('ReservasModel.actualizarEstados', () => {
     const resultado = await ReservasModel.actualizarEstados({
       reserva_id: 10,
       estado: 'confirmada',
-      estado_pago: 'pendiente_pago',
+      estado_pago: 'pendiente',
     });
 
     expect(db.query).toHaveBeenCalledWith(
       'UPDATE reservas SET estado = ?, estado_pago = ? WHERE reserva_id = ?',
-      ['confirmada', 'pendiente_pago', 10]
+      ['confirmada', 'pendiente', 10]
     );
     expect(resultado).toEqual({
       updated: true,
       estado: 'confirmada',
-      estado_pago: 'pendiente_pago',
+      estado_pago: 'pendiente',
     });
   });
 

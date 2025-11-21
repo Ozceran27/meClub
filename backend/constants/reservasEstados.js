@@ -4,20 +4,16 @@ const ESTADOS_RESERVA_PERMITIDOS = Object.freeze([
   ...new Set([...ESTADOS_RESERVA_ACTIVOS, 'cancelada', 'finalizada']),
 ]);
 
-const ESTADOS_PAGO_PERMITIDOS = Object.freeze([
-  'pendiente_pago',
-  'senado',
-  'pagado',
-  'cancelado',
-]);
+const ESTADOS_PAGO_PERMITIDOS = Object.freeze(['pendiente', 'senado', 'pagado', 'cancelado']);
 
 const ESTADOS_PAGO_ALIAS = {
-  pendiente: 'pendiente_pago',
-  'pendiente de pago': 'pendiente_pago',
-  pendiente_pago: 'pendiente_pago',
-  sin_abonar: 'pendiente_pago',
-  'sin abonar': 'pendiente_pago',
-  sin_pagar: 'pendiente_pago',
+  pendiente: 'pendiente',
+  'pendiente de pago': 'pendiente',
+  pendiente_pago: 'pendiente',
+  sin_abonar: 'pendiente',
+  'sin abonar': 'pendiente',
+  sin_pagar: 'pendiente',
+  sin_pago: 'pendiente',
   senado: 'senado',
   senia: 'senado',
   seña: 'senado',
