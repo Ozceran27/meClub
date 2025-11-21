@@ -19,6 +19,13 @@ import {
   getReservationsPanel,
   updateReservationStatus,
 } from '../../lib/api';
+import {
+  PAYMENT_STATUS_DETAILS,
+  PAYMENT_STATUS_OPTIONS,
+  getPaymentBackendValue,
+  getPaymentStatusDetails,
+  normalizePaymentStatusValue,
+} from '../../constants/paymentStatus';
 import { calculateBaseAmount, determineRateType, toNumberOrNull } from './pricing';
 
 const COURT_COLORS = [
@@ -81,111 +88,12 @@ const RESERVATION_STATUS_LABEL_OVERRIDES = {
   activa: 'Activa',
 };
 
-const PAYMENT_STATUS_DETAILS = {
-  pendiente: {
-    label: 'Pendiente de Pago',
-    icon: 'remove-circle',
-    iconColor: '#CBD5E1',
-    backendValue: 'pendiente_pago',
-    backendValues: ['pendiente_pago', 'sin_abonar', 'pendiente', 'sin_pagar'],
-    badge: {
-      bg: 'bg-slate-500/20',
-      border: 'border-slate-400/40',
-      text: 'text-slate-100',
-    },
-  },
-  senado: {
-    label: 'Señado',
-    icon: 'cash-outline',
-    iconColor: '#38BDF8',
-    backendValue: 'senado',
-    backendValues: ['senado', 'senia', 'senia_parcial', 'senia_total', 'seña'],
-    badge: {
-      bg: 'bg-sky-500/20',
-      border: 'border-sky-400/40',
-      text: 'text-sky-100',
-    },
-  },
-  pagado: {
-    label: 'Pagado',
-    icon: 'checkmark-circle',
-    iconColor: '#4ADE80',
-    backendValue: 'pagado',
-    backendValues: [
-      'pagado',
-      'pagada_total',
-      'pagada',
-      'pago',
-      'pagada_parcial',
-      'pago_parcial',
-      'abonada',
-      'abonado',
-      'abonada_parcial',
-      'abonado_parcial',
-      'abonada_total',
-      'abono',
-    ],
-    badge: {
-      bg: 'bg-emerald-500/20',
-      border: 'border-emerald-400/40',
-      text: 'text-emerald-100',
-    },
-  },
-  cancelado: {
-    label: 'Cancelado',
-    icon: 'close-circle',
-    iconColor: '#F87171',
-    backendValue: 'cancelado',
-    backendValues: ['cancelado', 'cancelada', 'rechazado'],
-    badge: {
-      bg: 'bg-rose-500/20',
-      border: 'border-rose-400/40',
-      text: 'text-rose-100',
-    },
-  },
-};
-
-const PAYMENT_STATUS_ALIASES = {
-  pendiente: 'pendiente',
-  'pendiente de pago': 'pendiente',
-  sin_abonar: 'pendiente',
-  'sin abonar': 'pendiente',
-  pendiente_pago: 'pendiente',
-  sin_pagar: 'pendiente',
-  senado: 'senado',
-  senia: 'senado',
-  'seña': 'senado',
-  'señado': 'senado',
-  senia_parcial: 'senado',
-  senia_total: 'senado',
-  pagada: 'pagado',
-  pagado: 'pagado',
-  pago: 'pagado',
-  pagada_parcial: 'pagado',
-  pago_parcial: 'pagado',
-  pagada_total: 'pagado',
-  abonada: 'pagado',
-  abonado: 'pagado',
-  abonada_parcial: 'pagado',
-  abonado_parcial: 'pagado',
-  abonada_total: 'pagado',
-  abono: 'pagado',
-  cancelada: 'cancelado',
-  cancelado: 'cancelado',
-};
-
 const RESERVATION_STATUS_OPTIONS = [
   { value: 'confirmada', label: 'Activa (Confirmada)' },
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'finalizada', label: 'Finalizada' },
   { value: 'cancelada', label: 'Cancelada' },
 ];
-
-const PAYMENT_STATUS_OPTIONS = Object.entries(PAYMENT_STATUS_DETAILS).map(([value, detail]) => ({
-  value,
-  label: detail.label,
-  icon: detail.icon,
-}));
 
 const DEFAULT_PAYMENT_BADGE = {
   bg: 'bg-slate-500/20',
@@ -247,53 +155,6 @@ function getStatusBadgeClasses(status) {
     border: 'border-slate-400/30',
     text: 'text-slate-100',
   };
-}
-
-function normalizePaymentStatusValue(status) {
-  if (!status) {
-    return null;
-  }
-  const normalized = String(status).trim().toLowerCase();
-  const alias = PAYMENT_STATUS_ALIASES[normalized];
-  if (alias && PAYMENT_STATUS_DETAILS[alias]) {
-    return alias;
-  }
-
-  for (const [key, detail] of Object.entries(PAYMENT_STATUS_DETAILS)) {
-    if (key === normalized) {
-      return key;
-    }
-    if (
-      Array.isArray(detail.backendValues) &&
-      detail.backendValues.some((value) => String(value).toLowerCase() === normalized)
-    ) {
-      return key;
-    }
-  }
-
-  return null;
-}
-
-function getPaymentStatusDetails(status) {
-  const resolved = normalizePaymentStatusValue(status);
-  if (!resolved) {
-    return null;
-  }
-  const detail = PAYMENT_STATUS_DETAILS[resolved];
-  return detail ? { ...detail, value: resolved } : null;
-}
-
-function getPaymentBackendValue(status) {
-  const resolved = normalizePaymentStatusValue(status);
-  if (!resolved) {
-    return null;
-  }
-  const detail = PAYMENT_STATUS_DETAILS[resolved];
-  if (!detail) {
-    return null;
-  }
-  const backendValue = detail.backendValue || detail.backendValues?.[0];
-  return backendValue || resolved;
 }
 
 const SLOT_MINUTES = 60;
@@ -395,9 +256,7 @@ function TimelineReservationCard({
   const statusLabel = formatStatusLabel(reservation.estado, { emptyLabel: 'Sin estado' });
   const paymentDetail = getPaymentStatusDetails(reservation.estadoPago);
   const paymentBadgeClasses = paymentDetail?.badge ?? DEFAULT_PAYMENT_BADGE;
-  const paymentLabel = paymentDetail?.label ?? formatStatusLabel(reservation.estadoPago, {
-    emptyLabel: DEFAULT_PAYMENT_BADGE.label,
-  });
+  const paymentLabel = paymentDetail?.label ?? DEFAULT_PAYMENT_BADGE.label;
   const paymentIconName = paymentDetail?.icon ?? DEFAULT_PAYMENT_BADGE.icon;
   const paymentIconColor = paymentDetail?.iconColor ?? DEFAULT_PAYMENT_BADGE.iconColor;
   const tooltipEnabled = Platform.OS === 'web';

@@ -1,5 +1,6 @@
 import { tokenKey, getItem } from './storage';
 import { sanitizeTaxesForPayload } from '../utils/taxes';
+import { normalizePaymentStatusValue } from '../constants/paymentStatus';
 
 const BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3006/api';
 
@@ -161,6 +162,10 @@ function normalizeReservation(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const reservaId = toNumberOrNull(raw.reserva_id);
   const canchaId = toNumberOrNull(raw.cancha_id);
+  const rawEstadoPago =
+    raw.estado_pago !== undefined && raw.estado_pago !== null
+      ? String(raw.estado_pago).trim()
+      : null;
 
   return {
     reservaId,
@@ -173,10 +178,7 @@ function normalizeReservation(raw) {
     horaFin: typeof raw.hora_fin === 'string' ? raw.hora_fin : null,
     duracionHoras: toPositiveIntOrZero(raw.duracion_horas),
     estado: raw.estado ?? null,
-    estadoPago:
-      raw.estado_pago !== undefined && raw.estado_pago !== null
-        ? String(raw.estado_pago).trim() || null
-        : null,
+    estadoPago: normalizePaymentStatusValue(rawEstadoPago) || null,
     monto: toNumberOrZero(raw.monto),
     montoBase: toNumberOrZero(raw.monto_base),
     montoGrabacion: toNumberOrZero(raw.monto_grabacion),
