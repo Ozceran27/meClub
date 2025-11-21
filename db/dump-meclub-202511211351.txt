@@ -368,7 +368,7 @@ CREATE TABLE `reservas` (
   `hora_inicio` time NOT NULL,
   `hora_fin` time NOT NULL,
   `estado` enum('pendiente','pagada','cancelada','finalizada') DEFAULT 'pendiente',
-  `estado_pago` enum('sin_abonar','pagado','rechazado','pendiente') NOT NULL DEFAULT 'sin_abonar',
+  `estado_pago` enum('pendiente_pago','senado','pagado','cancelado') NOT NULL DEFAULT 'pendiente_pago',
   `tipo_reserva` enum('relacionada','privada') NOT NULL DEFAULT 'relacionada',
   `contacto_nombre` varchar(100) DEFAULT NULL,
   `contacto_apellido` varchar(100) DEFAULT NULL,

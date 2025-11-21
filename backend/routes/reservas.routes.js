@@ -15,7 +15,7 @@ const { getUserId } = require('../utils/auth');
 const {
   esEstadoReservaActivo,
   esEstadoReservaValido,
-  esEstadoPagoValido,
+  normalizarEstadoPago,
 } = require('../constants/reservasEstados');
 // -----------------------------------------------------------------------------------------------
 
@@ -214,7 +214,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contacto_nombre_payload = null,
       contacto_apellido: contacto_apellido_payload = null,
       contacto_telefono: contacto_telefono_payload = null,
-      estado_pago = 'sin_abonar',
+      estado_pago = 'pendiente_pago',
     } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {
@@ -233,6 +233,11 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
 
     const cancha = await CanchasModel.obtenerCanchaPorId(cancha_id);
     if (!cancha) return res.status(404).json({ mensaje: 'Cancha no encontrada' });
+
+    const estadoPagoNormalizado = normalizarEstadoPago(estado_pago);
+    if (!estadoPagoNormalizado) {
+      return res.status(400).json({ mensaje: 'estado_pago inválido' });
+    }
 
     const usuarioIdToken = getUserId(req.usuario);
     if (!usuarioIdToken) {
@@ -363,7 +368,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contactoNombre,
       contacto_apellido: contactoApellido,
       contacto_telefono: contactoTelefono,
-      estado_pago,
+      estado_pago: estadoPagoNormalizado,
     });
 
     return res.status(201).json({
@@ -373,7 +378,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
         monto_base: montoBase,
         monto_grabacion: montoGrabacion,
         monto: total,
-        estado_pago,
+        estado_pago: estadoPagoNormalizado,
       },
     });
   } catch (err) {
@@ -620,8 +625,14 @@ router.patch(
       return texto.toLowerCase();
     };
 
+    const normalizarPago = (valor) => {
+      if (valor === undefined) return undefined;
+      if (valor === null) return null;
+      return normalizarEstadoPago(valor);
+    };
+
     const estadoNormalizado = normalizar(estadoRaw);
-    const estadoPagoNormalizado = normalizar(estadoPagoRaw);
+    const estadoPagoNormalizado = normalizarPago(estadoPagoRaw);
 
     if (estadoNormalizado === undefined && estadoPagoNormalizado === undefined) {
       return res
@@ -641,7 +652,7 @@ router.patch(
       return res.status(400).json({ mensaje: 'Estado inválido' });
     }
 
-    if (estadoPagoNormalizado !== undefined && !esEstadoPagoValido(estadoPagoNormalizado)) {
+    if (estadoPagoNormalizado !== undefined && !estadoPagoNormalizado) {
       return res.status(400).json({ mensaje: 'Estado de pago inválido' });
     }
 

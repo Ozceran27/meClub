@@ -166,23 +166,23 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 5,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente_pago',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({
       updated: true,
       estado: 'confirmada',
-      estado_pago: 'pagada',
+      estado_pago: 'pagado',
     });
 
     const response = await request(app)
       .patch('/reservas/5/estado')
-      .send({ estado: 'confirmada', estado_pago: 'pagada' });
+      .send({ estado: 'confirmada', estado_pago: 'pagado' });
 
     expect(response.status).toBe(200);
     expect(ReservasModel.actualizarEstados).toHaveBeenCalledWith({
       reserva_id: 5,
       estado: 'confirmada',
-      estado_pago: 'pagada',
+      estado_pago: 'pagado',
     });
     expect(response.body).toEqual({
       mensaje: 'Estado de reserva actualizado',
@@ -190,7 +190,7 @@ describe('PATCH /reservas/:id/estado', () => {
         reserva_id: 5,
         club_id: 10,
         estado: 'confirmada',
-        estado_pago: 'pagada',
+        estado_pago: 'pagado',
       },
     });
   });
@@ -201,7 +201,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 6,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente_pago',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({ updated: true, estado: 'pagada' });
 
@@ -212,7 +212,7 @@ describe('PATCH /reservas/:id/estado', () => {
     expect(ReservasModel.actualizarEstados).toHaveBeenCalledWith({
       reserva_id: 6,
       estado: 'pagada',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente_pago',
     });
     expect(response.status).toBe(200);
   });
@@ -223,7 +223,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva_id: 5,
       club_id: 10,
       estado: 'pendiente',
-      estado_pago: 'sin_abonar',
+      estado_pago: 'pendiente_pago',
     });
     ReservasModel.actualizarEstados.mockResolvedValue({ updated: false, estado: 'confirmada' });
 
