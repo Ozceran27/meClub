@@ -3,7 +3,7 @@ const {
   ESTADOS_RESERVA_ACTIVOS,
   esEstadoReservaActivo,
   esEstadoReservaValido,
-  esEstadoPagoValido,
+  normalizarEstadoPago,
 } = require('../constants/reservasEstados');
 
 const RESERVA_SOLAPADA_CODE = 'RESERVA_SOLAPADA';
@@ -41,7 +41,7 @@ const ReservasModel = {
     contacto_apellido = null,
     contacto_telefono = null,
     grabacion_solicitada = 0,
-    estado_pago = 'sin_abonar',
+    estado_pago = 'pendiente_pago',
   }) => {
     if (!creado_por_id) throw new Error('creado_por_id es requerido');
     if (!cancha_id) throw new Error('cancha_id es requerido');
@@ -61,6 +61,11 @@ const ReservasModel = {
     const contactoNombreValue = sanitizeContacto(contacto_nombre, 100);
     const contactoApellidoValue = sanitizeContacto(contacto_apellido, 100);
     const contactoTelefonoValue = sanitizeContacto(contacto_telefono, 25);
+
+    const estadoPagoNormalizado = normalizarEstadoPago(estado_pago);
+    if (!estadoPagoNormalizado) {
+      throw new Error('estado_pago inválido');
+    }
 
     const connection = await db.getConnection();
 
@@ -106,7 +111,7 @@ const ReservasModel = {
           contactoApellidoValue,
           contactoTelefonoValue,
           creado_por_id,
-          estado_pago,
+          estadoPagoNormalizado,
           monto_base,
           monto_grabacion,
         ]
@@ -127,7 +132,7 @@ const ReservasModel = {
         monto,
         monto_base,
         monto_grabacion,
-        estado_pago,
+        estado_pago: estadoPagoNormalizado,
         grabacion_solicitada: !!grabacion_solicitada,
         tipo_reserva: tipoReservaNormalizado,
         contacto_nombre: contactoNombreValue,
@@ -372,15 +377,8 @@ const ReservasModel = {
         error.code = 'RESERVA_ESTADO_PAGO_INVALIDO';
         throw error;
       }
-      const rawEstadoPago =
-        typeof estado_pago === 'string' ? estado_pago : String(estado_pago);
-      const normalizado = rawEstadoPago.trim().toLowerCase();
+      const normalizado = normalizarEstadoPago(estado_pago);
       if (!normalizado) {
-        const error = new Error('Estado de pago inválido');
-        error.code = 'RESERVA_ESTADO_PAGO_INVALIDO';
-        throw error;
-      }
-      if (!esEstadoPagoValido(normalizado)) {
         const error = new Error('Estado de pago inválido');
         error.code = 'RESERVA_ESTADO_PAGO_INVALIDO';
         throw error;

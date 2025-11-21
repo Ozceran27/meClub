@@ -48,3 +48,34 @@ ALTER TABLE clubes
 
 Ambos campos aceptan valores nulos para conservar el comportamiento actual en instalaciones que todavía no definen un rango nocturno. Una vez ejecutado el cambio, recordá actualizar los formularios del panel para completar las horas utilizando el formato `HH:MM`.
 
+## Normalizar `estado_pago` en `reservas`
+
+Para que las reservas usen únicamente los estados de pago acordados (`pendiente_pago`, `senado`, `pagado`, `cancelado`) normalizá los datos históricos y luego ajustá el tipo de columna:
+
+```sql
+UPDATE reservas
+SET estado_pago = 'pendiente_pago'
+WHERE estado_pago IN ('sin_abonar', 'pendiente', 'pendiente_pago', 'sin_pagar');
+
+UPDATE reservas
+SET estado_pago = 'senado'
+WHERE estado_pago IN ('senado', 'senia', 'senia_parcial', 'senia_total', 'seña', 'seña_parcial', 'seña_total');
+
+UPDATE reservas
+SET estado_pago = 'pagado'
+WHERE estado_pago IN (
+  'pagado', 'pagada', 'pagada_parcial', 'pagada_total', 'pago', 'pago_parcial',
+  'abonada', 'abonado', 'abonada_parcial', 'abonado_parcial', 'abonada_total', 'abono'
+);
+
+UPDATE reservas
+SET estado_pago = 'cancelado'
+WHERE estado_pago IN ('rechazado', 'cancelado', 'cancelada');
+
+ALTER TABLE reservas
+  MODIFY COLUMN estado_pago ENUM('pendiente_pago', 'senado', 'pagado', 'cancelado')
+  NOT NULL DEFAULT 'pendiente_pago';
+```
+
+El dump `dump-meclub-202511211351.txt` refleja esta enumeración actualizada.
+
