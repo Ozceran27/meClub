@@ -81,7 +81,7 @@ describe('PATCH /reservas/:id/estado', () => {
 
     const response = await request(app)
       .patch('/reservas/1/estado')
-      .send({ estado: 'confirmada' });
+      .send({ estado: 'pagada' });
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ mensaje: 'No tienes permisos para esta operación' });
@@ -93,7 +93,7 @@ describe('PATCH /reservas/:id/estado', () => {
 
     const response = await request(app)
       .patch('/reservas/abc/estado')
-      .send({ estado: 'confirmada' });
+      .send({ estado: 'pagada' });
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ mensaje: 'Identificador de reserva inválido' });
@@ -142,7 +142,7 @@ describe('PATCH /reservas/:id/estado', () => {
 
     const response = await request(app)
       .patch('/reservas/5/estado')
-      .send({ estado: 'confirmada' });
+      .send({ estado: 'pagada' });
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ mensaje: 'Reserva no encontrada' });
@@ -155,7 +155,7 @@ describe('PATCH /reservas/:id/estado', () => {
 
     const response = await request(app)
       .patch('/reservas/5/estado')
-      .send({ estado: 'confirmada' });
+      .send({ estado: 'pagada' });
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ mensaje: 'La reserva no pertenece a tu club' });
@@ -172,18 +172,18 @@ describe('PATCH /reservas/:id/estado', () => {
     });
     ReservasModel.actualizarEstados.mockResolvedValue({
       updated: true,
-      estado: 'confirmada',
+      estado: 'pagada',
       estado_pago: 'pagado',
     });
 
     const response = await request(app)
       .patch('/reservas/5/estado')
-      .send({ estado: 'confirmada', estado_pago: 'pagado' });
+      .send({ estado: 'pagada', estado_pago: 'pagado' });
 
     expect(response.status).toBe(200);
     expect(ReservasModel.actualizarEstados).toHaveBeenCalledWith({
       reserva_id: 5,
-      estado: 'confirmada',
+      estado: 'pagada',
       estado_pago: 'pagado',
     });
     expect(response.body).toEqual({
@@ -191,7 +191,7 @@ describe('PATCH /reservas/:id/estado', () => {
       reserva: {
         reserva_id: 5,
         club_id: 10,
-        estado: 'confirmada',
+        estado: 'pagada',
         estado_pago: 'pagado',
       },
     });
@@ -227,11 +227,11 @@ describe('PATCH /reservas/:id/estado', () => {
       estado: 'pendiente',
       estado_pago: 'pendiente_pago',
     });
-    ReservasModel.actualizarEstados.mockResolvedValue({ updated: false, estado: 'confirmada' });
+    ReservasModel.actualizarEstados.mockResolvedValue({ updated: false, estado: 'pagada' });
 
     const response = await request(app)
       .patch('/reservas/5/estado')
-      .send({ estado: 'confirmada' });
+      .send({ estado: 'pagada' });
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ mensaje: 'Reserva no encontrada' });
