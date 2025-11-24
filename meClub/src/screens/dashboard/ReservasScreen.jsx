@@ -37,7 +37,7 @@ const COURT_COLORS = [
 ];
 
 const STATUS_STYLES = {
-  confirmada: {
+  pagada: {
     bg: 'bg-emerald-500/20',
     border: 'border-emerald-400/40',
     text: 'text-emerald-100',
@@ -60,13 +60,13 @@ const STATUS_STYLES = {
 };
 
 const RESERVATION_STATUS_ALIASES = {
-  activa: 'confirmada',
-  'en curso': 'confirmada',
-  en_curso: 'confirmada',
-  pagada: 'confirmada',
-  pagado: 'confirmada',
-  pago: 'confirmada',
-  confirmada: 'confirmada',
+  activa: 'pagada',
+  'en curso': 'pagada',
+  en_curso: 'pagada',
+  pagada: 'pagada',
+  pagado: 'pagada',
+  pago: 'pagada',
+  confirmada: 'pagada',
   pendiente: 'pendiente',
   reprogramada: 'pendiente',
   reprogramado: 'pendiente',
@@ -78,18 +78,19 @@ const RESERVATION_STATUS_ALIASES = {
 };
 
 const RESERVATION_STATUS_LABELS = {
-  confirmada: 'Confirmada',
+  pagada: 'Activa (Pagada)',
   pendiente: 'Pendiente',
   finalizada: 'Finalizada',
   cancelada: 'Cancelada',
 };
 
 const RESERVATION_STATUS_LABEL_OVERRIDES = {
-  activa: 'Activa',
+  activa: 'Activa (Pagada)',
+  pagada: 'Activa (Pagada)',
 };
 
 const RESERVATION_STATUS_OPTIONS = [
-  { value: 'confirmada', label: 'Activa (Confirmada)' },
+  { value: 'pagada', label: 'Activa (Pagada)' },
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'finalizada', label: 'Finalizada' },
   { value: 'cancelada', label: 'Cancelada' },
@@ -1224,7 +1225,7 @@ export default function ReservasScreen({ summary, go }) {
       }
 
       const currentEstado = normalizeStatusValue(statusMenuReservation.estado);
-      const nextEstado = estado ?? currentEstado;
+      const nextEstado = normalizeStatusValue(estado ?? currentEstado);
       const currentEstadoPago = normalizePaymentStatusValue(statusMenuReservation.estadoPago);
       const nextEstadoPago = normalizePaymentStatusValue(estadoPago ?? currentEstadoPago);
       const hasEstadoChange = nextEstado !== currentEstado;
