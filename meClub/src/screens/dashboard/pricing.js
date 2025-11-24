@@ -6,7 +6,7 @@ const {
   selectHourlyPrice,
   calculateBaseAmount,
   determineRateType,
-} = require('../../shared/pricing');
+} = require('../../../../shared/pricing');
 
 export { toNumberOrNull, normalizeHour, isTimeInRange, extractNightRange, selectHourlyPrice, calculateBaseAmount, determineRateType };
 
