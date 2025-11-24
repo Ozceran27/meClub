@@ -1,4 +1,4 @@
-const ESTADOS_RESERVA_ACTIVOS = Object.freeze(['pendiente', 'confirmada', 'pagada']);
+const ESTADOS_RESERVA_ACTIVOS = Object.freeze(['pendiente', 'pagada']);
 
 const ESTADOS_RESERVA_PERMITIDOS = Object.freeze([
   ...new Set([...ESTADOS_RESERVA_ACTIVOS, 'cancelada', 'finalizada']),
