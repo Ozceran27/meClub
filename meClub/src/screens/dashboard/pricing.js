@@ -1,3 +1,5 @@
+import pricing from '../../../../shared/pricing.js';
+
 const {
   toNumberOrNull,
   normalizeHour,
@@ -6,7 +8,17 @@ const {
   selectHourlyPrice,
   calculateBaseAmount,
   determineRateType,
-} = require('../../../../shared/pricing');
+  findApplicableTariff,
+} = pricing;
 
-export { toNumberOrNull, normalizeHour, isTimeInRange, extractNightRange, selectHourlyPrice, calculateBaseAmount, determineRateType };
+export {
+  toNumberOrNull,
+  normalizeHour,
+  isTimeInRange,
+  extractNightRange,
+  selectHourlyPrice,
+  calculateBaseAmount,
+  determineRateType,
+  findApplicableTariff,
+};
 

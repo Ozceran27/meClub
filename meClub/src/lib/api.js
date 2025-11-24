@@ -168,6 +168,15 @@ function normalizeReservation(raw) {
     raw.estado_pago !== undefined && raw.estado_pago !== null
       ? String(raw.estado_pago).trim()
       : null;
+  const tarifaAplicadaRaw =
+    raw.tarifa_aplicada && typeof raw.tarifa_aplicada === 'object' ? raw.tarifa_aplicada : null;
+  const rangoNocturnoAplicado =
+    raw.rango_nocturno_aplicado && typeof raw.rango_nocturno_aplicado === 'object'
+      ? {
+          start: raw.rango_nocturno_aplicado.start ?? null,
+          end: raw.rango_nocturno_aplicado.end ?? null,
+        }
+      : null;
 
   return {
     reservaId,
@@ -196,6 +205,17 @@ function normalizeReservation(raw) {
     creadoPorApellido: raw.creado_por_apellido ?? null,
     creadoPorEmail: raw.creado_por_email ?? null,
     estadoTemporal: raw.estado_temporal ?? null,
+    tarifaAplicada: tarifaAplicadaRaw
+      ? {
+          tarifaId: toNumberOrNull(tarifaAplicadaRaw.tarifa_id ?? tarifaAplicadaRaw.tarifaId ?? tarifaAplicadaRaw.id),
+          precio: toNumberOrNull(tarifaAplicadaRaw.precio),
+          horaDesde: tarifaAplicadaRaw.hora_desde ?? null,
+          horaHasta: tarifaAplicadaRaw.hora_hasta ?? null,
+          diaSemana: toNumberOrNull(tarifaAplicadaRaw.dia_semana ?? tarifaAplicadaRaw.diaSemana),
+        }
+      : null,
+    precioHoraAplicado: toNumberOrNull(raw.precio_hora_aplicado ?? raw.precioHoraAplicado),
+    rangoNocturnoAplicado,
   };
 }
 
@@ -257,6 +277,7 @@ function extractReservationsPanel(payload) {
       agenda: [],
       enCurso: { jugandoAhora: [], proximos: [], siguiente: null },
       club: { clubId: null, precioGrabacion: 0 },
+      pricing: { nightRange: null, tarifas: [] },
     };
   }
 
@@ -278,18 +299,32 @@ function extractReservationsPanel(payload) {
   const siguiente = enCursoData.siguiente ? normalizeReservation(enCursoData.siguiente) : null;
 
   const clubData = data.club && typeof data.club === 'object' ? data.club : {};
+  const pricingData = data.pricing && typeof data.pricing === 'object' ? data.pricing : {};
+  const nightRangeRaw =
+    pricingData.rango_nocturno && typeof pricingData.rango_nocturno === 'object'
+      ? pricingData.rango_nocturno
+      : {};
+  const nightRange =
+    nightRangeRaw && nightRangeRaw.start && nightRangeRaw.end
+      ? { start: nightRangeRaw.start, end: nightRangeRaw.end }
+      : null;
   const nightStart =
-    typeof clubData.horaNocturnaInicio === 'string'
-      ? clubData.horaNocturnaInicio
-      : typeof clubData.hora_nocturna_inicio === 'string'
-      ? clubData.hora_nocturna_inicio
-      : null;
+    (nightRange && nightRange.start) ||
+    (typeof clubData.horaNocturnaInicio === 'string' ? clubData.horaNocturnaInicio : null) ||
+    (typeof clubData.hora_nocturna_inicio === 'string' ? clubData.hora_nocturna_inicio : null);
   const nightEnd =
-    typeof clubData.horaNocturnaFin === 'string'
-      ? clubData.horaNocturnaFin
-      : typeof clubData.hora_nocturna_fin === 'string'
-      ? clubData.hora_nocturna_fin
-      : null;
+    (nightRange && nightRange.end) ||
+    (typeof clubData.horaNocturnaFin === 'string' ? clubData.horaNocturnaFin : null) ||
+    (typeof clubData.hora_nocturna_fin === 'string' ? clubData.hora_nocturna_fin : null);
+  const tarifas = Array.isArray(pricingData.tarifas)
+    ? pricingData.tarifas.map((tarifa) => ({
+        tarifaId: toNumberOrNull(tarifa?.tarifa_id ?? tarifa?.tarifaId ?? tarifa?.id),
+        diaSemana: toNumberOrNull(tarifa?.dia_semana ?? tarifa?.diaSemana),
+        horaDesde: tarifa?.hora_desde ?? tarifa?.horaDesde ?? null,
+        horaHasta: tarifa?.hora_hasta ?? tarifa?.horaHasta ?? null,
+        precio: toNumberOrZero(tarifa?.precio),
+      }))
+    : [];
 
   return {
     fecha: typeof data.fecha === 'string' ? data.fecha : '',
@@ -312,6 +347,10 @@ function extractReservationsPanel(payload) {
       horaNocturnaFin: nightEnd,
       hora_nocturna_inicio: nightStart,
       hora_nocturna_fin: nightEnd,
+    },
+    pricing: {
+      nightRange,
+      tarifas: tarifas.filter((tarifa) => tarifa.diaSemana != null),
     },
   };
 }

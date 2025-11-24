@@ -26,7 +26,7 @@ import {
   getPaymentStatusDetails,
   normalizePaymentStatusValue,
 } from '../../constants/paymentStatus';
-import { calculateBaseAmount, determineRateType, toNumberOrNull } from './pricing';
+import { calculateBaseAmount, determineRateType, findApplicableTariff, toNumberOrNull } from './pricing';
 
 const COURT_COLORS = [
   { bg: 'bg-emerald-500/20', border: 'border-emerald-400/40', text: 'text-emerald-200' },
@@ -236,6 +236,7 @@ function TimelineReservationCard({
   court,
   nightStart,
   nightEnd,
+  tarifas = [],
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -269,12 +270,12 @@ function TimelineReservationCard({
 
   const pricingClub = useMemo(
     () => ({
-      hora_nocturna_inicio: nightStart ?? null,
-      hora_nocturna_fin: nightEnd ?? null,
-      horaNocturnaInicio: nightStart ?? null,
-      horaNocturnaFin: nightEnd ?? null,
+      hora_nocturna_inicio: reservation?.rangoNocturnoAplicado?.start ?? nightStart ?? null,
+      hora_nocturna_fin: reservation?.rangoNocturnoAplicado?.end ?? nightEnd ?? null,
+      horaNocturnaInicio: reservation?.rangoNocturnoAplicado?.start ?? nightStart ?? null,
+      horaNocturnaFin: reservation?.rangoNocturnoAplicado?.end ?? nightEnd ?? null,
     }),
-    [nightEnd, nightStart]
+    [nightEnd, nightStart, reservation?.rangoNocturnoAplicado?.end, reservation?.rangoNocturnoAplicado?.start]
   );
 
   const durationHours = useMemo(() => {
@@ -291,6 +292,16 @@ function TimelineReservationCard({
   }, [reservation.duracionHoras, reservation.horaFin, reservation.horaInicio]);
 
   const explicitBase = toNumberOrNull(reservation.montoBase);
+  const tarifaAplicable = useMemo(() => {
+    if (reservation?.tarifaAplicada) return reservation.tarifaAplicada;
+    const horaFinCalculada = reservation.horaFin || addHoursToTime(reservation.horaInicio, durationHours);
+    return findApplicableTariff({
+      tarifas,
+      fecha: reservation.fecha,
+      horaInicio: reservation.horaInicio,
+      horaFin: horaFinCalculada,
+    });
+  }, [durationHours, reservation.fecha, reservation.horaFin, reservation.horaInicio, reservation.tarifaAplicada, tarifas]);
   const fallbackPrice = pickFirstNumber(
     court?.monto_base,
     court?.precio,
@@ -307,10 +318,11 @@ function TimelineReservationCard({
         club: pricingClub,
         horaInicio: reservation.horaInicio,
         duracionHoras: durationHours,
+        tarifa: tarifaAplicable,
         explicitAmount: explicitBase,
         fallbackAmount: fallbackPrice,
       }),
-    [court, explicitBase, fallbackPrice, pricingClub, reservation.horaInicio, durationHours]
+    [court, explicitBase, fallbackPrice, pricingClub, reservation.horaInicio, tarifaAplicable, durationHours]
   );
 
   const appliedRateType = determineRateType({ horaInicio: reservation.horaInicio, club: pricingClub });
@@ -679,10 +691,26 @@ function ensureTimeWithSeconds(value) {
   return trimmed;
 }
 
+function addHoursToTime(startTime, hoursToAdd = 0) {
+  if (!startTime) return null;
+  const normalized = ensureTimeWithSeconds(startTime);
+  if (!normalized) return null;
+
+  const [hRaw, mRaw, sRaw] = normalized.split(':');
+  const baseDate = new Date(1970, 0, 1, Number(hRaw), Number(mRaw), Number(sRaw || 0));
+  if (Number.isNaN(baseDate.getTime())) return null;
+
+  const increment = Number(hoursToAdd);
+  if (!Number.isFinite(increment)) return normalized;
+
+  baseDate.setHours(baseDate.getHours() + increment);
+  return `${pad(baseDate.getHours())}:${pad(baseDate.getMinutes())}:${pad(baseDate.getSeconds())}`;
+}
+
 function normalizeReservationDraft(
   draft,
   fallbackDate,
-  { courts = [], club = {}, cameraPrice = null, nightStart = null, nightEnd = null } = {}
+  { courts = [], club = {}, cameraPrice = null, nightStart = null, nightEnd = null, tarifas = [] } = {}
 ) {
   if (!draft || typeof draft !== 'object') {
     return null;
@@ -707,6 +735,22 @@ function normalizeReservationDraft(
     horaNocturnaFin: nightEnd ?? club?.horaNocturnaFin ?? club?.hora_nocturna_fin ?? club?.horaNocturnaHasta ?? null,
   };
 
+  const diaSemana = (() => {
+    const parsedDate = parseDateString(fecha);
+    if (!parsedDate) return null;
+    const weekday = parsedDate.getDay();
+    return weekday === 0 ? 7 : weekday;
+  })();
+
+  const horaFinCalculada = addHoursToTime(horaInicio, duracionHorasNumero);
+  const applicableTarifa = findApplicableTariff({
+    tarifas,
+    fecha,
+    diaSemana,
+    horaInicio,
+    horaFin: horaFinCalculada,
+  });
+
   const explicitBaseAmount = pickFirstNumber(draft.monto_base, draft.montoBase);
   const fallbackPrice = pickFirstNumber(
     selectedCourt?.monto_base,
@@ -722,6 +766,7 @@ function normalizeReservationDraft(
     club: pricingClub,
     horaInicio,
     duracionHoras: duracionHorasNumero,
+    tarifa: applicableTarifa,
     explicitAmount: explicitBaseAmount,
     fallbackAmount: fallbackPrice,
   });
@@ -912,6 +957,7 @@ const DEFAULT_PANEL_STATE = {
   resumenEstadosHoy: [],
   agenda: [],
   enCurso: { jugandoAhora: [], proximos: [], siguiente: null },
+  pricing: { nightRange: null, tarifas: [] },
 };
 
 export default function ReservasScreen({ summary, go }) {
@@ -938,9 +984,11 @@ export default function ReservasScreen({ summary, go }) {
 
   const selectedDateObj = useMemo(() => parseDateString(selectedDate), [selectedDate]);
 
+  const nightRangeValue = panelData?.pricing?.nightRange;
   const nightStartValue =
-    panelData?.club?.horaNocturnaInicio ?? panelData?.club?.hora_nocturna_inicio ?? null;
-  const nightEndValue = panelData?.club?.horaNocturnaFin ?? panelData?.club?.hora_nocturna_fin ?? null;
+    nightRangeValue?.start ?? panelData?.club?.horaNocturnaInicio ?? panelData?.club?.hora_nocturna_inicio ?? null;
+  const nightEndValue =
+    nightRangeValue?.end ?? panelData?.club?.horaNocturnaFin ?? panelData?.club?.hora_nocturna_fin ?? null;
 
   useEffect(() => {
     let isMounted = true;
@@ -1028,6 +1076,17 @@ export default function ReservasScreen({ summary, go }) {
           club: panelData?.club || {},
           horaInicio: reserva?.horaInicio ?? reserva?.hora_inicio,
           duracionHoras: duration,
+          tarifa:
+            reserva?.tarifaAplicada ||
+            findApplicableTariff({
+              tarifas: panelData?.pricing?.tarifas,
+              fecha: reserva?.fecha,
+              horaInicio: reserva?.horaInicio ?? reserva?.hora_inicio,
+              horaFin:
+                reserva?.horaFin ??
+                reserva?.hora_fin ??
+                (duration ? addHoursToTime(reserva?.horaInicio ?? reserva?.hora_inicio, duration) : null),
+            }),
           explicitAmount: pickFirstNumber(reserva?.montoBase, reserva?.monto_base),
           fallbackAmount,
         });
@@ -1118,6 +1177,7 @@ export default function ReservasScreen({ summary, go }) {
         cameraPrice: panelData?.club?.precioGrabacion,
         nightStart: nightStartValue,
         nightEnd: nightEndValue,
+        tarifas: panelData?.pricing?.tarifas,
       });
       if (!normalizedPayload) return;
 
@@ -1352,6 +1412,7 @@ export default function ReservasScreen({ summary, go }) {
                           court={court}
                           nightStart={nightStartValue}
                           nightEnd={nightEndValue}
+                          tarifas={panelData?.pricing?.tarifas}
                         />
                       );
                     }
@@ -1610,6 +1671,7 @@ export default function ReservasScreen({ summary, go }) {
         cameraPrice={panelData?.club?.precioGrabacion}
         nightStart={nightStartValue}
         nightEnd={nightEndValue}
+        tarifas={panelData?.pricing?.tarifas}
         submissionError={creationError}
         onClearSubmissionError={handleClearCreationError}
       />
