@@ -128,6 +128,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_apellido: contacto_apellido_payload = null,
       contacto_telefono: contacto_telefono_payload = null,
       estado_pago = 'pendiente_pago',
+      monto_base: montoBasePayload = null,
     } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {
@@ -209,6 +210,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       club,
       horaInicio: hora_inicio,
       duracionHoras: duracionHorasNumero,
+      explicitAmount: montoBasePayload,
     });
 
     const grabacionSolicitada = parseBoolean(grabacion_solicitada);
