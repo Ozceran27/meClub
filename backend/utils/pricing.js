@@ -8,5 +8,12 @@ const {
   determineRateType,
 } = require('../../shared/pricing');
 
-export { toNumberOrNull, normalizeHour, isTimeInRange, extractNightRange, selectHourlyPrice, calculateBaseAmount, determineRateType };
-
+module.exports = {
+  toNumberOrNull,
+  normalizeHour,
+  isTimeInRange,
+  extractNightRange,
+  selectHourlyPrice,
+  calculateBaseAmount,
+  determineRateType,
+};
