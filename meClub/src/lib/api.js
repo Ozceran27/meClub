@@ -828,3 +828,4 @@ export async function searchPlayers(term, { limit } = {}) {
   const response = await api.get(`/usuarios/buscar${search ? `?${search}` : ''}`);
   return extractPlayerSearch(response);
 }
+
