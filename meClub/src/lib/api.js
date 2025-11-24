@@ -133,6 +133,8 @@ function extractSchedule(payload) {
 }
 
 const toNumberOrNull = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
@@ -179,9 +181,9 @@ function normalizeReservation(raw) {
     duracionHoras: toPositiveIntOrZero(raw.duracion_horas),
     estado: raw.estado ?? null,
     estadoPago: normalizePaymentStatusValue(rawEstadoPago) || null,
-    monto: raw.monto != null ? toNumberOrNull(raw.monto) : null,
-    montoBase: raw.monto_base != null ? toNumberOrNull(raw.monto_base) : null,
-    montoGrabacion: raw.monto_grabacion != null ? toNumberOrNull(raw.monto_grabacion) : null,
+    monto: toNumberOrNull(raw.monto),
+    montoBase: toNumberOrNull(raw.monto_base),
+    montoGrabacion: toNumberOrNull(raw.monto_grabacion),
     grabacionSolicitada: toBoolean(raw.grabacion_solicitada),
     tipoReserva: raw.tipo_reserva ?? null,
     contactoNombre: raw.contacto_nombre ?? '',
