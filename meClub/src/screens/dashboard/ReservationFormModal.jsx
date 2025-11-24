@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import { searchPlayers } from '../../lib/api';
-import { calculateBaseAmount, findApplicableTariff, toNumberOrNull } from './pricing';
+import { calculateBaseAmount, toNumberOrNull } from './pricing';
 
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
@@ -138,7 +138,6 @@ export default function ReservationFormModal({
   nightEnd = null,
   submissionError = '',
   onClearSubmissionError,
-  tarifas = [],
 }) {
   const parsedInitialValues = useInitialValues(initialValues);
   const [form, setForm] = useState(parsedInitialValues);
@@ -186,39 +185,6 @@ export default function ReservationFormModal({
     return 0;
   }, [cameraPrice, parsedInitialValues.monto_grabacion]);
 
-  const derivedWeekday = useMemo(() => {
-    if (!form.fecha) return null;
-    const date = new Date(form.fecha);
-    if (Number.isNaN(date.getTime())) return null;
-    const weekday = date.getDay();
-    return weekday === 0 ? 7 : weekday;
-  }, [form.fecha]);
-
-  const horaFinCalculada = useMemo(
-    () => {
-      if (!form.hora_inicio || !form.duracion_horas) return null;
-      const base = new Date(`1970-01-01T${form.hora_inicio}`);
-      if (Number.isNaN(base.getTime())) return null;
-      base.setHours(base.getHours() + Number(form.duracion_horas));
-      return `${String(base.getHours()).padStart(2, '0')}:${String(base.getMinutes()).padStart(2, '0')}:${String(
-        base.getSeconds()
-      ).padStart(2, '0')}`;
-    },
-    [form.duracion_horas, form.hora_inicio]
-  );
-
-  const applicableTarifa = useMemo(
-    () =>
-      findApplicableTariff({
-        tarifas,
-        fecha: form.fecha,
-        diaSemana: derivedWeekday,
-        horaInicio: form.hora_inicio,
-        horaFin: horaFinCalculada,
-      }),
-    [derivedWeekday, form.fecha, form.hora_inicio, horaFinCalculada, tarifas]
-  );
-
   const pricingClub = useMemo(
     () => ({
       hora_nocturna_inicio: nightStart ?? null,
@@ -245,7 +211,6 @@ export default function ReservationFormModal({
       club: pricingClub,
       horaInicio: form.hora_inicio,
       duracionHoras: form.duracion_horas,
-      tarifa: applicableTarifa,
       explicitAmount: explicitBase,
       fallbackAmount: fallbackPrice,
     });
@@ -255,7 +220,6 @@ export default function ReservationFormModal({
     form.duracion_horas,
     parsedInitialValues.monto_base,
     pricingClub,
-    applicableTarifa,
     selectedCourt,
   ]);
 

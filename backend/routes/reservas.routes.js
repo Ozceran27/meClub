@@ -11,13 +11,7 @@ const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
-const {
-  calculateBaseAmount,
-  determineRateType,
-  toNumberOrNull,
-  selectHourlyPrice,
-  extractNightRange,
-} = require('../utils/pricing');
+const { calculateBaseAmount, determineRateType, toNumberOrNull } = require('../utils/pricing');
 const { getUserId } = require('../utils/auth');
 const {
   esEstadoReservaActivo,
@@ -210,28 +204,14 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     const club = req.club || (await ClubesModel.obtenerClubPorId(cancha.club_id));
     if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
 
-    const nightRange = extractNightRange(club);
-    const pricingClub = {
-      ...club,
-      hora_nocturna_inicio: nightRange?.start ?? club.hora_nocturna_inicio ?? null,
-      hora_nocturna_fin: nightRange?.end ?? club.hora_nocturna_fin ?? null,
-    };
-
     const tarifa = await TarifasModel.obtenerTarifaAplicable(cancha.club_id, dia, hora_inicio, hora_fin);
-    const appliedRateType = determineRateType({ horaInicio: hora_inicio, club: pricingClub });
-    const precioHoraAplicado = selectHourlyPrice({
-      cancha,
-      club: pricingClub,
-      horaInicio: hora_inicio,
-      tarifa,
-    });
+    const appliedRateType = determineRateType({ horaInicio: hora_inicio, club });
     const montoBase = calculateBaseAmount({
       cancha,
-      club: pricingClub,
+      club,
       horaInicio: hora_inicio,
       duracionHoras: duracionHorasNumero,
       tarifa,
-      fallbackAmount: precioHoraAplicado,
     });
 
     const grabacionSolicitada = parseBoolean(grabacion_solicitada);
@@ -314,18 +294,6 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
         monto: total,
         tarifa_tipo: appliedRateType,
         estado_pago: estadoPagoNormalizado,
-        tarifa_aplicada: tarifa
-          ? { tarifa_id: tarifa.tarifa_id ?? null, precio: toNumberOrZero(tarifa.precio) }
-          : null,
-        precio_hora_aplicado: precioHoraAplicado,
-        rango_nocturno_aplicado: nightRange || null,
-      },
-      pricing: {
-        tarifa_aplicada: tarifa
-          ? { tarifa_id: tarifa.tarifa_id ?? null, precio: toNumberOrZero(tarifa.precio) }
-          : null,
-        precio_por_hora: precioHoraAplicado,
-        rango_nocturno: nightRange || null,
       },
     });
   } catch (err) {
@@ -360,7 +328,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
     const { club } = req;
     const clubId = club.club_id;
 
-    const [resumenHoy, agendaFilas, enCursoFilas, canchasClub, tarifasClub] = await Promise.all([
+    const [resumenHoy, agendaFilas, enCursoFilas, canchasClub] = await Promise.all([
       ReservasModel.resumenReservasClub({ club_id: clubId, fecha: fechaSeleccionada }),
       ReservasModel.reservasAgendaClub({ club_id: clubId, fecha: fechaSeleccionada }),
       ReservasModel.reservasEnCurso({
@@ -369,7 +337,6 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
         ahora: horaActual,
       }),
       CanchasModel.listarPorClub(clubId),
-      TarifasModel.listarPorClub(clubId),
     ]);
 
     const totalesHoy = acumularTotales(buildTotalesAccumulator(), resumenHoy);
@@ -475,10 +442,6 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
     const jugandoAhora = enCursoFilas.filter((fila) => fila.estado_temporal === 'en_curso');
     const proximos = enCursoFilas.filter((fila) => fila.estado_temporal === 'pendiente');
 
-    const nightRange = extractNightRange(club);
-    const horaNocturnaInicio = nightRange?.start ?? club.hora_nocturna_inicio ?? null;
-    const horaNocturnaFin = nightRange?.end ?? club.hora_nocturna_fin ?? null;
-
     return res.json({
       fecha: fechaSeleccionada,
       hora_actual: horaActual,
@@ -496,20 +459,8 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
       club: {
         club_id: clubId,
         precio_grabacion: toNumberOrZero(club.precio_grabacion),
-        hora_nocturna_inicio: horaNocturnaInicio,
-        hora_nocturna_fin: horaNocturnaFin,
-      },
-      pricing: {
-        rango_nocturno: nightRange || null,
-        tarifas: Array.isArray(tarifasClub)
-          ? tarifasClub.map((tarifa) => ({
-              tarifa_id: tarifa.tarifa_id ?? null,
-              dia_semana: tarifa.dia_semana ?? null,
-              hora_desde: tarifa.hora_desde ?? null,
-              hora_hasta: tarifa.hora_hasta ?? null,
-              precio: toNumberOrZero(tarifa.precio),
-            }))
-          : [],
+        hora_nocturna_inicio: club.hora_nocturna_inicio || null,
+        hora_nocturna_fin: club.hora_nocturna_fin || null,
       },
     });
   } catch (err) {
