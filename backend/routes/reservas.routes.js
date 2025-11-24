@@ -6,7 +6,6 @@ const { requireRole } = require('../middleware/roles.middleware');
 const loadClub = require('../middleware/club.middleware');
 const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
-const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
@@ -204,14 +203,12 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     const club = req.club || (await ClubesModel.obtenerClubPorId(cancha.club_id));
     if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
 
-    const tarifa = await TarifasModel.obtenerTarifaAplicable(cancha.club_id, dia, hora_inicio, hora_fin);
     const appliedRateType = determineRateType({ horaInicio: hora_inicio, club });
     const montoBase = calculateBaseAmount({
       cancha,
       club,
       horaInicio: hora_inicio,
       duracionHoras: duracionHorasNumero,
-      tarifa,
     });
 
     const grabacionSolicitada = parseBoolean(grabacion_solicitada);
