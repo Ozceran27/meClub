@@ -4,7 +4,17 @@ const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
-config.watchFolders = [path.resolve(__dirname, '..', 'shared')];
+const sharedPath = path.resolve(__dirname, '..', 'shared');
+
+config.watchFolders = [sharedPath];
+
+config.resolver = {
+  ...config.resolver,
+  extraNodeModules: {
+    ...config.resolver?.extraNodeModules,
+    shared: sharedPath,
+  },
+};
 
 module.exports = withNativeWind(config, {
   input: './global.css',
