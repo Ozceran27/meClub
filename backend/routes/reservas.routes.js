@@ -11,7 +11,7 @@ const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
 const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
-const { normalizeHour, isTimeInRange, extractNightRange, selectHourlyPrice, toNumberOrNull } = require('../utils/pricing');
+const { calculateBaseAmount, determineRateType, toNumberOrNull } = require('../utils/pricing');
 const { getUserId } = require('../utils/auth');
 const {
   esEstadoReservaActivo,
@@ -205,14 +205,14 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
 
     const tarifa = await TarifasModel.obtenerTarifaAplicable(cancha.club_id, dia, hora_inicio, hora_fin);
-    const precioHora = selectHourlyPrice({
+    const appliedRateType = determineRateType({ horaInicio: hora_inicio, club });
+    const montoBase = calculateBaseAmount({
       cancha,
       club,
       horaInicio: hora_inicio,
-      horaFin: hora_fin,
+      duracionHoras: duracionHorasNumero,
       tarifa,
     });
-    const montoBase = precioHora * duracionHorasNumero;
 
     const grabacionSolicitada = parseBoolean(grabacion_solicitada);
     const montoGrabacion = grabacionSolicitada ? toNumberOrZero(club.precio_grabacion) : 0;
@@ -292,6 +292,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
         monto_base: montoBase,
         monto_grabacion: montoGrabacion,
         monto: total,
+        tarifa_tipo: appliedRateType,
         estado_pago: estadoPagoNormalizado,
       },
     });
