@@ -11,11 +11,21 @@ const clubWithNightHours = {
   hora_nocturna_fin: '06:00',
 };
 
-test('selectHourlyPrice returns custom tariff when provided', () => {
+test('selectHourlyPrice prioritizes cancha pricing and only overrides with tariff flag', () => {
   const cancha = { precioDia: 2500, precioNoche: 3200 };
   const tarifa = { precio: 1800 };
-  const result = selectHourlyPrice({ cancha, club: clubWithNightHours, horaInicio: '10:00', tarifa });
-  assert.equal(result, 1800);
+
+  const withoutOverride = selectHourlyPrice({ cancha, club: clubWithNightHours, horaInicio: '10:00', tarifa });
+  assert.equal(withoutOverride, 2500);
+
+  const withOverride = selectHourlyPrice({
+    cancha,
+    club: clubWithNightHours,
+    horaInicio: '10:00',
+    tarifa,
+    tarifaOverride: true,
+  });
+  assert.equal(withOverride, 1800);
 });
 
 test('selectHourlyPrice picks night price when start is within night range', () => {

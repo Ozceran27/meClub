@@ -154,12 +154,8 @@ const coalescePrice = (...values) => {
   return null;
 };
 
-const selectHourlyPrice = ({ cancha = {}, club = {}, horaInicio, tarifa } = {}) => {
+const selectHourlyPrice = ({ cancha = {}, club = {}, horaInicio, tarifa, tarifaOverride = false } = {}) => {
   const tarifaPrecio = toNumberOrNull(tarifa && tarifa.precio);
-  if (tarifaPrecio !== null) {
-    return tarifaPrecio;
-  }
-
   const precioDia = coalescePrice(cancha.precioDia, cancha.precio_dia);
   const precioNoche = coalescePrice(cancha.precioNoche, cancha.precio_noche);
   const precioGenerico = coalescePrice(cancha.precio, cancha.monto_base);
@@ -176,18 +172,30 @@ const selectHourlyPrice = ({ cancha = {}, club = {}, horaInicio, tarifa } = {}) 
     if (precioNoche !== null) return precioNoche;
     if (precioDia !== null) return precioDia;
     if (precioGenerico !== null) return precioGenerico;
-    return 0;
+    return null;
   };
 
   const chooseDay = () => {
     if (precioDia !== null) return precioDia;
     if (precioNoche !== null) return precioNoche;
     if (precioGenerico !== null) return precioGenerico;
-    return 0;
+    return null;
   };
 
+  if (tarifaOverride && tarifaPrecio !== null) {
+    return tarifaPrecio;
+  }
+
   const precioSeleccionado = esHorarioNocturno ? chooseNight() : chooseDay();
-  return Number.isFinite(precioSeleccionado) ? precioSeleccionado : 0;
+  if (precioSeleccionado !== null && Number.isFinite(precioSeleccionado)) {
+    return precioSeleccionado;
+  }
+
+  if (tarifaPrecio !== null) {
+    return tarifaPrecio;
+  }
+
+  return 0;
 };
 
 const calculateBaseAmount = ({
@@ -196,6 +204,7 @@ const calculateBaseAmount = ({
   horaInicio,
   duracionHoras,
   tarifa,
+  tarifaOverride,
   explicitAmount,
   fallbackAmount,
 } = {}) => {
@@ -205,7 +214,9 @@ const calculateBaseAmount = ({
   }
 
   const duration = toNumberOrNull(duracionHoras);
-  const hourlyPrice = toNumberOrNull(selectHourlyPrice({ cancha, club, horaInicio, tarifa }));
+  const hourlyPrice = toNumberOrNull(
+    selectHourlyPrice({ cancha, club, horaInicio, tarifa, tarifaOverride })
+  );
 
   if (hourlyPrice !== null) {
     if (duration !== null && duration > 0) {
