@@ -1,11 +1,10 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const {
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
   selectHourlyPrice,
   calculateBaseAmount,
   determineRateType,
-  findApplicableTariff,
-} = require('../pricing.js');
+} from '../pricing.js';
 
 const clubWithNightHours = {
   hora_nocturna_inicio: '22:00',
@@ -46,22 +45,4 @@ test('determineRateType returns night when the time falls in the configured rang
 
   const dayRate = determineRateType({ horaInicio: '12:00', club: clubWithNightHours });
   assert.equal(dayRate, 'day');
-});
-
-test('findApplicableTariff matches by día y rango completo', () => {
-  const tarifas = [
-    { tarifa_id: 1, dia_semana: 3, hora_desde: '08:00:00', hora_hasta: '12:00:00', precio: 1200 },
-    { tarifa_id: 2, dia_semana: 3, hora_desde: '09:00:00', hora_hasta: '15:00:00', precio: 1500 },
-    { tarifa_id: 3, dia_semana: 4, hora_desde: '10:00:00', hora_hasta: '18:00:00', precio: 2000 },
-  ];
-
-  const aplicable = findApplicableTariff({
-    tarifas,
-    diaSemana: 3,
-    horaInicio: '10:00:00',
-    horaFin: '12:00:00',
-  });
-
-  assert.equal(aplicable?.tarifa_id, 2);
-  assert.equal(aplicable?.precio, 1500);
 });

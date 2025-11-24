@@ -31,13 +31,8 @@ jest.mock('../models/canchas.model', () => ({
   listarPorClub: jest.fn(),
 }));
 
-jest.mock('../models/tarifas.model', () => ({
-  listarPorClub: jest.fn(),
-}));
-
 const ReservasModel = require('../models/reservas.model');
 const CanchasModel = require('../models/canchas.model');
-const TarifasModel = require('../models/tarifas.model');
 const reservasRoutes = require('../routes/reservas.routes');
 
 const buildApp = () => {
@@ -54,7 +49,6 @@ describe('GET /reservas/panel con parámetro de fecha', () => {
     ReservasModel.reservasAgendaClub.mockResolvedValue([]);
     ReservasModel.reservasEnCurso.mockResolvedValue([]);
     CanchasModel.listarPorClub.mockResolvedValue([]);
-    TarifasModel.listarPorClub.mockResolvedValue([]);
   });
 
   it('utiliza la fecha solicitada y ajusta el rango semanal', async () => {
@@ -91,13 +85,6 @@ describe('GET /reservas/panel con parámetro de fecha', () => {
     );
 
     expect(CanchasModel.listarPorClub).toHaveBeenCalledWith(77);
-
-    expect(TarifasModel.listarPorClub).toHaveBeenCalledWith(77);
-
-    expect(response.body.pricing).toEqual({
-      rango_nocturno: { start: '22:00:00', end: '06:00:00' },
-      tarifas: [],
-    });
   });
 
   it('incluye las canchas disponibles aunque no tengan reservas', async () => {

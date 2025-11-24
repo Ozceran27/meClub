@@ -6,7 +6,6 @@ const {
   selectHourlyPrice,
   calculateBaseAmount,
   determineRateType,
-  findApplicableTariff,
 } = require('../../shared/pricing');
 
 module.exports = {
@@ -17,5 +16,4 @@ module.exports = {
   selectHourlyPrice,
   calculateBaseAmount,
   determineRateType,
-  findApplicableTariff,
 };
