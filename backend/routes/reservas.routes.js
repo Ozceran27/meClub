@@ -128,7 +128,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_nombre: contacto_nombre_payload = null,
       contacto_apellido: contacto_apellido_payload = null,
       contacto_telefono: contacto_telefono_payload = null,
-      estado_pago = 'pendiente',
+      estado_pago = 'pendiente_pago',
     } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {

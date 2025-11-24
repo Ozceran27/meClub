@@ -79,3 +79,6 @@ ALTER TABLE reservas
 
 El dump `dump-meclub-202511211351.txt` refleja esta enumeración actualizada.
 
+El backend normaliza los valores históricos y usa `pendiente_pago` como estado por defecto, aceptando alias comunes como
+`pendiente` o `sin_abonar` siempre que se mapeen a los valores de la enumeración anterior.
+
