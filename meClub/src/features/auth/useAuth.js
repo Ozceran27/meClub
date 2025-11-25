@@ -14,9 +14,16 @@ export const useAuth = () => {
 
 const userKey = 'mc_user';
 
+const resolveNivelId = (club, usuario) => {
+  const rawNivel = club?.nivel_id ?? club?.nivel ?? usuario?.nivel_id ?? usuario?.nivel;
+  const parsed = Number(rawNivel);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+};
+
 const withDerivedUserFields = (data) => {
   if (!data) return data;
   const next = { ...data };
+  next.nivel_id = resolveNivelId(next.club, next);
   if ('foto_logo' in next) {
     next.clubLogoUrl = resolveAssetUrl(next.foto_logo);
   } else if (next.clubLogoUrl && next.foto_logo == null) {
@@ -52,6 +59,7 @@ export function AuthProvider({ children }) {
     const userData = withDerivedUserFields({
       ...usuario,
       foto_logo: club?.foto_logo ?? usuario?.foto_logo ?? null,
+      nivel_id: resolveNivelId(club, usuario),
       ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
     });
 
