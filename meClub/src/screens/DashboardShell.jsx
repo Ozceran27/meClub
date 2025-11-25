@@ -70,9 +70,17 @@ export default function DashboardShell() {
   const [activeKey, setActiveKey] = useState('inicio');
   const [summary, setSummary] = useState({
     courtsAvailable: 0,
+    courtsMaintenance: 0,
+    courtsInactive: 0,
     reservasHoy: 0,
     reservasSemana: 0,
     economiaMes: 0,
+    courtTypes: [],
+    reservasPagadasHoy: 0,
+    reservasFinalizadasHoy: 0,
+    reservasMesActual: 0,
+    reservasDiarias: [],
+    reservasMensuales: [],
   });
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');

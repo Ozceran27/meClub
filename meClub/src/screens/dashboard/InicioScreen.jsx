@@ -8,6 +8,16 @@ const titleColors = ['text-mc-primary', 'text-mc-info', 'text-mc-warn', 'text-mc
 const getTitleColor = (index) => titleColors[index % titleColors.length];
 
 export default function InicioScreen({ summary = {}, firstName, today, go }) {
+  const courtTypesText = Array.isArray(summary.courtTypes) && summary.courtTypes.length > 0
+    ? summary.courtTypes
+        .map((item) => {
+          const label = item?.etiqueta || item?.label || 'Otro';
+          const total = item?.total ?? 0;
+          return `${label} (${total})`;
+        })
+        .join(' · ')
+    : 'Sin canchas registradas';
+
   return (
     <>
       <View className="py-6">
@@ -22,6 +32,11 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
             <CardTitle colorClass={getTitleColor(0)}>MIS CANCHAS</CardTitle>
             <Text className="text-white text-[32px] mt-2 font-bold">
               {summary.courtsAvailable ?? 0} disponibles
+            </Text>
+            <Text className="text-white/80 mt-1">{summary.courtsMaintenance ?? 0} en mantenimiento</Text>
+            <Text className="text-white/60">{summary.courtsInactive ?? 0} inactivas</Text>
+            <Text className="text-white/60 mt-2" numberOfLines={2}>
+              {courtTypesText}
             </Text>
             <Pressable
               onPress={() => go('mis-canchas')}
@@ -46,6 +61,10 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
               {summary.reservasHoy ?? 0} hoy
             </Text>
             <Text className="text-white/60 mt-1">+{summary.reservasSemana ?? 0} esta semana</Text>
+            <Text className="text-white/80 mt-1">
+              Pagadas: {summary.reservasPagadasHoy ?? 0} · Finalizadas: {summary.reservasFinalizadasHoy ?? 0}
+            </Text>
+            <Text className="text-white/60">Acumulado mensual: {summary.reservasMesActual ?? 0}</Text>
             <Pressable
               onPress={() => go('reservas')}
               className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25"
