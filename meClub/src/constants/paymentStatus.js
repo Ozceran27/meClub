@@ -1,13 +1,13 @@
 export const PAYMENT_STATUS_DETAILS = {
   pendiente_pago: {
     label: 'Pendiente de pago',
-    icon: 'remove-circle',
-    iconColor: '#CBD5E1',
+    icon: 'time-outline',
+    iconColor: '#FBBF24',
     backendValue: 'pendiente_pago',
     badge: {
-      bg: 'bg-slate-500/20',
-      border: 'border-slate-400/40',
-      text: 'text-slate-100',
+      bg: 'bg-amber-500/20',
+      border: 'border-amber-400/40',
+      text: 'text-amber-100',
     },
   },
   senado: {
@@ -23,7 +23,7 @@ export const PAYMENT_STATUS_DETAILS = {
   },
   pagado: {
     label: 'Pagado',
-    icon: 'checkmark-circle',
+    icon: 'cash-outline',
     iconColor: '#4ADE80',
     backendValue: 'pagado',
     badge: {
