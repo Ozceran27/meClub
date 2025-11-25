@@ -345,7 +345,7 @@ function TimelineReservationCard({
   const handleBlur = tooltipEnabled ? () => setIsHovered(false) : undefined;
 
   return (
-    <View style={{ height: containerHeight }} className="h-full border-b border-white/5 px-3 py-3">
+    <View style={{ height: containerHeight }} className="h-full border-b border-white/5 px-3 py-2">
       <Pressable
         className={`relative h-full w-full flex-1 rounded-2xl border shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.border}`}
         onHoverIn={handleHoverIn}
@@ -354,9 +354,9 @@ function TimelineReservationCard({
         onBlur={handleBlur}
         onPress={onPress}
       >
-        <View className={`flex-1 overflow-hidden rounded-2xl ${color.bg}`}>
-          <View className="flex-1 px-3 py-4 justify-between gap-3">
-            <View className="flex-row items-start justify-between gap-2">
+        <View className={`flex-1 overflow-visible rounded-2xl ${color.bg}`}>
+          <View className="flex-1 px-3 py-2 justify-between gap-2">
+            <View className="flex-row items-center justify-between gap-2">
               <Text
                 className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
                 numberOfLines={1}
