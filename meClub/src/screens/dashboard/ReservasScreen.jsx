@@ -1271,7 +1271,14 @@ export default function ReservasScreen({ summary, go }) {
     }
 
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-5" contentContainerClassName="px-5">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator
+        className="-mx-5"
+        contentContainerClassName="px-5"
+        style={{ overflow: 'visible' }}
+        contentContainerStyle={{ overflow: 'visible' }}
+      >
         <View className="flex-row">
           <View style={{ width: TIME_COLUMN_WIDTH }}>
             <View
@@ -1540,7 +1547,7 @@ export default function ReservasScreen({ summary, go }) {
               <Text className="text-white/60 text-xs mt-1">
                 Visualizá las reservas por cancha en la fecha seleccionada
               </Text>
-              <View className="mt-4 rounded-3xl border border-white/5 bg-white/5 overflow-hidden">
+              <View className="mt-4 rounded-3xl border border-white/5 bg-white/5">
                 {renderTimeline()}
               </View>
             </Card>
