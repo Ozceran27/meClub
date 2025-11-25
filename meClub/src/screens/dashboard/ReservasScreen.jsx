@@ -384,23 +384,13 @@ function TimelineReservationCard({
                     <Ionicons name="videocam" size={14} color="#FACC15" />
                   </View>
                 ) : null}
-                <View className="flex-row items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-0.5">
-                  <Ionicons name={rateIconName} size={12} color={rateIconColor} />
-                  <Text className="text-[10px] font-semibold uppercase tracking-wide text-white/80">
-                    {rateBadgeLabel}
-                  </Text>
+                <View className="h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/20">
+                  <Ionicons name={rateIconName} size={14} color={rateIconColor} />
                 </View>
                 <View
-                  className={`flex-row items-center gap-1 rounded-full border px-2 py-0.5 ${paymentBadgeClasses.bg} ${paymentBadgeClasses.border}`}
+                  className={`h-7 w-7 items-center justify-center rounded-full border ${paymentBadgeClasses.bg} ${paymentBadgeClasses.border}`}
                 >
-                  <Ionicons name={paymentIconName} size={12} color={paymentIconColor} />
-                  <Text
-                    className={`text-[10px] font-semibold uppercase tracking-wide ${paymentBadgeClasses.text}`}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    {paymentLabel}
-                  </Text>
+                  <Ionicons name={paymentIconName} size={14} color={paymentIconColor} />
                 </View>
               </View>
 
