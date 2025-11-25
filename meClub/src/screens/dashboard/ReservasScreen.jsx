@@ -159,7 +159,7 @@ function getStatusBadgeClasses(status) {
 }
 
 const SLOT_MINUTES = 60;
-const SLOT_HEIGHT = 68;
+const SLOT_HEIGHT = 84;
 const TIME_COLUMN_WIDTH = 220;
 
 function pad(value) {
@@ -345,7 +345,7 @@ function TimelineReservationCard({
   const handleBlur = tooltipEnabled ? () => setIsHovered(false) : undefined;
 
   return (
-    <View style={{ height: containerHeight }} className="h-full border-b border-white/5 px-2 py-1">
+    <View style={{ height: containerHeight }} className="h-full border-b border-white/5 px-3 py-2">
       <Pressable
         className={`relative h-full w-full flex-1 rounded-2xl border shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70 ${color.border}`}
         onHoverIn={handleHoverIn}
@@ -355,7 +355,7 @@ function TimelineReservationCard({
         onPress={onPress}
       >
         <View className={`flex-1 overflow-hidden rounded-2xl ${color.bg}`}>
-          <View className="flex-1 px-2 py-2 justify-between gap-2">
+          <View className="flex-1 px-3 py-3 justify-between gap-2">
             <View className="flex-row items-start justify-between gap-2">
               <Text
                 className={`flex-1 pr-2 text-sm font-semibold ${color.text}`}
@@ -1358,7 +1358,7 @@ export default function ReservasScreen({ summary, go }) {
                         <View
                           key={segment.key || `empty-${segmentIndex}`}
                           style={{ height: containerHeight }}
-                          className="border-b border-dashed border-white/5 px-3 py-2"
+                          className="border-b border-dashed border-white/5 px-3 py-3"
                         >
                           <View className="flex-1 rounded-2xl border border-white/5 border-dashed" />
                         </View>
@@ -1369,7 +1369,7 @@ export default function ReservasScreen({ summary, go }) {
                       <View
                         key={segment.key || `skip-${segmentIndex}`}
                         style={{ height: containerHeight }}
-                        className="border-b border-transparent px-3 py-2"
+                        className="border-b border-transparent px-3 py-3"
                       />
                     );
                   })}
