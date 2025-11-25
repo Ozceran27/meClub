@@ -1270,53 +1270,54 @@ export default function ReservasScreen({ summary, go }) {
     }
 
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator
-        className="-mx-5"
-        contentContainerClassName="px-5"
-        style={{ overflow: 'visible' }}
-        contentContainerStyle={{ overflow: 'visible' }}
-      >
-        <View className="flex-row">
-          <View style={{ width: TIME_COLUMN_WIDTH }}>
-            <View
-              style={{ height: SLOT_HEIGHT }}
-              className="border-b border-white/5 px-4 items-center justify-center"
-            >
-              <Text className="text-white/60 text-xs uppercase tracking-widest">Hora</Text>
-            </View>
-            {timeSlots.map((slot) => (
+      <View style={{ maxWidth: '100%', overflow: 'hidden' }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator
+          persistentScrollbar
+          contentContainerClassName="px-5"
+          style={{ overflowX: 'auto' }}
+          contentContainerStyle={{ overflowX: 'auto' }}
+        >
+          <View className="flex-row">
+            <View style={{ width: TIME_COLUMN_WIDTH }}>
               <View
-                key={`slot-${slot.start}`}
                 style={{ height: SLOT_HEIGHT }}
-                className="border-b border-white/5 px-4 justify-center"
+                className="border-b border-white/5 px-4 items-center justify-center"
               >
-                <Text className="text-white/50 text-xs">{slot.label}</Text>
+                <Text className="text-white/60 text-xs uppercase tracking-widest">Hora</Text>
               </View>
-            ))}
-          </View>
-
-          {panelData.agenda.map((court, index) => {
-            const color = COURT_COLORS[index % COURT_COLORS.length];
-            const segments = getReservationSegments(court.reservas, timeSlots);
-
-            return (
-              <View key={court.canchaId} style={{ minWidth: TIME_COLUMN_WIDTH }} className="border-l border-white/5">
+              {timeSlots.map((slot) => (
                 <View
+                  key={`slot-${slot.start}`}
                   style={{ height: SLOT_HEIGHT }}
-                  className="border-b border-white/5 px-4 flex-row items-center gap-2"
+                  className="border-b border-white/5 px-4 justify-center"
                 >
-                  <View className={`h-9 w-9 items-center justify-center rounded-xl border ${color.border} ${color.bg}`}>
-                    <Ionicons name="tennisball" size={18} color="#FACC15" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-white text-sm font-semibold" numberOfLines={1}>
-                      {court.canchaNombre || `Cancha ${court.canchaId}`}
-                    </Text>
-                    <Text className="text-white/40 text-[11px]">{panelData?.fecha}</Text>
-                  </View>
+                  <Text className="text-white/50 text-xs">{slot.label}</Text>
                 </View>
+              ))}
+            </View>
+
+            {panelData.agenda.map((court, index) => {
+              const color = COURT_COLORS[index % COURT_COLORS.length];
+              const segments = getReservationSegments(court.reservas, timeSlots);
+
+              return (
+                <View key={court.canchaId} style={{ minWidth: TIME_COLUMN_WIDTH }} className="border-l border-white/5">
+                  <View
+                    style={{ height: SLOT_HEIGHT }}
+                    className="border-b border-white/5 px-4 flex-row items-center gap-2"
+                  >
+                    <View className={`h-9 w-9 items-center justify-center rounded-xl border ${color.border} ${color.bg}`}>
+                      <Ionicons name="tennisball" size={18} color="#FACC15" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-white text-sm font-semibold" numberOfLines={1}>
+                        {court.canchaNombre || `Cancha ${court.canchaId}`}
+                      </Text>
+                      <Text className="text-white/40 text-[11px]">{panelData?.fecha}</Text>
+                    </View>
+                  </View>
 
                 <View>
                   {segments.map((segment, segmentIndex) => {
@@ -1377,7 +1378,8 @@ export default function ReservasScreen({ summary, go }) {
             );
           })}
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   };
 
