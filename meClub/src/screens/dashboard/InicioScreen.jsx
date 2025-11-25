@@ -25,7 +25,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
             </Text>
             <Pressable
               onPress={() => go('mis-canchas')}
-              className="self-start mt-4 rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30"
+              className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30"
             >
               <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
             </Pressable>
@@ -48,7 +48,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
             <Text className="text-white/60 mt-1">+{summary.reservasSemana ?? 0} esta semana</Text>
             <Pressable
               onPress={() => go('reservas')}
-              className="self-start mt-4 rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25"
+              className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25"
             >
               <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
             </Pressable>
