@@ -1436,21 +1436,10 @@ export default function ReservasScreen({ summary, go }) {
 
   return (
     <>
-      <View className="py-6 flex-row flex-wrap items-start justify-between gap-4">
-        <View>
+      <View className="py-6 flex-row flex-wrap items-start justify-between gap-4 sm:gap-6">
+        <View className="flex-1 min-w-[260px] space-y-1">
           <Text className="text-white text-[36px] font-extrabold tracking-tight">Reservas</Text>
-          <Text className="text-white/60 mt-1">Gestioná las reservas y seguí la agenda de tus canchas</Text>
-          {typeof go === 'function' ? (
-            <Pressable
-              onPress={() => go('mis-canchas')}
-              className="mt-3 flex-row items-center gap-2 self-start rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5"
-            >
-              <Ionicons name="tennisball-outline" size={14} color="#E2E8F0" />
-              <Text className="text-white/70 text-xs font-medium uppercase tracking-widest">
-                Ver canchas
-              </Text>
-            </Pressable>
-          ) : null}
+          <Text className="text-white/60">Gestioná las reservas y seguí la agenda de tus canchas</Text>
         </View>
         <Pressable
           onPress={handleOpenModal}
