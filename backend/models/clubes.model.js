@@ -311,12 +311,15 @@ const ClubesModel = {
   },
 
   obtenerResumen: async (club_id) => {
-    const [[{ total: courtsAvailable = 0 } = {}]] = await db.query(
-      'SELECT COUNT(*) AS total FROM canchas WHERE club_id = ?',
+    const courtStatusPromise = db.query(
+      `SELECT estado, COUNT(*) AS total
+       FROM canchas
+       WHERE club_id = ?
+       GROUP BY estado`,
       [club_id]
     );
 
-    const [[{ total: reservasHoy = 0 } = {}]] = await db.query(
+    const reservasHoyPromise = db.query(
       `SELECT COUNT(*) AS total
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
@@ -324,20 +327,16 @@ const ClubesModel = {
       [club_id]
     );
 
-    const reservasSemanaQuery = `
-      SELECT COUNT(*) AS total
-      FROM reservas r
-      JOIN canchas c ON c.cancha_id = r.cancha_id
-      WHERE c.club_id = ?
-        AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)
-    `;
-
-    const [[{ total: reservasSemana = 0 } = {}]] = await db.query(
-      reservasSemanaQuery,
+    const reservasSemanaPromise = db.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)`,
       [club_id]
     );
 
-    const [[{ total: economiaMes = 0 } = {}]] = await db.query(
+    const economiaMesPromise = db.query(
       `SELECT COALESCE(SUM(r.monto), 0) AS total
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
@@ -346,7 +345,131 @@ const ClubesModel = {
       [club_id]
     );
 
-    return { courtsAvailable, reservasHoy, reservasSemana, economiaMes };
+    const courtTypesPromise = db.query(
+      `SELECT
+          COALESCE(d.nombre, NULLIF(c.tipo_suelo, ''), 'Otro') AS etiqueta,
+          COUNT(*) AS total
+       FROM canchas c
+       LEFT JOIN deportes d ON d.deporte_id = c.deporte_id
+       WHERE c.club_id = ?
+       GROUP BY etiqueta
+       ORDER BY total DESC, etiqueta ASC`,
+      [club_id]
+    );
+
+    const reservasPagadasFinalizadasHoyPromise = db.query(
+      `SELECT
+          SUM(CASE WHEN r.estado_pago = 'pagado' THEN 1 ELSE 0 END) AS pagadas,
+          SUM(CASE WHEN r.estado = 'finalizada' THEN 1 ELSE 0 END) AS finalizadas
+       FROM reservas r
+       WHERE r.club_id = ? AND r.fecha = CURDATE()`,
+      [club_id]
+    );
+
+    const reservasDiariasPromise = db.query(
+      `SELECT
+          DATE(r.fecha) AS fecha,
+          COUNT(*) AS total,
+          SUM(CASE WHEN r.estado_pago = 'pagado' THEN 1 ELSE 0 END) AS pagadas,
+          SUM(CASE WHEN r.estado = 'finalizada' THEN 1 ELSE 0 END) AS finalizadas
+       FROM reservas r
+       WHERE r.club_id = ?
+         AND r.fecha >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       GROUP BY DATE(r.fecha)
+       ORDER BY fecha ASC`,
+      [club_id]
+    );
+
+    const reservasMensualesPromise = db.query(
+      `SELECT
+          DATE_FORMAT(r.fecha, '%Y-%m') AS periodo,
+          COUNT(*) AS total
+       FROM reservas r
+       WHERE r.club_id = ?
+         AND r.fecha >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+       GROUP BY DATE_FORMAT(r.fecha, '%Y-%m')
+       ORDER BY periodo ASC`,
+      [club_id]
+    );
+
+    const [
+      [courtStatusRows],
+      [reservasHoyRows],
+      [reservasSemanaRows],
+      [economiaMesRows],
+      [courtTypesRows],
+      [reservasPagadasFinalizadasHoyRows],
+      [reservasDiariasRows],
+      [reservasMensualesRows],
+    ] = await Promise.all([
+      courtStatusPromise,
+      reservasHoyPromise,
+      reservasSemanaPromise,
+      economiaMesPromise,
+      courtTypesPromise,
+      reservasPagadasFinalizadasHoyPromise,
+      reservasDiariasPromise,
+      reservasMensualesPromise,
+    ]);
+
+    const courtStatus = { disponible: 0, mantenimiento: 0, inactiva: 0 };
+    courtStatusRows.forEach((row) => {
+      if (row && row.estado && row.total !== undefined) {
+        courtStatus[row.estado] = Number(row.total) || 0;
+      }
+    });
+
+    const courtsAvailable = courtStatus.disponible || 0;
+    const courtsMaintenance = courtStatus.mantenimiento || 0;
+    const courtsInactive = courtStatus.inactiva || 0;
+
+    const reservasHoy = Number(reservasHoyRows?.[0]?.total) || 0;
+    const reservasSemana = Number(reservasSemanaRows?.[0]?.total) || 0;
+    const economiaMes = Number(economiaMesRows?.[0]?.total) || 0;
+
+    const courtTypes = (courtTypesRows || []).map((row) => ({
+      etiqueta: row?.etiqueta || 'Otro',
+      total: Number(row?.total) || 0,
+    }));
+
+    const reservasPagadasHoy = Number(reservasPagadasFinalizadasHoyRows?.[0]?.pagadas) || 0;
+    const reservasFinalizadasHoy =
+      Number(reservasPagadasFinalizadasHoyRows?.[0]?.finalizadas) || 0;
+
+    const reservasDiarias = (reservasDiariasRows || []).map((row) => ({
+      fecha:
+        row?.fecha instanceof Date
+          ? row.fecha.toISOString().slice(0, 10)
+          : String(row?.fecha || ''),
+      total: Number(row?.total) || 0,
+      pagadas: Number(row?.pagadas) || 0,
+      finalizadas: Number(row?.finalizadas) || 0,
+    }));
+
+    const reservasMensuales = (reservasMensualesRows || []).map((row) => ({
+      periodo: String(row?.periodo || ''),
+      total: Number(row?.total) || 0,
+    }));
+
+    const mesActual = new Date();
+    const periodoActual = `${mesActual.getFullYear()}-${String(mesActual.getMonth() + 1).padStart(2, '0')}`;
+    const reservasMesActual =
+      reservasMensuales.find((row) => row.periodo === periodoActual)?.total || 0;
+
+    return {
+      courtsAvailable,
+      courtsMaintenance,
+      courtsInactive,
+      reservasHoy,
+      reservasSemana,
+      economiaMes,
+      courtTypes,
+      reservasPagadasHoy,
+      reservasFinalizadasHoy,
+      reservasDiarias,
+      reservasMensuales,
+      reservasMesActual,
+    };
   },
 };
 

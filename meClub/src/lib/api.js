@@ -744,20 +744,60 @@ export async function listProvinces() {
 
 export async function getClubSummary({ clubId }) {
   if (clubId === undefined) {
-    return { courtsAvailable: 0, reservasHoy: 0, reservasSemana: 0, economiaMes: 0 };
+    return {
+      courtsAvailable: 0,
+      courtsMaintenance: 0,
+      courtsInactive: 0,
+      reservasHoy: 0,
+      reservasSemana: 0,
+      economiaMes: 0,
+      courtTypes: [],
+      reservasPagadasHoy: 0,
+      reservasFinalizadasHoy: 0,
+      reservasDiarias: [],
+      reservasMensuales: [],
+      reservasMesActual: 0,
+    };
   }
   try {
     const { data } = await api.get(`/clubes/${clubId}/resumen`);
     if (!data) {
       // Backend no respondió correctamente
-      return { courtsAvailable: 0, reservasHoy: 0, reservasSemana: 0, economiaMes: 0 };
+      return {
+        courtsAvailable: 0,
+        courtsMaintenance: 0,
+        courtsInactive: 0,
+        reservasHoy: 0,
+        reservasSemana: 0,
+        economiaMes: 0,
+        courtTypes: [],
+        reservasPagadasHoy: 0,
+        reservasFinalizadasHoy: 0,
+        reservasDiarias: [],
+        reservasMensuales: [],
+        reservasMesActual: 0,
+      };
     }
-    // Esperado: { courtsAvailable, reservasHoy, reservasSemana, economiaMes }
+    // Esperado: { courtsAvailable, courtsMaintenance, courtsInactive, reservasHoy, reservasSemana, economiaMes, courtTypes, reservasPagadasHoy, reservasFinalizadasHoy, reservasMesActual, reservasDiarias, reservasMensuales }
+    const normalizedCourtTypes = Array.isArray(data.courtTypes)
+      ? data.courtTypes.map((item) => ({
+          etiqueta: (item?.etiqueta || item?.label || 'Otro').toString(),
+          total: toNumberOrZero(item?.total),
+        }))
+      : [];
     return {
       courtsAvailable: data.courtsAvailable ?? 0,
+      courtsMaintenance: data.courtsMaintenance ?? 0,
+      courtsInactive: data.courtsInactive ?? 0,
       reservasHoy: data.reservasHoy ?? 0,
       reservasSemana: data.reservasSemana ?? 0,
       economiaMes: data.economiaMes ?? 0,
+      courtTypes: normalizedCourtTypes,
+      reservasPagadasHoy: data.reservasPagadasHoy ?? 0,
+      reservasFinalizadasHoy: data.reservasFinalizadasHoy ?? 0,
+      reservasMesActual: data.reservasMesActual ?? 0,
+      reservasDiarias: Array.isArray(data.reservasDiarias) ? data.reservasDiarias : [],
+      reservasMensuales: Array.isArray(data.reservasMensuales) ? data.reservasMensuales : [],
     };
   } catch (err) {
     console.warn('getClubSummary error', err);
