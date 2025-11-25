@@ -16,7 +16,7 @@ import WorkInProgressScreen from './WorkInProgressScreen';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
-function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled = false }) {
+function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled = false, badge }) {
   const theme = useTheme();
   const warnColor = theme?.colors?.mc?.warn ?? mcColors.warn;
   const iconColor = disabled ? '#64748B' : active ? warnColor : '#9FB3C8';
@@ -25,7 +25,7 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
     : active
       ? 'text-mc-warn'
       : 'text-white/80';
-  const badge = minLevel > 1;
+  const computedBadge = badge ?? (minLevel > 1 ? 'PRO' : undefined);
 
   return (
     <Pressable
@@ -54,9 +54,9 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
             {label}
           </Text>
         </View>
-        {badge && (
+        {computedBadge && (
           <View className="rounded-full px-2 py-[2px] bg-amber-500/20 border border-amber-400/50">
-            <Text className="text-[10px] font-semibold text-amber-300">PRO</Text>
+            <Text className="text-[10px] font-semibold text-amber-300">{computedBadge}</Text>
           </View>
         )}
       </View>
@@ -114,7 +114,7 @@ export default function DashboardShell() {
     { key: 'economia', label: 'Economía', iconName: 'cash-outline', minLevel: 1 },
     { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline', minLevel: 1 },
     { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline', minLevel: 2 },
-    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 2 },
+    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 1, badge: 'PRO' },
     { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', minLevel: 2 },
     { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', minLevel: 2 },
     { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline', minLevel: 1 },
@@ -288,6 +288,7 @@ export default function DashboardShell() {
                   label={it.label}
                   active={activeKey === it.key}
                   minLevel={it.minLevel}
+                  badge={it.badge}
                   disabled={clubLevel < it.minLevel}
                   onPress={() => go(it)}
                 />
