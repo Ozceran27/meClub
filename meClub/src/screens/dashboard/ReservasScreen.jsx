@@ -160,7 +160,8 @@ function getStatusBadgeClasses(status) {
 
 const SLOT_MINUTES = 60;
 const SLOT_HEIGHT = 96;
-const TIME_COLUMN_WIDTH = 220;
+const TIME_COLUMN_WIDTH = 120;
+const COURT_COLUMN_MIN_WIDTH = 220;
 
 function pad(value) {
   return String(value).padStart(2, '0');
@@ -1303,7 +1304,11 @@ export default function ReservasScreen({ summary, go }) {
               const segments = getReservationSegments(court.reservas, timeSlots);
 
               return (
-                <View key={court.canchaId} style={{ minWidth: TIME_COLUMN_WIDTH }} className="border-l border-white/5">
+                <View
+                  key={court.canchaId}
+                  style={{ minWidth: COURT_COLUMN_MIN_WIDTH }}
+                  className="border-l border-white/5"
+                >
                   <View
                     style={{ height: SLOT_HEIGHT }}
                     className="border-b border-white/5 px-4 flex-row items-center gap-2"
