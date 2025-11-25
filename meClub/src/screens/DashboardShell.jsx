@@ -12,38 +12,53 @@ import {
   ConfiguracionScreen,
   EconomiaScreen,
 } from './dashboard';
+import WorkInProgressScreen from './WorkInProgressScreen';
 
 const NAV_BG = 'bg-[#0F172A]/80';
 
-function SidebarItem({ iconName, label, active, onPress }) {
+function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled = false }) {
   const theme = useTheme();
   const warnColor = theme?.colors?.mc?.warn ?? mcColors.warn;
+  const iconColor = disabled ? '#64748B' : active ? warnColor : '#9FB3C8';
+  const textColorClass = disabled
+    ? 'text-white/40'
+    : active
+      ? 'text-mc-warn'
+      : 'text-white/80';
+  const badge = minLevel > 1;
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => { if (!disabled) onPress?.(); }}
+      disabled={disabled}
       className={`w-full rounded-xl px-3 py-3 mb-1.5 ${
         active ? 'bg-white/5' : 'bg-transparent'
-      } hover:bg-white/10`}
+      } hover:bg-white/10 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       style={({ pressed }) => ({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View className="flex-row items-center justify-start gap-3">
-        {iconName && (
-          <Ionicons
-            name={iconName}
-            size={18}
-            color={active ? warnColor : '#9FB3C8'}
-          />
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="flex-row items-center gap-3 flex-1">
+          {iconName && (
+            <Ionicons
+              name={iconName}
+              size={18}
+              color={iconColor}
+            />
+          )}
+          <Text
+            className={`text-[15px] leading-5 ${textColorClass} hover:text-white`}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
+        {badge && (
+          <View className="rounded-full px-2 py-[2px] bg-amber-500/20 border border-amber-400/50">
+            <Text className="text-[10px] font-semibold text-amber-300">PRO</Text>
+          </View>
         )}
-        <Text
-          className={`text-[15px] leading-5 ${
-            active ? 'text-mc-warn' : 'text-white/80'
-          } hover:text-white`}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
       </View>
     </Pressable>
   );
@@ -60,6 +75,7 @@ export default function DashboardShell() {
     economiaMes: 0,
   });
   const [err, setErr] = useState('');
+  const [notice, setNotice] = useState('');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -90,25 +106,42 @@ export default function DashboardShell() {
     await logout();
   }, [logout]);
 
-  const items = [
-    { key: 'inicio', label: 'Inicio', iconName: 'home-outline' },
-    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline' },
-    { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline' },
-    { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline' },
-    { key: 'economia', label: 'Economía', iconName: 'cash-outline' },
-    { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline' },
-    { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline' },
-    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline' },
-    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline' },
-    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline' },
-    { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline' },
-    { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline' },
-  ];
+  const items = useMemo(() => ([
+    { key: 'inicio', label: 'Inicio', iconName: 'home-outline', minLevel: 1 },
+    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline', minLevel: 1 },
+    { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline', minLevel: 1 },
+    { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline', minLevel: 1 },
+    { key: 'economia', label: 'Economía', iconName: 'cash-outline', minLevel: 1 },
+    { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline', minLevel: 1 },
+    { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline', minLevel: 2 },
+    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 2 },
+    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', minLevel: 2 },
+    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', minLevel: 2 },
+    { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline', minLevel: 1 },
+    { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline', minLevel: 1 },
+  ]), []);
 
-  const go = useCallback((key) => {
+  const clubLevel = useMemo(() => {
+    const parsed = Number(user?.nivel_id ?? 1);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [user?.nivel_id]);
+
+  const go = useCallback((keyOrItem) => {
+    const item = typeof keyOrItem === 'string'
+      ? items.find((it) => it.key === keyOrItem)
+      : keyOrItem;
+    const key = item?.key || keyOrItem;
+    const minLevel = item?.minLevel ?? 1;
+
+    if (clubLevel < minLevel) {
+      setNotice(`Esta sección requiere nivel ${minLevel}. Tu nivel actual es ${clubLevel}.`);
+      return;
+    }
+
+    setNotice('');
     setProfileMenuOpen(false);
     setActiveKey(key);
-  }, []);
+  }, [clubLevel, items]);
 
   const handleMenuAction = useCallback(
     (action) => {
@@ -150,7 +183,7 @@ export default function DashboardShell() {
     configuracion: ConfiguracionScreen,
     economia: EconomiaScreen,
   };
-  const ScreenComponent = screenMap[activeKey] || (() => null);
+  const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
   const screenProps = { summary, firstName, today, go };
 
   const clubLogo = user?.clubLogoUrl || user?.foto_logo;
@@ -254,7 +287,9 @@ export default function DashboardShell() {
                   iconName={it.iconName}
                   label={it.label}
                   active={activeKey === it.key}
-                  onPress={() => go(it.key)}
+                  minLevel={it.minLevel}
+                  disabled={clubLevel < it.minLevel}
+                  onPress={() => go(it)}
                 />
               ))}
             </View>
@@ -281,6 +316,7 @@ export default function DashboardShell() {
           {...scrollViewProps}
         >
           {!!err && <Text className="text-red-400 text-center my-2">{err}</Text>}
+          {!!notice && <Text className="text-amber-300 text-center my-2">{notice}</Text>}
           <ScreenComponent {...screenProps} />
         </ScrollView>
       </View>
