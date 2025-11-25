@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -917,6 +917,9 @@ export default function ReservasScreen({ summary, go }) {
   const [statusMenuReservation, setStatusMenuReservation] = useState(null);
   const [updatingReservationStatus, setUpdatingReservationStatus] = useState(false);
   const [statusUpdateError, setStatusUpdateError] = useState('');
+  const timelineScrollRef = useRef(null);
+  const timelineTopScrollRef = useRef(null);
+  const scrollSyncTargetRef = useRef(null);
 
   const allReservations = useMemo(() => {
     if (!panelData?.agenda) return [];
@@ -1257,6 +1260,45 @@ export default function ReservasScreen({ summary, go }) {
     [setRefreshToken, statusMenuReservation]
   );
 
+  const syncScrollPosition = useCallback(
+    (source, offsetX) => {
+      if (!Number.isFinite(offsetX)) return;
+
+      const targetRef = source === 'main' ? timelineTopScrollRef : timelineScrollRef;
+      if (!targetRef.current) return;
+
+      scrollSyncTargetRef.current = targetRef.current;
+      targetRef.current.scrollTo({ x: offsetX, animated: false });
+    },
+    []
+  );
+
+  const handleTimelineScroll = useCallback(
+    (event) => {
+      const offsetX = event?.nativeEvent?.contentOffset?.x ?? 0;
+      if (scrollSyncTargetRef.current === timelineScrollRef.current) {
+        scrollSyncTargetRef.current = null;
+        return;
+      }
+
+      syncScrollPosition('main', offsetX);
+    },
+    [syncScrollPosition]
+  );
+
+  const handleTopTimelineScroll = useCallback(
+    (event) => {
+      const offsetX = event?.nativeEvent?.contentOffset?.x ?? 0;
+      if (scrollSyncTargetRef.current === timelineTopScrollRef.current) {
+        scrollSyncTargetRef.current = null;
+        return;
+      }
+
+      syncScrollPosition('top', offsetX);
+    },
+    [syncScrollPosition]
+  );
+
   const renderTimeline = () => {
     if (!panelData?.agenda?.length) {
       return (
@@ -1272,9 +1314,31 @@ export default function ReservasScreen({ summary, go }) {
     return (
       <View style={{ maxWidth: '100%', overflow: 'hidden' }}>
         <ScrollView
+          ref={timelineTopScrollRef}
           horizontal
           showsHorizontalScrollIndicator
           persistentScrollbar
+          onScroll={handleTopTimelineScroll}
+          scrollEventThrottle={16}
+          contentContainerClassName="px-5"
+          style={{ overflowX: 'auto' }}
+          contentContainerStyle={{ overflowX: 'auto' }}
+        >
+          <View className="flex-row">
+            <View style={{ width: TIME_COLUMN_WIDTH, height: 12 }} />
+            {panelData.agenda.map((court) => (
+              <View key={court.canchaId} style={{ width: TIME_COLUMN_WIDTH, height: 12 }} />
+            ))}
+          </View>
+        </ScrollView>
+
+        <ScrollView
+          ref={timelineScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator
+          persistentScrollbar
+          onScroll={handleTimelineScroll}
+          scrollEventThrottle={16}
           contentContainerClassName="px-5"
           style={{ overflowX: 'auto' }}
           contentContainerStyle={{ overflowX: 'auto' }}
@@ -1318,65 +1382,64 @@ export default function ReservasScreen({ summary, go }) {
                       <Text className="text-white/40 text-[11px]">{panelData?.fecha}</Text>
                     </View>
                   </View>
+                  <View>
+                    {segments.map((segment, segmentIndex) => {
+                      const slotsCovered =
+                        segment && Number.isFinite(segment.slotsCovered)
+                          ? Math.max(1, segment.slotsCovered)
+                          : 1;
+                      const containerHeight = SLOT_HEIGHT * slotsCovered;
 
-                <View>
-                  {segments.map((segment, segmentIndex) => {
-                    const slotsCovered =
-                      segment && Number.isFinite(segment.slotsCovered)
-                        ? Math.max(1, segment.slotsCovered)
-                        : 1;
-                    const containerHeight = SLOT_HEIGHT * slotsCovered;
+                      if (segment.type === 'reservation' && segment.reservation) {
+                        const { reservation } = segment;
 
-                    if (segment.type === 'reservation' && segment.reservation) {
-                      const { reservation } = segment;
+                        return (
+                          <TimelineReservationCard
+                            key={segment.key || `reservation-${segmentIndex}`}
+                            reservation={reservation}
+                            color={color}
+                            containerHeight={containerHeight}
+                            onDelete={
+                              reservation.reservaId != null
+                                ? () => handleDeleteReservation(reservation.reservaId)
+                                : undefined
+                            }
+                            onPress={
+                              reservation.reservaId != null
+                                ? () => handleOpenStatusMenu(reservation)
+                                : undefined
+                            }
+                            court={court}
+                            nightStart={nightStartValue}
+                            nightEnd={nightEndValue}
+                          />
+                        );
+                      }
 
-                      return (
-                        <TimelineReservationCard
-                          key={segment.key || `reservation-${segmentIndex}`}
-                          reservation={reservation}
-                          color={color}
-                          containerHeight={containerHeight}
-                          onDelete={
-                            reservation.reservaId != null
-                              ? () => handleDeleteReservation(reservation.reservaId)
-                              : undefined
-                          }
-                          onPress={
-                            reservation.reservaId != null
-                              ? () => handleOpenStatusMenu(reservation)
-                              : undefined
-                          }
-                          court={court}
-                          nightStart={nightStartValue}
-                          nightEnd={nightEndValue}
-                        />
-                      );
-                    }
+                      if (segment.type === 'empty') {
+                        return (
+                          <View
+                            key={segment.key || `empty-${segmentIndex}`}
+                            style={{ height: containerHeight }}
+                            className="border-b border-dashed border-white/5 px-3 py-3"
+                          >
+                            <View className="flex-1 rounded-2xl border border-white/5 border-dashed" />
+                          </View>
+                        );
+                      }
 
-                    if (segment.type === 'empty') {
                       return (
                         <View
-                          key={segment.key || `empty-${segmentIndex}`}
+                          key={segment.key || `skip-${segmentIndex}`}
                           style={{ height: containerHeight }}
-                          className="border-b border-dashed border-white/5 px-3 py-3"
-                        >
-                          <View className="flex-1 rounded-2xl border border-white/5 border-dashed" />
-                        </View>
+                          className="border-b border-transparent px-3 py-3"
+                        />
                       );
-                    }
-
-                    return (
-                      <View
-                        key={segment.key || `skip-${segmentIndex}`}
-                        style={{ height: containerHeight }}
-                        className="border-b border-transparent px-3 py-3"
-                      />
-                    );
-                  })}
+                    })}
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })}
         </View>
         </ScrollView>
       </View>
