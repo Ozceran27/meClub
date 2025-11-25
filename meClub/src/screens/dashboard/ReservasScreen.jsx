@@ -458,17 +458,17 @@ function ReservationStatusMenu({
   saving,
   error,
 }) {
+  const paymentDetail = useMemo(
+    () => getPaymentStatusDetails(reservation?.estadoPago),
+    [reservation],
+  );
   const [selectedStatus, setSelectedStatus] = useState(() => normalizeStatusValue(reservation?.estado));
-  const [selectedPayment, setSelectedPayment] = useState(() => {
-    const detail = getPaymentStatusDetails(reservation?.estadoPago);
-    return detail?.value ?? null;
-  });
+  const [selectedPayment, setSelectedPayment] = useState(() => paymentDetail?.value ?? null);
 
   useEffect(() => {
     setSelectedStatus(normalizeStatusValue(reservation?.estado));
-    const detail = getPaymentStatusDetails(reservation?.estadoPago);
-    setSelectedPayment(detail?.value ?? null);
-  }, [reservation, visible]);
+    setSelectedPayment(paymentDetail?.value ?? null);
+  }, [paymentDetail, reservation, visible]);
 
   const statusOptions = useMemo(() => {
     const normalized = normalizeStatusValue(reservation?.estado);
@@ -485,18 +485,17 @@ function ReservationStatusMenu({
   }, [reservation]);
 
   const paymentOptions = useMemo(() => {
-    const detail = getPaymentStatusDetails(reservation?.estadoPago);
-    const normalized = detail?.value ?? null;
+    const normalized = paymentDetail?.value ?? null;
     const hasCurrent = normalized
       ? PAYMENT_STATUS_OPTIONS.some((option) => option.value === normalized)
       : true;
     if (hasCurrent) {
       return PAYMENT_STATUS_OPTIONS;
     }
-    return detail
-      ? [{ value: detail.value, label: detail.label, icon: detail.icon }, ...PAYMENT_STATUS_OPTIONS]
+    return paymentDetail
+      ? [{ value: paymentDetail.value, label: paymentDetail.label, icon: paymentDetail.icon }, ...PAYMENT_STATUS_OPTIONS]
       : PAYMENT_STATUS_OPTIONS;
-  }, [reservation]);
+  }, [paymentDetail, reservation]);
 
   const handleSave = useCallback(() => {
     onSave?.({ estado: selectedStatus, estadoPago: selectedPayment });
