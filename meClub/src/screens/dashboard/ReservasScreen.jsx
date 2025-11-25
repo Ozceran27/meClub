@@ -78,19 +78,19 @@ const RESERVATION_STATUS_ALIASES = {
 };
 
 const RESERVATION_STATUS_LABELS = {
-  pagada: 'Activa (Pagada)',
+  pagada: 'Activa',
   pendiente: 'Pendiente',
   finalizada: 'Finalizada',
   cancelada: 'Cancelada',
 };
 
 const RESERVATION_STATUS_LABEL_OVERRIDES = {
-  activa: 'Activa (Pagada)',
-  pagada: 'Activa (Pagada)',
+  activa: 'Activa',
+  pagada: 'Activa',
 };
 
 const RESERVATION_STATUS_OPTIONS = [
-  { value: 'pagada', label: 'Activa (Pagada)' },
+  { value: 'pagada', label: 'Activa' },
   { value: 'pendiente', label: 'Pendiente' },
   { value: 'finalizada', label: 'Finalizada' },
   { value: 'cancelada', label: 'Cancelada' },
