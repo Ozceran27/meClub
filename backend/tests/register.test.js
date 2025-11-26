@@ -18,14 +18,20 @@ jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
 }));
 
+jest.mock('../config/db', () => ({
+  getConnection: jest.fn(),
+}));
+
 const { register } = require('../controllers/auth.controller');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
 const bcrypt = require('bcryptjs');
+const db = require('../config/db');
 
 describe('register controller', () => {
   let statusCode;
   let jsonBody;
+  let mockConnection;
 
   const createResponse = () => ({
     status(code) {
@@ -43,6 +49,13 @@ describe('register controller', () => {
     jsonBody = undefined;
     process.env.JWT_SECRET = 'secret';
     bcrypt.hash.mockResolvedValue('hash');
+    mockConnection = {
+      beginTransaction: jest.fn().mockResolvedValue(),
+      commit: jest.fn().mockResolvedValue(),
+      rollback: jest.fn().mockResolvedValue(),
+      release: jest.fn(),
+    };
+    db.getConnection.mockResolvedValue(mockConnection);
   });
 
   afterEach(() => {
@@ -81,6 +94,8 @@ describe('register controller', () => {
       rol: 'deportista',
     });
     expect(jsonBody.club).toBeNull();
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
   });
 
   it('registers a club and returns club info', async () => {
@@ -116,6 +131,38 @@ describe('register controller', () => {
       rol: 'club',
     });
     expect(jsonBody.club).toMatchObject({ club_id: 10, nombre: 'Club Test' });
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('rolls back the transaction when club creation fails', async () => {
+    UsuariosModel.buscarPorEmail.mockResolvedValue([]);
+    UsuariosModel.crearUsuario.mockResolvedValue({
+      usuario_id: 3,
+      nombre: 'Club',
+      apellido: 'Owner',
+      email: 'club-fail@example.com',
+      rol: 'club',
+    });
+    ClubesModel.crearClub.mockRejectedValue(new Error('Club creation failed'));
+
+    const req = {
+      body: {
+        nombre: 'Club',
+        apellido: 'Owner',
+        email: 'club-fail@example.com',
+        contrasena: '123456',
+        rol: 'club',
+      },
+    };
+
+    await register(req, createResponse());
+
+    expect(statusCode).toBe(500);
+    expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
+    expect(mockConnection.commit).not.toHaveBeenCalled();
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
   });
 });
 

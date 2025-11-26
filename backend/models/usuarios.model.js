@@ -17,8 +17,9 @@ const UsuariosModel = {
     provincia_id = null,
     localidad_id = null,
     foto_perfil = null,
-  }) => {
-    const [result] = await db.query(
+  }, connection = null) => {
+    const executor = connection || db;
+    const [result] = await executor.query(
       `INSERT INTO usuarios
        (nombre, apellido, email, telefono, provincia_id, localidad_id, contrasena, rol, foto_perfil)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
