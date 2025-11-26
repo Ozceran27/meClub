@@ -5,6 +5,7 @@ const { requireRole } = require('../middleware/roles.middleware');
 const messagesController = require('../controllers/messages.controller');
 
 router.get('/', verifyToken, messagesController.listInbox);
+router.get('/inbox/resumen', verifyToken, messagesController.inboxSummary);
 router.get('/inbox', verifyToken, messagesController.listInbox);
 router.post('/', verifyToken, requireRole('club'), messagesController.createMessage);
 router.post('/broadcast', verifyToken, requireRole('admin'), messagesController.broadcastMessage);

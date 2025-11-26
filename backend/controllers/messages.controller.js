@@ -92,6 +92,21 @@ exports.listInbox = async (req, res) => {
   }
 };
 
+exports.inboxSummary = async (req, res) => {
+  try {
+    const userId = getUserId(req.usuario);
+    if (!userId) {
+      return res.status(401).json({ mensaje: 'Usuario no autenticado' });
+    }
+
+    const summary = await UserInboxModel.getInboxSummary({ user_id: userId });
+    return res.json(summary);
+  } catch (error) {
+    console.error('Error al obtener resumen de inbox:', error);
+    return res.status(500).json({ mensaje: error.message || 'Error interno del servidor' });
+  }
+};
+
 exports.markAsRead = async (req, res) => {
   try {
     const userId = getUserId(req.usuario);

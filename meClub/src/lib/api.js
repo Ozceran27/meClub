@@ -954,6 +954,35 @@ export async function getInbox({ page = 1, limit = 40 } = {}) {
   return extractInbox(response);
 }
 
+export async function getInboxSummary() {
+  try {
+    const response = await api.get('/mensajes/inbox/resumen');
+    const data = response?.data ?? response ?? {};
+    const total = toPositiveIntOrZero(data.total ?? data.totalCount);
+    const unreadCount = toPositiveIntOrZero(
+      data.unreadCount ?? data.unread ?? data.no_leidos ?? data.noLeidos
+    );
+    return { total, unreadCount };
+  } catch (error) {
+    try {
+      const fallback = await getInbox({ page: 1, limit: 1 });
+      const unreadFromPage = Array.isArray(fallback?.inbox)
+        ? fallback.inbox.filter((item) => !item.isRead).length
+        : 0;
+      return {
+        total: toPositiveIntOrZero(fallback?.total),
+        unreadCount: unreadFromPage,
+      };
+    } catch (fallbackError) {
+      throw fallbackError instanceof Error
+        ? fallbackError
+        : error instanceof Error
+        ? error
+        : new Error('No se pudo obtener el resumen del buzón');
+    }
+  }
+}
+
 export async function markInboxRead(inboxId) {
   if (inboxId === undefined || inboxId === null || inboxId === '') {
     throw new Error('Identificador de inbox inválido');
