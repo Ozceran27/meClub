@@ -43,16 +43,21 @@ const notifyClubUsers = async ({
   if (!title) throw new Error('title es requerido para notificar');
   if (!content) throw new Error('content es requerido para notificar');
 
-  const targetUserIds = await obtenerUsuariosDelClub({ club_id, connection });
-  return MessagesModel.createMessage({
-    club_id,
-    type,
-    title,
-    content,
-    sender,
-    targetUserIds,
-    connection,
-  });
+  try {
+    const targetUserIds = await obtenerUsuariosDelClub({ club_id, connection });
+    return MessagesModel.createMessage({
+      club_id,
+      type,
+      title,
+      content,
+      sender,
+      targetUserIds,
+      connection,
+    });
+  } catch (error) {
+    console.error('Error al notificar a los usuarios del club', error);
+    return null;
+  }
 };
 
 module.exports = { notifyClubUsers };

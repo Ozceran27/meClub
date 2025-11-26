@@ -62,6 +62,22 @@ const createConnectionMock = ({ conflict }) => {
       return Promise.resolve([{ insertId: conflict ? 2 : 1 }, []]);
     }
 
+    if (sql.startsWith('SELECT usuario_id FROM clubes')) {
+      return Promise.resolve([[{ usuario_id: 10 }], []]);
+    }
+
+    if (sql.startsWith('SELECT usuario_id FROM clubs_usuarios')) {
+      return Promise.resolve([[{ usuario_id: 11 }], []]);
+    }
+
+    if (sql.startsWith('INSERT INTO messages')) {
+      return Promise.resolve([{ insertId: 900 }]);
+    }
+
+    if (sql.startsWith('INSERT INTO user_inbox')) {
+      return Promise.resolve([{}]);
+    }
+
     return Promise.reject(new Error(`SQL no mockeado en conexión: ${sql}`));
   });
 

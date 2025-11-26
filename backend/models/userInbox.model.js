@@ -1,14 +1,14 @@
 const db = require('../config/db');
 
 const UserInboxModel = {
-  listUserInbox: async ({ user_id, page = 1, limit = 20 }) => {
+  listUserInbox: async ({ user_id, page = 1, limit = 40 }) => {
     if (user_id === undefined || user_id === null) {
       throw new Error('user_id es requerido');
     }
     const pageNumber = Number.parseInt(page, 10);
     const limitNumber = Number.parseInt(limit, 10);
     const sanitizedPage = Number.isInteger(pageNumber) && pageNumber > 0 ? pageNumber : 1;
-    const sanitizedLimit = Number.isInteger(limitNumber) && limitNumber > 0 ? limitNumber : 20;
+    const sanitizedLimit = Number.isInteger(limitNumber) && limitNumber > 0 ? limitNumber : 40;
     const offset = (sanitizedPage - 1) * sanitizedLimit;
 
     const [[{ total }]] = await db.query(
@@ -61,6 +61,22 @@ const UserInboxModel = {
        WHERE id = ? AND user_id = ?`,
       [inbox_id, user_id]
     );
+
+    return result.affectedRows > 0;
+  },
+
+  deleteFromInbox: async ({ inbox_id, user_id }) => {
+    if (inbox_id === undefined || inbox_id === null) {
+      throw new Error('inbox_id es requerido');
+    }
+    if (user_id === undefined || user_id === null) {
+      throw new Error('user_id es requerido');
+    }
+
+    const [result] = await db.query('DELETE FROM user_inbox WHERE id = ? AND user_id = ?', [
+      inbox_id,
+      user_id,
+    ]);
 
     return result.affectedRows > 0;
   },

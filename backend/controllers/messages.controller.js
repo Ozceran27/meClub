@@ -33,7 +33,7 @@ exports.listInbox = async (req, res) => {
       return res.status(401).json({ mensaje: 'Usuario no autenticado' });
     }
 
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 40 } = req.query;
     const inbox = await UserInboxModel.listUserInbox({ user_id: userId, page, limit });
     return res.json(inbox);
   } catch (error) {
@@ -85,6 +85,30 @@ exports.deleteMessage = async (req, res) => {
       return res.status(404).json({ mensaje: 'Mensaje no encontrado' });
     }
     console.error('Error al eliminar mensaje:', error);
+    return res.status(500).json({ mensaje: error.message || 'Error interno del servidor' });
+  }
+};
+
+exports.deleteInbox = async (req, res) => {
+  try {
+    const userId = getUserId(req.usuario);
+    if (!userId) {
+      return res.status(401).json({ mensaje: 'Usuario no autenticado' });
+    }
+
+    const inboxId = Number(req.params.inboxId);
+    if (!Number.isInteger(inboxId)) {
+      return res.status(400).json({ mensaje: 'inboxId inválido' });
+    }
+
+    const deleted = await UserInboxModel.deleteFromInbox({ inbox_id: inboxId, user_id: userId });
+    if (!deleted) {
+      return res.status(404).json({ mensaje: 'Mensaje no encontrado en la bandeja' });
+    }
+
+    return res.json({ mensaje: 'Mensaje eliminado' });
+  } catch (error) {
+    console.error('Error al eliminar mensaje de inbox:', error);
     return res.status(500).json({ mensaje: error.message || 'Error interno del servidor' });
   }
 };
