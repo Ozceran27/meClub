@@ -15,8 +15,13 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
           const total = item?.total ?? 0;
           return `${label} (${total})`;
         })
-        .join(' · ')
+        .join(' | ')
     : 'Sin canchas registradas';
+
+  const courtsAvailable = summary.courtsAvailable ?? 0;
+  const courtsMaintenance = summary.courtsMaintenance ?? 0;
+  const courtsInactive = summary.courtsInactive ?? 0;
+  const courtsTotal = summary.courtsTotal ?? courtsAvailable + courtsMaintenance + courtsInactive;
 
   const reservasHoy = summary.reservasHoy ?? 0;
   const isHighDemand = reservasHoy > 6;
@@ -77,14 +82,15 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         <View className="flex-row gap-6">
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(0)}>MIS CANCHAS</CardTitle>
-            <Text
-              className="text-emerald-200 text-[32px] mt-2 font-extrabold leading-tight tracking-tight"
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {summary.courtsAvailable ?? 0} disponibles
-              <Text className="text-white text-[14px] font-semibold"> · {courtTypesText}</Text>
-            </Text>
+            <View className="mt-2 flex-row flex-wrap items-baseline gap-2">
+              <Text className="text-[32px] font-extrabold leading-tight tracking-tight">
+                <Text className="text-emerald-200">{courtsTotal}</Text>
+                <Text className="text-white"> Canchas Total</Text>
+              </Text>
+              <Text className="text-white text-[14px] font-semibold" numberOfLines={1} ellipsizeMode="tail">
+                {courtTypesText}
+              </Text>
+            </View>
             <View className="mt-2 flex-row items-center gap-4">
               <View className="flex-row items-baseline gap-1">
                 <Text className="text-emerald-300 text-[18px] font-semibold">
