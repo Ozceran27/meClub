@@ -74,14 +74,34 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         <View className="flex-row gap-6">
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(0)}>MIS CANCHAS</CardTitle>
-            <Text className="text-white text-[32px] mt-2 font-bold">
+            <Text
+              className="text-emerald-200 text-[32px] mt-2 font-extrabold leading-tight tracking-tight"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {summary.courtsAvailable ?? 0} disponibles
+              <Text className="text-white text-[14px] font-semibold"> · {courtTypesText}</Text>
             </Text>
-            <Text className="text-white/80 mt-1">{summary.courtsMaintenance ?? 0} en mantenimiento</Text>
-            <Text className="text-white/60">{summary.courtsInactive ?? 0} inactivas</Text>
-            <Text className="text-white/60 mt-2" numberOfLines={2}>
-              {courtTypesText}
-            </Text>
+            <View className="mt-2 flex-row items-center gap-4">
+              <View className="flex-row items-baseline gap-1">
+                <Text className="text-emerald-300 text-[18px] font-semibold">
+                  {summary.courtsAvailable ?? 0}
+                </Text>
+                <Text className="text-white/70 text-[14px]">disponibles</Text>
+              </View>
+              <View className="flex-row items-baseline gap-1">
+                <Text className="text-amber-300 text-[16px] font-semibold">
+                  {summary.courtsMaintenance ?? 0}
+                </Text>
+                <Text className="text-white/60 text-[14px]">en mantenimiento</Text>
+              </View>
+              <View className="flex-row items-baseline gap-1">
+                <Text className="text-rose-300 text-[16px] font-semibold">
+                  {summary.courtsInactive ?? 0}
+                </Text>
+                <Text className="text-white/60 text-[14px]">inactivas</Text>
+              </View>
+            </View>
             <Pressable
               onPress={() => go('mis-canchas')}
               className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30"
