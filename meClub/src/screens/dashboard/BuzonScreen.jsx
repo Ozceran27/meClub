@@ -34,11 +34,12 @@ function formatDate(value) {
 function MessageBadge({ isRead }) {
   const text = isRead ? 'Leído' : 'Nuevo';
   const styles = isRead
-    ? 'bg-emerald-500/10 border-emerald-400/40 text-emerald-100'
-    : 'bg-cyan-500/10 border-cyan-400/40 text-cyan-100';
+    ? 'bg-emerald-500/10 border-emerald-400/40'
+    : 'bg-cyan-500/10 border-cyan-400/40';
+  const textColor = isRead ? 'text-emerald-50' : 'text-cyan-50';
   return (
     <View className={`rounded-full px-3 py-[6px] border ${styles}`}>
-      <Text className="text-[12px] font-semibold" numberOfLines={1}>
+      <Text className={`text-[12px] font-semibold ${textColor}`} numberOfLines={1}>
         {text}
       </Text>
     </View>
