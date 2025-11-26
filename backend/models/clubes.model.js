@@ -230,6 +230,13 @@ const ClubesModel = {
     return mapClubRow(rows[0] || null);
   },
 
+  listClubIds: async () => {
+    const [rows] = await db.query('SELECT club_id FROM clubes');
+    return rows
+      .map((row) => Number(row.club_id))
+      .filter((clubId) => Number.isInteger(clubId));
+  },
+
   actualizarPorId: async (
     club_id,
     {

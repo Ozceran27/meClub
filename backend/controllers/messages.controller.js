@@ -1,5 +1,6 @@
 const MessagesModel = require('../models/messages.model');
 const UserInboxModel = require('../models/userInbox.model');
+const ClubesModel = require('../models/clubes.model');
 const { getUserId } = require('../utils/auth');
 
 exports.createMessage = async (req, res) => {
@@ -31,6 +32,46 @@ exports.createMessage = async (req, res) => {
     return res.status(201).json({ mensaje: 'Mensaje creado', message });
   } catch (error) {
     console.error('Error al crear mensaje:', error);
+    return res.status(500).json({ mensaje: error.message || 'Error interno del servidor' });
+  }
+};
+
+exports.broadcastMessage = async (req, res) => {
+  try {
+    const { type = 'info', title, content, sender = 'Sistema' } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ mensaje: 'title y content son requeridos' });
+    }
+
+    const clubIds = await ClubesModel.listClubIds();
+
+    if (!clubIds.length) {
+      return res.status(404).json({ mensaje: 'No hay clubes disponibles para enviar mensajes' });
+    }
+
+    const createdMessages = [];
+
+    for (const clubId of clubIds) {
+      // eslint-disable-next-line no-await-in-loop
+      const message = await MessagesModel.createMessage({
+        club_id: clubId,
+        type,
+        title,
+        content,
+        sender,
+        broadcast: true,
+      });
+      createdMessages.push(message);
+    }
+
+    return res.status(201).json({
+      mensaje: 'Mensajes enviados a todos los clubes',
+      totalClubes: clubIds.length,
+      mensajesCreados: createdMessages,
+    });
+  } catch (error) {
+    console.error('Error al enviar mensajes de broadcast:', error);
     return res.status(500).json({ mensaje: error.message || 'Error interno del servidor' });
   }
 };

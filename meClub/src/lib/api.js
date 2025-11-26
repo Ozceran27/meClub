@@ -981,3 +981,16 @@ export async function createSystemMessage(payload) {
   return response?.message ?? response;
 }
 
+export async function sendBroadcastMessage({ type = 'info', title, content, sender } = {}) {
+  if (!title || !content) {
+    throw new Error('title y content son requeridos');
+  }
+
+  const payload = { type, title, content };
+  if (sender) {
+    payload.sender = sender;
+  }
+
+  return api.post('/mensajes/broadcast', payload);
+}
+
