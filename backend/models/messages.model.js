@@ -1,5 +1,31 @@
 const db = require('../config/db');
 
+const fetchClubUserIds = async ({ club_id, connection }) => {
+  const [clubRows] = await connection.query('SELECT usuario_id FROM clubes WHERE club_id = ?', [club_id]);
+  const [clubUsersRows] = await connection.query(
+    'SELECT usuario_id FROM clubs_usuarios WHERE club_id = ?',
+    [club_id]
+  );
+
+  const ids = new Set();
+
+  clubRows.forEach((row) => {
+    const id = Number(row.usuario_id);
+    if (Number.isInteger(id)) {
+      ids.add(id);
+    }
+  });
+
+  clubUsersRows.forEach((row) => {
+    const id = Number(row.usuario_id);
+    if (Number.isInteger(id)) {
+      ids.add(id);
+    }
+  });
+
+  return Array.from(ids);
+};
+
 const MessagesModel = {
   createMessage: async ({
     club_id,
@@ -8,6 +34,7 @@ const MessagesModel = {
     content,
     sender = 'Sistema',
     targetUserIds = [],
+    broadcast = false,
     connection: externalConnection = null,
   }) => {
     if (club_id === undefined || club_id === null) {
@@ -32,6 +59,13 @@ const MessagesModel = {
         await connection.beginTransaction();
       }
 
+      if (broadcast && sanitizedTargetIds.length === 0) {
+        const userIds = await fetchClubUserIds({ club_id, connection });
+        sanitizedTargetIds.push(...userIds.filter((id) => Number.isInteger(id)));
+      }
+
+      const uniqueTargets = [...new Set(sanitizedTargetIds)];
+
       const [messageResult] = await connection.query(
         `INSERT INTO messages (club_id, type, title, content, sender)
          VALUES (?, ?, ?, ?, ?)`,
@@ -40,8 +74,8 @@ const MessagesModel = {
 
       const messageId = messageResult.insertId;
 
-      if (sanitizedTargetIds.length > 0) {
-        const values = sanitizedTargetIds.map((userId) => [userId, club_id, messageId]);
+      if (uniqueTargets.length > 0) {
+        const values = uniqueTargets.map((userId) => [userId, club_id, messageId]);
         await connection.query(
           'INSERT INTO user_inbox (user_id, club_id, message_id) VALUES ?',
           [values]
