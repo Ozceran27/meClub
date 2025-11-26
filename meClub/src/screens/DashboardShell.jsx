@@ -4,7 +4,7 @@ import { useNavigation, useTheme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors as mcColors } from '../theme/tokens';
 import { useAuth } from '../features/auth/useAuth';
-import { getClubSummary } from '../lib/api';
+import { getClubSummary, getInboxSummary } from '../lib/api';
 import {
   InicioScreen,
   ReservasScreen,
@@ -27,6 +27,33 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
       ? 'text-mc-warn'
       : 'text-white/80';
   const computedBadge = badge ?? (minLevel > 1 ? 'PRO' : undefined);
+  const isBadgeElement = React.isValidElement(computedBadge);
+  const badgeText = !isBadgeElement && computedBadge != null ? String(computedBadge) : '';
+  const isProBadge = badgeText === 'PRO';
+  const badgeContent = isBadgeElement
+    ? computedBadge
+    : badgeText
+      ? (
+        <View
+          className={`rounded-full px-2 py-[2px] border ${
+            isProBadge ? 'bg-amber-500/20 border-amber-400/50' : 'bg-rose-500/20 border-rose-400/60'
+          }`}
+          accessible
+          accessibilityLabel={isProBadge ? 'Funcionalidad PRO' : `${badgeText} notificaciones`}
+          aria-label={isProBadge ? 'Funcionalidad PRO' : `${badgeText} notificaciones`}
+        >
+          <Text className={`text-[10px] font-semibold ${isProBadge ? 'text-amber-300' : 'text-rose-100'}`}>{badgeText}</Text>
+        </View>
+      )
+      : null;
+
+  const accessibilityLabel = `${label}${
+    badgeText
+      ? isProBadge
+        ? ', sección PRO'
+        : `, ${badgeText} notificaciones`
+      : ''
+  }${disabled ? ', deshabilitado' : ''}`;
 
   return (
     <Pressable
@@ -35,6 +62,8 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
       className={`w-full rounded-xl px-3 py-3 mb-1.5 ${
         active ? 'bg-white/5' : 'bg-transparent'
       } hover:bg-white/10 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+      accessibilityLabel={accessibilityLabel}
+      aria-label={accessibilityLabel}
       style={({ pressed }) => ({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
@@ -55,11 +84,7 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
             {label}
           </Text>
         </View>
-        {computedBadge && (
-          <View className="rounded-full px-2 py-[2px] bg-amber-500/20 border border-amber-400/50">
-            <Text className="text-[10px] font-semibold text-amber-300">{computedBadge}</Text>
-          </View>
-        )}
+        {badgeContent}
       </View>
     </Pressable>
   );
@@ -69,6 +94,7 @@ export default function DashboardShell() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
   const [activeKey, setActiveKey] = useState('inicio');
+  const [unreadCount, setUnreadCount] = useState(0);
   const [summary, setSummary] = useState({
     courtsAvailable: 0,
     courtsMaintenance: 0,
@@ -88,6 +114,14 @@ export default function DashboardShell() {
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const updateUnreadCount = useCallback((nextValue) => {
+    setUnreadCount((prev) => {
+      const resolved = typeof nextValue === 'function' ? nextValue(prev) : nextValue;
+      const numeric = typeof resolved === 'string' ? Number.parseInt(resolved, 10) : resolved;
+      const normalized = Number.isFinite(numeric) ? numeric : 0;
+      return normalized < 0 ? 0 : normalized;
+    });
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -112,14 +146,61 @@ export default function DashboardShell() {
     return () => { alive = false; };
   }, [user?.clubId, user?.club?.id]);
 
+  const refreshInboxSummary = useCallback(async () => {
+    try {
+      const summaryResponse = await getInboxSummary();
+      updateUnreadCount(summaryResponse?.unreadCount ?? 0);
+      return summaryResponse;
+    } catch {
+      return null;
+    }
+  }, [updateUnreadCount]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!user) {
+        updateUnreadCount(0);
+        return;
+      }
+      try {
+        const summaryResponse = await getInboxSummary();
+        if (alive) {
+          updateUnreadCount(summaryResponse?.unreadCount ?? 0);
+        }
+      } catch {
+        // Ignorado para no bloquear el resto del dashboard
+      }
+    })();
+    return () => { alive = false; };
+  }, [updateUnreadCount, user]);
+
   const handleLogout = useCallback(async () => {
     setProfileMenuOpen(false);
     await logout();
   }, [logout]);
 
+  const inboxBadge = useMemo(() => {
+    if (unreadCount <= 0) return undefined;
+    if (unreadCount > 9) {
+      return String(Math.min(unreadCount, 99));
+    }
+    const label = unreadCount === 1
+      ? '1 mensaje sin leer'
+      : `${unreadCount} mensajes sin leer`;
+    return (
+      <View
+        className="h-2.5 w-2.5 rounded-full bg-rose-400"
+        accessible
+        accessibilityLabel={label}
+        aria-label={label}
+      />
+    );
+  }, [unreadCount]);
+
   const items = useMemo(() => ([
     { key: 'inicio', label: 'Inicio', iconName: 'home-outline', minLevel: 1 },
-    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline', minLevel: 1 },
+    { key: 'buzon', label: 'Buzón', iconName: 'mail-outline', minLevel: 1, badge: inboxBadge },
     { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline', minLevel: 1 },
     { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline', minLevel: 1 },
     { key: 'economia', label: 'Economía', iconName: 'cash-outline', minLevel: 1 },
@@ -130,7 +211,7 @@ export default function DashboardShell() {
     { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', minLevel: 2 },
     { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline', minLevel: 1 },
     { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline', minLevel: 1 },
-  ]), []);
+  ]), [inboxBadge]);
 
   const clubLevel = useMemo(() => {
     const parsed = Number(user?.nivel_id ?? 1);
@@ -196,7 +277,15 @@ export default function DashboardShell() {
     buzon: BuzonScreen,
   };
   const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
-  const screenProps = { summary, firstName, today, go };
+  const screenProps = {
+    summary,
+    firstName,
+    today,
+    go,
+    unreadCount,
+    onUnreadCountChange: updateUnreadCount,
+    refreshInboxSummary,
+  };
 
   const clubLogo = user?.clubLogoUrl || user?.foto_logo;
   const scrollPointerEvents = profileMenuOpen ? 'box-none' : 'auto';

@@ -19,6 +19,7 @@ jest.mock('../models/userInbox.model', () => ({
   listUserInbox: jest.fn(),
   markAsRead: jest.fn(),
   deleteFromInbox: jest.fn(),
+  getInboxSummary: jest.fn(),
 }));
 
 const messagesRoutes = require('../routes/messages.routes');
@@ -95,5 +96,16 @@ describe('Rutas de mensajes e inbox', () => {
     const res = await request(app).delete('/inbox/99');
 
     expect(res.status).toBe(404);
+  });
+
+  it('devuelve el resumen de inbox con conteo de no leídos', async () => {
+    const app = buildApp();
+    UserInboxModel.getInboxSummary.mockResolvedValue({ total: 8, unreadCount: 3 });
+
+    const res = await request(app).get('/inbox/resumen');
+
+    expect(res.status).toBe(200);
+    expect(UserInboxModel.getInboxSummary).toHaveBeenCalledWith({ user_id: 77 });
+    expect(res.body.unreadCount).toBe(3);
   });
 });

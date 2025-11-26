@@ -80,6 +80,26 @@ const UserInboxModel = {
 
     return result.affectedRows > 0;
   },
+
+  getInboxSummary: async ({ user_id }) => {
+    if (user_id === undefined || user_id === null) {
+      throw new Error('user_id es requerido');
+    }
+
+    const [[counts]] = await db.query(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN is_read = 0 OR is_read IS NULL THEN 1 ELSE 0 END) AS unread
+       FROM user_inbox
+       WHERE user_id = ?`,
+      [user_id]
+    );
+
+    return {
+      total: Number.parseInt(counts.total, 10) || 0,
+      unreadCount: Number.parseInt(counts.unread, 10) || 0,
+    };
+  },
 };
 
 module.exports = UserInboxModel;

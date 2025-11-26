@@ -57,7 +57,7 @@ function TypePill({ type }) {
   );
 }
 
-export default function BuzonScreen() {
+export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refreshInboxSummary }) {
   const [messages, setMessages] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -86,12 +86,21 @@ export default function BuzonScreen() {
         : page * PAGE_LIMIT + (data.length === PAGE_LIMIT ? 1 : 0);
       setTotal(totalItems);
       setHasMore(page * PAGE_LIMIT < totalItems);
+      if (typeof onUnreadCountChange === 'function' && totalItems <= PAGE_LIMIT) {
+        const unreadInPage = data.filter((item) => !item.isRead).length;
+        if (unreadInPage !== unreadCount) {
+          onUnreadCountChange(Math.max(unreadInPage, 0));
+        }
+      }
+      if (typeof refreshInboxSummary === 'function') {
+        refreshInboxSummary();
+      }
     } catch (err) {
       setError(err?.message || 'No se pudo cargar el buzón');
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [onUnreadCountChange, page, refreshInboxSummary, unreadCount]);
 
   useEffect(() => {
     loadInbox();
@@ -102,6 +111,8 @@ export default function BuzonScreen() {
       if (!message) return;
       setSelectedMessage(message);
       if (message.isRead) return;
+
+      const wasUnread = !message.isRead;
 
       try {
         await markInboxRead(message.inboxId);
@@ -117,15 +128,19 @@ export default function BuzonScreen() {
             ? { ...prev, isRead: true, readAt: new Date().toISOString() }
             : prev
         );
+        if (wasUnread && typeof onUnreadCountChange === 'function') {
+          onUnreadCountChange((prev) => Math.max(0, prev - 1));
+        }
       } catch (err) {
         setError(err?.message || 'No se pudo marcar como leído');
       }
     },
-    []
+    [onUnreadCountChange]
   );
 
   const handleDelete = useCallback(() => {
     if (!selectedMessage) return;
+    const wasUnread = !selectedMessage.isRead;
     Alert.alert(
       'Eliminar mensaje',
       'Esta acción no se puede deshacer. ¿Deseas continuar?',
@@ -145,6 +160,12 @@ export default function BuzonScreen() {
               if (messages.length === 1 && page > 1) {
                 setPage((prev) => Math.max(1, prev - 1));
               }
+              if (wasUnread && typeof onUnreadCountChange === 'function') {
+                onUnreadCountChange((prev) => Math.max(0, prev - 1));
+              }
+              if (typeof refreshInboxSummary === 'function') {
+                refreshInboxSummary();
+              }
             } catch (err) {
               setError(err?.message || 'No se pudo eliminar el mensaje');
             }
@@ -152,7 +173,7 @@ export default function BuzonScreen() {
         },
       ]
     );
-  }, [page, selectedMessage, total, messages.length]);
+  }, [messages.length, onUnreadCountChange, page, refreshInboxSummary, selectedMessage, total]);
 
   const closeModal = useCallback(() => setSelectedMessage(null), []);
 
