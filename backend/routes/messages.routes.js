@@ -7,6 +7,7 @@ const messagesController = require('../controllers/messages.controller');
 router.get('/', verifyToken, messagesController.listInbox);
 router.get('/inbox', verifyToken, messagesController.listInbox);
 router.post('/', verifyToken, requireRole('club'), messagesController.createMessage);
+router.post('/broadcast', verifyToken, requireRole('admin'), messagesController.broadcastMessage);
 router.patch('/inbox/:inboxId/leer', verifyToken, messagesController.markAsRead);
 router.delete('/inbox/:inboxId', verifyToken, messagesController.deleteInbox);
 router.delete('/:messageId', verifyToken, requireRole('club'), messagesController.deleteMessage);
