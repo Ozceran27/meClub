@@ -14,6 +14,10 @@ jest.mock('../models/clubes.model', () => ({
   crearClub: jest.fn(),
 }));
 
+jest.mock('../models/messages.model', () => ({
+  createMessage: jest.fn(),
+}));
+
 jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
 }));
@@ -25,6 +29,7 @@ jest.mock('../config/db', () => ({
 const { register } = require('../controllers/auth.controller');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
+const MessagesModel = require('../models/messages.model');
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 
@@ -94,6 +99,7 @@ describe('register controller', () => {
       rol: 'deportista',
     });
     expect(jsonBody.club).toBeNull();
+    expect(MessagesModel.createMessage).not.toHaveBeenCalled();
     expect(mockConnection.commit).toHaveBeenCalledTimes(1);
     expect(mockConnection.release).toHaveBeenCalledTimes(1);
   });
@@ -131,6 +137,16 @@ describe('register controller', () => {
       rol: 'club',
     });
     expect(jsonBody.club).toMatchObject({ club_id: 10, nombre: 'Club Test' });
+    expect(MessagesModel.createMessage).toHaveBeenCalledWith({
+      broadcast: true,
+      club_id: 10,
+      connection: mockConnection,
+      content:
+        'Tu club ya está listo. Invita a tu equipo y personaliza tu perfil para comenzar a recibir reservas.',
+      sender: 'Sistema',
+      title: '¡Bienvenido a MeClub!',
+      type: 'info',
+    });
     expect(mockConnection.commit).toHaveBeenCalledTimes(1);
     expect(mockConnection.release).toHaveBeenCalledTimes(1);
   });
