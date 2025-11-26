@@ -33,38 +33,41 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
 
   return (
     <>
-      <View className="py-6 flex-row items-start justify-between gap-4">
-        <View className="flex-1">
-          <Text className="text-white text-[36px] font-extrabold tracking-tight">
-            Hola, <Text className="text-mc-warn">{firstName}</Text>
-          </Text>
-          <Text className="text-white/60 mt-1">{today}</Text>
-        </View>
-
-        <View className="items-end gap-2" accessibilityRole="text" accessibilityLabel="Indicadores de demanda y clima">
-          <View
-            className={`flex-row items-center gap-2 rounded-full border px-3 py-1 ${demandStyles}`}
-          >
-            <Ionicons
-              name={isHighDemand ? 'trending-up' : 'trending-down'}
-              size={16}
-              color={demandIconColor}
-              accessibilityLabel="Demanda de reservas"
-            />
-            <Text className={`${demandTextColor} text-[12px] font-semibold tracking-wide`}>
-              {demandLabel}
+      <View className="py-6 gap-3">
+        <View className="flex-row flex-wrap items-center justify-between gap-3">
+          <View className="flex-1 min-w-[200px]">
+            <Text className="text-white text-[36px] font-extrabold tracking-tight">
+              Hola, <Text className="text-mc-warn">{firstName}</Text>
             </Text>
-            <Text className={`${demandTextColor} text-[12px]`}>
-              {reservasHoy} hoy
-            </Text>
+            <Text className="text-white/60 mt-1">{today}</Text>
           </View>
 
-          <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1">
-            <Ionicons name="partly-sunny-outline" size={16} color="#FDE68A" />
-            <Text className="text-amber-100 text-[12px] font-semibold tracking-wide">{weatherTemp}</Text>
-            <Text className="text-white/80 text-[12px]" numberOfLines={1}>
-              {weatherStatus}
-            </Text>
+          <View
+            className="flex-1 flex-row flex-wrap items-center justify-center gap-2"
+            accessibilityRole="text"
+            accessibilityLabel="Indicadores de demanda y clima"
+          >
+            <View
+              className={`flex-row items-center gap-2 rounded-full border px-3 py-1 ${demandStyles}`}
+            >
+              <Ionicons
+                name={isHighDemand ? 'trending-up' : 'trending-down'}
+                size={16}
+                color={demandIconColor}
+                accessibilityLabel="Demanda de reservas"
+              />
+              <Text className={`${demandTextColor} text-[12px] font-semibold tracking-wide`}>
+                {demandLabel}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1">
+              <Ionicons name="partly-sunny-outline" size={16} color="#FDE68A" />
+              <Text className="text-amber-100 text-[12px] font-semibold tracking-wide">{weatherTemp}</Text>
+              <Text className="text-white/80 text-[12px]" numberOfLines={1}>
+                {weatherStatus}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
