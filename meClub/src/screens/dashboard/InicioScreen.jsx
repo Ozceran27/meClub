@@ -41,7 +41,7 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
       <View className="py-6 gap-3">
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1 min-w-[240px] gap-2">
-            <View className="flex-row flex-wrap items-center gap-3">
+            <View className="flex-row flex-wrap items-center gap-20">
               <Text className="text-white text-[32px] sm:text-[36px] font-extrabold tracking-tight">
                 Hola, <Text className="text-mc-warn">{firstName}</Text>
               </Text>
