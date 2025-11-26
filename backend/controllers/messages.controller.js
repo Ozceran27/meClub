@@ -4,7 +4,15 @@ const { getUserId } = require('../utils/auth');
 
 exports.createMessage = async (req, res) => {
   try {
-    const { club_id, type = 'info', title, content, sender = 'Sistema', targetUserIds = [] } = req.body;
+    const {
+      club_id,
+      type = 'info',
+      title,
+      content,
+      sender = 'Sistema',
+      targetUserIds = [],
+      broadcast = false,
+    } = req.body;
 
     if (!club_id || !title || !content) {
       return res.status(400).json({ mensaje: 'club_id, title y content son requeridos' });
@@ -17,6 +25,7 @@ exports.createMessage = async (req, res) => {
       content,
       sender,
       targetUserIds,
+      broadcast: broadcast === true || broadcast === 'true',
     });
 
     return res.status(201).json({ mensaje: 'Mensaje creado', message });

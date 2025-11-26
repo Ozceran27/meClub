@@ -64,6 +64,7 @@ describe('Rutas de mensajes e inbox', () => {
       content: 'Probando',
       sender: 'Sistema',
       targetUserIds: [1, 2],
+      broadcast: false,
     });
   });
 

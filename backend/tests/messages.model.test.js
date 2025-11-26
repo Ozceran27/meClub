@@ -88,4 +88,37 @@ describe('MessagesModel.createMessage', () => {
     expect(connection.commit).toHaveBeenCalledTimes(1);
     expect(result.id).toBe(5);
   });
+
+  it('obtiene los usuarios del club cuando se activa broadcast y no hay destinatarios', async () => {
+    const connection = buildConnection();
+
+    connection.query
+      .mockResolvedValueOnce([[{ usuario_id: 22 }]])
+      .mockResolvedValueOnce([[{ usuario_id: 30 }, { usuario_id: 22 }]])
+      .mockResolvedValueOnce([{ insertId: 18 }])
+      .mockResolvedValueOnce([{}]);
+
+    const result = await MessagesModel.createMessage({
+      club_id: 12,
+      title: 'Aviso general',
+      content: 'Mensaje para todos',
+      broadcast: true,
+    });
+
+    expect(connection.query).toHaveBeenNthCalledWith(1, 'SELECT usuario_id FROM clubes WHERE club_id = ?', [12]);
+    expect(connection.query).toHaveBeenNthCalledWith(2, 'SELECT usuario_id FROM clubs_usuarios WHERE club_id = ?', [12]);
+    expect(connection.query).toHaveBeenNthCalledWith(
+      3,
+      `INSERT INTO messages (club_id, type, title, content, sender)
+         VALUES (?, ?, ?, ?, ?)` ,
+      [12, 'info', 'Aviso general', 'Mensaje para todos', 'Sistema']
+    );
+    expect(connection.query).toHaveBeenNthCalledWith(4, 'INSERT INTO user_inbox (user_id, club_id, message_id) VALUES ?', [
+      [
+        [22, 12, 18],
+        [30, 12, 18],
+      ],
+    ]);
+    expect(result.id).toBe(18);
+  });
 });
