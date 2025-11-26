@@ -125,7 +125,7 @@ const ClubesModel = {
     latitud = null,
     longitud = null,
     google_place_id = null,
-  }) => {
+  }, connection = null) => {
     const { value: logoValue } = prepareLogoValue(foto_logo === undefined ? null : foto_logo);
     const descripcionValue = normalizeNullableTrimmedString(descripcion, 'descripcion');
     const telefonoValue = normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto');
@@ -138,7 +138,8 @@ const ClubesModel = {
     const localidadValue = normalizeNullableInteger(localidad_id, 'localidad_id');
     const placeIdValue = normalizeNullableTrimmedString(google_place_id, 'google_place_id');
 
-    const [result] = await db.query(
+    const executor = connection || db;
+    const [result] = await executor.query(
       `INSERT INTO clubes
        (nombre, descripcion, telefono_contacto, email_contacto, precio_grabacion, direccion, latitud, longitud, google_place_id,
         usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id)

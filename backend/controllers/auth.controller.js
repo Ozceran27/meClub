@@ -7,6 +7,7 @@ const ClubesModel = require('../models/clubes.model');
 const PasswordResetsModel = require('../models/passwordResets.model');
 const logger = require('../utils/logger');
 const { prepareLogoValue } = require('../utils/logoStorage');
+const db = require('../config/db');
 
 const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
 const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -49,11 +50,15 @@ exports.register = async (req, res) => {
 
   const uploadedLogoBuffer = req.file ? req.file.buffer : null;
 
+  let connection;
   try {
     const usuarioExistente = await UsuariosModel.buscarPorEmail(email);
     if (usuarioExistente.length > 0) {
       return res.status(400).json({ mensaje: 'El email ya está registrado' });
     }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
 
     const hashedPassword = await bcrypt.hash(contrasena, 10);
 
@@ -63,7 +68,7 @@ exports.register = async (req, res) => {
       email,
       contrasena: hashedPassword,
       rol,
-    });
+    }, connection);
 
     let clubCreado = null;
     if (rol === 'club') {
@@ -76,7 +81,7 @@ exports.register = async (req, res) => {
         foto_logo:
           uploadedLogoBuffer ??
           (foto_logo !== undefined ? prepareLogoValue(foto_logo).value : null),
-      });
+      }, connection);
     }
 
     if (!process.env.JWT_SECRET) {
@@ -95,6 +100,8 @@ exports.register = async (req, res) => {
 
     const clubInfo = mapClubResponse(clubCreado);
 
+    await connection.commit();
+
     res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
       token,
@@ -103,7 +110,18 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error en registro:', error);
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        logger.error('Error al hacer rollback:', rollbackError);
+      }
+    }
     res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 };
 
