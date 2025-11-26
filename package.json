@@ -11,6 +11,7 @@
     "concurrently": "^9.1.2"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "expo-location": "^19.0.7",
     "react-native-maps": "^1.26.14"
   }
