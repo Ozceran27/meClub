@@ -311,6 +311,15 @@ const ClubesModel = {
   },
 
   obtenerResumen: async (club_id) => {
+    const [clubRows] = await db.query(
+      `SELECT latitud, longitud FROM clubes WHERE club_id = ? LIMIT 1`,
+      [club_id]
+    );
+
+    const clubCoords = clubRows?.[0] || {};
+    const clubLat = Number.isFinite(Number(clubCoords.latitud)) ? Number(clubCoords.latitud) : null;
+    const clubLon = Number.isFinite(Number(clubCoords.longitud)) ? Number(clubCoords.longitud) : null;
+
     const courtStatusPromise = db.query(
       `SELECT estado, COUNT(*) AS total
        FROM canchas
@@ -456,6 +465,11 @@ const ClubesModel = {
     const reservasMesActual =
       reservasMensuales.find((row) => row.periodo === periodoActual)?.total || 0;
 
+    const weatherResponse = await fetchCurrentWeather({
+      latitud: clubLat,
+      longitud: clubLon,
+    });
+
     return {
       courtsAvailable,
       courtsMaintenance,
@@ -469,8 +483,70 @@ const ClubesModel = {
       reservasDiarias,
       reservasMensuales,
       reservasMesActual,
+      weatherStatus: weatherResponse.status,
+      weatherTemp: weatherResponse.temperature,
     };
   },
 };
+
+async function fetchCurrentWeather({ latitud, longitud }) {
+  if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
+    return { status: null, temperature: null };
+  }
+
+  const weatherCodeMap = {
+    0: 'Despejado',
+    1: 'Mayormente despejado',
+    2: 'Parcialmente nublado',
+    3: 'Nublado',
+    45: 'Niebla',
+    48: 'Niebla con escarcha',
+    51: 'Llovizna ligera',
+    53: 'Llovizna moderada',
+    55: 'Llovizna intensa',
+    61: 'Lluvia débil',
+    63: 'Lluvia moderada',
+    65: 'Lluvia intensa',
+    71: 'Nieve ligera',
+    73: 'Nieve moderada',
+    75: 'Nieve intensa',
+    77: 'Granos de nieve',
+    80: 'Chubascos ligeros',
+    81: 'Chubascos moderados',
+    82: 'Chubascos intensos',
+    95: 'Tormenta',
+    96: 'Tormenta con granizo ligero',
+    99: 'Tormenta con granizo fuerte',
+  };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const url = new URL('https://api.open-meteo.com/v1/forecast');
+    url.searchParams.set('latitude', latitud);
+    url.searchParams.set('longitude', longitud);
+    url.searchParams.set('current', 'temperature_2m,weather_code');
+
+    const res = await fetch(url.toString(), { signal: controller.signal });
+    if (!res.ok) {
+      return { status: null, temperature: null };
+    }
+
+    const body = await res.json();
+    const temp = Number(body?.current?.temperature_2m);
+    const code = Number(body?.current?.weather_code);
+
+    return {
+      status: weatherCodeMap[code] || null,
+      temperature: Number.isFinite(temp) ? Math.round(temp) : null,
+    };
+  } catch (err) {
+    console.warn('Weather fetch error', err?.message || err);
+    return { status: null, temperature: null };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 module.exports = ClubesModel;

@@ -1,33 +1,67 @@
+const mockQuery = jest.fn();
+
 jest.mock('../config/db', () => ({
-  query: jest.fn(async (sql) => {
-    if (sql.includes('FROM canchas')) {
-      return [[{ total: 2 }]];
-    }
-    if (sql.includes('r.fecha = CURDATE()')) {
-      return [[{ total: 3 }]];
-    }
-    if (sql.includes('YEARWEEK')) {
-      return [[{ total: 4 }]];
-    }
-    if (sql.includes('COALESCE(SUM')) {
-      return [[{ total: 100 }]];
-    }
-    return [[{ total: 0 }]];
-  }),
+  query: mockQuery,
   getConnection: jest.fn(),
 }));
 
 const ClubesModel = require('../models/clubes.model');
 
 describe('ClubesModel.obtenerResumen', () => {
-  it('should return aggregated club statistics', async () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    jest.useFakeTimers().setSystemTime(new Date('2024-05-15T12:00:00Z'));
+    mockQuery.mockReset();
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    global.fetch = originalFetch;
+  });
+
+  it('should return aggregated club statistics with weather data', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ latitud: -34.6, longitud: -58.4 }]])
+      .mockResolvedValueOnce([[{ estado: 'disponible', total: 5 }, { estado: 'mantenimiento', total: 1 }]])
+      .mockResolvedValueOnce([[{ total: 7 }]])
+      .mockResolvedValueOnce([[{ total: 10 }]])
+      .mockResolvedValueOnce([[{ total: 1500 }]])
+      .mockResolvedValueOnce([[{ etiqueta: 'Césped', total: 3 }]])
+      .mockResolvedValueOnce([[{ pagadas: 4, finalizadas: 2 }]])
+      .mockResolvedValueOnce([[{ fecha: new Date('2024-05-14'), total: 2, pagadas: 1, finalizadas: 0 }]])
+      .mockResolvedValueOnce([[{ periodo: '2024-05', total: 12 }]]);
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ current: { temperature_2m: 23.7, weather_code: 1 } }),
+    });
+
     const resumen = await ClubesModel.obtenerResumen(1);
 
     expect(resumen).toEqual({
-      courtsAvailable: 2,
-      reservasHoy: 3,
-      reservasSemana: 4,
-      economiaMes: 100,
+      courtsAvailable: 5,
+      courtsMaintenance: 1,
+      courtsInactive: 0,
+      reservasHoy: 7,
+      reservasSemana: 10,
+      economiaMes: 1500,
+      courtTypes: [{ etiqueta: 'Césped', total: 3 }],
+      reservasPagadasHoy: 4,
+      reservasFinalizadasHoy: 2,
+      reservasDiarias: [
+        {
+          fecha: '2024-05-14',
+          finalizadas: 0,
+          pagadas: 1,
+          total: 2,
+        },
+      ],
+      reservasMensuales: [{ periodo: '2024-05', total: 12 }],
+      reservasMesActual: 12,
+      weatherStatus: 'Mayormente despejado',
+      weatherTemp: 24,
     });
   });
 });

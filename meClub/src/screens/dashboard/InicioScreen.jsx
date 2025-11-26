@@ -18,11 +18,55 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         .join(' · ')
     : 'Sin canchas registradas';
 
+  const reservasHoy = summary.reservasHoy ?? 0;
+  const isHighDemand = reservasHoy > 6;
+  const demandLabel = isHighDemand ? 'ALTA DEMANDA' : 'BAJA DEMANDA';
+  const demandStyles = isHighDemand
+    ? 'border-emerald-400/30 bg-emerald-500/10'
+    : 'border-rose-400/30 bg-rose-500/10';
+  const demandTextColor = isHighDemand ? 'text-emerald-100' : 'text-rose-100';
+  const demandIconColor = isHighDemand ? '#A7F3D0' : '#FCA5A5';
+
+  const hasWeatherTemp = Number.isFinite(summary.weatherTemp);
+  const weatherTemp = hasWeatherTemp ? `${summary.weatherTemp}°` : '—';
+  const weatherStatus = summary.weatherStatus || 'Clima no disponible';
+
   return (
     <>
-      <View className="py-6">
-        <Text className="text-white text-[36px] font-extrabold tracking-tight">Hola, <Text className="text-mc-warn">{firstName}</Text></Text>
-        <Text className="text-white/60 mt-1">{today}</Text>
+      <View className="py-6 flex-row items-start justify-between gap-4">
+        <View className="flex-1">
+          <Text className="text-white text-[36px] font-extrabold tracking-tight">
+            Hola, <Text className="text-mc-warn">{firstName}</Text>
+          </Text>
+          <Text className="text-white/60 mt-1">{today}</Text>
+        </View>
+
+        <View className="items-end gap-2" accessibilityRole="text" accessibilityLabel="Indicadores de demanda y clima">
+          <View
+            className={`flex-row items-center gap-2 rounded-full border px-3 py-1 ${demandStyles}`}
+          >
+            <Ionicons
+              name={isHighDemand ? 'trending-up' : 'trending-down'}
+              size={16}
+              color={demandIconColor}
+              accessibilityLabel="Demanda de reservas"
+            />
+            <Text className={`${demandTextColor} text-[12px] font-semibold tracking-wide`}>
+              {demandLabel}
+            </Text>
+            <Text className={`${demandTextColor} text-[12px]`}>
+              {reservasHoy} hoy
+            </Text>
+          </View>
+
+          <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1">
+            <Ionicons name="partly-sunny-outline" size={16} color="#FDE68A" />
+            <Text className="text-amber-100 text-[12px] font-semibold tracking-wide">{weatherTemp}</Text>
+            <Text className="text-white/80 text-[12px]" numberOfLines={1}>
+              {weatherStatus}
+            </Text>
+          </View>
+        </View>
       </View>
 
       <View className="gap-6">
