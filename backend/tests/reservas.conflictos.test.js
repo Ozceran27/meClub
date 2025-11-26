@@ -190,6 +190,22 @@ describe('Gestión de solapes de reservas', () => {
         return Promise.resolve([{ insertId: nuevaReserva.reserva_id }, []]);
       }
 
+      if (sql.startsWith('SELECT usuario_id FROM clubes')) {
+        return Promise.resolve([[{ usuario_id: 500 }], []]);
+      }
+
+      if (sql.startsWith('SELECT usuario_id FROM clubs_usuarios')) {
+        return Promise.resolve([[{ usuario_id: 501 }], []]);
+      }
+
+      if (sql.startsWith('INSERT INTO messages')) {
+        return Promise.resolve([{ insertId: 700 }]);
+      }
+
+      if (sql.startsWith('INSERT INTO user_inbox')) {
+        return Promise.resolve([{}]);
+      }
+
       if (sql.startsWith('UPDATE reservas SET estado')) {
         const [nuevoEstado, reservaId] = params;
         const reserva = reservasEnMemoria.find((item) => item.reserva_id === reservaId);
@@ -219,6 +235,22 @@ describe('Gestión de solapes de reservas', () => {
       if (sql.startsWith('INSERT INTO reservas')) {
         const nuevaReserva = buildInsertReserva(params);
         return Promise.resolve([{ insertId: nuevaReserva.reserva_id }, []]);
+      }
+
+      if (sql.startsWith('SELECT usuario_id FROM clubes')) {
+        return Promise.resolve([[{ usuario_id: 500 }], []]);
+      }
+
+      if (sql.startsWith('SELECT usuario_id FROM clubs_usuarios')) {
+        return Promise.resolve([[{ usuario_id: 501 }], []]);
+      }
+
+      if (sql.startsWith('INSERT INTO messages')) {
+        return Promise.resolve([{ insertId: 700 }]);
+      }
+
+      if (sql.startsWith('INSERT INTO user_inbox')) {
+        return Promise.resolve([{}]);
       }
 
       return Promise.reject(new Error(`Query no mockeada en conexión: ${sql}`));

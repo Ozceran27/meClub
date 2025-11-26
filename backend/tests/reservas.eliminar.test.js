@@ -127,7 +127,9 @@ describe('DELETE /reservas/:id', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ mensaje: 'Reserva eliminada' });
-    expect(ReservasModel.eliminar).toHaveBeenCalledWith({ reserva_id: 7, club_id: 10 });
+    expect(ReservasModel.eliminar).toHaveBeenCalledWith(
+      expect.objectContaining({ reserva_id: 7, club_id: 10 })
+    );
   });
 
   it('propaga un 404 si el modelo informa que no existe', async () => {
