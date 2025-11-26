@@ -11,6 +11,7 @@ import {
   CanchasScreen,
   ConfiguracionScreen,
   EconomiaScreen,
+  BuzonScreen,
 } from './dashboard';
 import WorkInProgressScreen from './WorkInProgressScreen';
 
@@ -192,6 +193,7 @@ export default function DashboardShell() {
     'mis-canchas': CanchasScreen,
     configuracion: ConfiguracionScreen,
     economia: EconomiaScreen,
+    buzon: BuzonScreen,
   };
   const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
   const screenProps = { summary, firstName, today, go };
