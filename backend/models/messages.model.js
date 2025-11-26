@@ -1,7 +1,15 @@
 const db = require('../config/db');
 
 const MessagesModel = {
-  createMessage: async ({ club_id, type = 'info', title, content, sender = 'Sistema', targetUserIds = [] }) => {
+  createMessage: async ({
+    club_id,
+    type = 'info',
+    title,
+    content,
+    sender = 'Sistema',
+    targetUserIds = [],
+    connection: externalConnection = null,
+  }) => {
     if (club_id === undefined || club_id === null) {
       throw new Error('club_id es requerido');
     }
@@ -16,10 +24,13 @@ const MessagesModel = {
       ? [...new Set(targetUserIds.map((id) => Number(id)).filter(Number.isInteger))]
       : [];
 
-    const connection = await db.getConnection();
+    const connection = externalConnection || (await db.getConnection());
+    const manageTransaction = !externalConnection;
 
     try {
-      await connection.beginTransaction();
+      if (manageTransaction) {
+        await connection.beginTransaction();
+      }
 
       const [messageResult] = await connection.query(
         `INSERT INTO messages (club_id, type, title, content, sender)
@@ -37,7 +48,9 @@ const MessagesModel = {
         );
       }
 
-      await connection.commit();
+      if (manageTransaction) {
+        await connection.commit();
+      }
 
       return {
         id: messageId,
@@ -48,14 +61,18 @@ const MessagesModel = {
         sender: sender || 'Sistema',
       };
     } catch (error) {
-      try {
-        await connection.rollback();
-      } catch (rollbackError) {
-        console.error('Error al revertir la transacción de creación de mensaje', rollbackError);
+      if (manageTransaction) {
+        try {
+          await connection.rollback();
+        } catch (rollbackError) {
+          console.error('Error al revertir la transacción de creación de mensaje', rollbackError);
+        }
       }
       throw error;
     } finally {
-      connection.release();
+      if (manageTransaction) {
+        connection.release();
+      }
     }
   },
 

@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const MessagesModel = require('./messages.model');
+const { notifyClubUsers } = require('../utils/notifications');
 const {
   ESTADOS_RESERVA_ACTIVOS,
   esEstadoReservaActivo,
@@ -42,6 +44,7 @@ const ReservasModel = {
     contacto_telefono = null,
     grabacion_solicitada = 0,
     estado_pago = 'pendiente_pago',
+    notificaciones = null,
   }) => {
     if (!creado_por_id) throw new Error('creado_por_id es requerido');
     if (!cancha_id) throw new Error('cancha_id es requerido');
@@ -117,6 +120,47 @@ const ReservasModel = {
         ]
       );
 
+      const notifications = notificaciones || {};
+
+      if (
+        notifications.clubMessage &&
+        notifications.clubMessage.title &&
+        notifications.clubMessage.content
+      ) {
+        const { clubMessage } = notifications;
+        await notifyClubUsers({
+          club_id,
+          type: clubMessage.type || 'info',
+          title: clubMessage.title,
+          content: clubMessage.content,
+          sender: clubMessage.sender || 'Sistema',
+          connection,
+        });
+      }
+
+      const usuarioMessage = notifications.usuarioMessage;
+      const targetUserIds = Array.isArray(usuarioMessage?.targetUserIds)
+        ? usuarioMessage.targetUserIds
+        : [];
+      const fallbackUserId = usuario_id && Number.isInteger(Number(usuario_id)) ? [usuario_id] : [];
+
+      if (
+        usuarioMessage &&
+        usuarioMessage.title &&
+        usuarioMessage.content &&
+        (targetUserIds.length > 0 || fallbackUserId.length > 0)
+      ) {
+        await MessagesModel.createMessage({
+          club_id,
+          type: usuarioMessage.type || 'info',
+          title: usuarioMessage.title,
+          content: usuarioMessage.content,
+          sender: usuarioMessage.sender || 'Sistema',
+          targetUserIds: targetUserIds.length > 0 ? targetUserIds : fallbackUserId,
+          connection,
+        });
+      }
+
       await connection.commit();
 
       return {
@@ -152,7 +196,7 @@ const ReservasModel = {
     }
   },
 
-  eliminar: async ({ reserva_id, club_id }) => {
+  eliminar: async ({ reserva_id, club_id, usuario_id = null, notificaciones = null }) => {
     if (reserva_id === undefined || reserva_id === null) {
       throw new Error('reserva_id es requerido');
     }
@@ -176,6 +220,47 @@ const ReservasModel = {
         const error = new Error('Reserva no encontrada');
         error.code = RESERVA_NO_ENCONTRADA_CODE;
         throw error;
+      }
+
+      const notifications = notificaciones || {};
+
+      if (
+        notifications.clubMessage &&
+        notifications.clubMessage.title &&
+        notifications.clubMessage.content
+      ) {
+        const { clubMessage } = notifications;
+        await notifyClubUsers({
+          club_id,
+          type: clubMessage.type || 'info',
+          title: clubMessage.title,
+          content: clubMessage.content,
+          sender: clubMessage.sender || 'Sistema',
+          connection,
+        });
+      }
+
+      const usuarioMessage = notifications.usuarioMessage;
+      const targetUserIds = Array.isArray(usuarioMessage?.targetUserIds)
+        ? usuarioMessage.targetUserIds
+        : [];
+      const fallbackUserId = usuario_id && Number.isInteger(Number(usuario_id)) ? [usuario_id] : [];
+
+      if (
+        usuarioMessage &&
+        usuarioMessage.title &&
+        usuarioMessage.content &&
+        (targetUserIds.length > 0 || fallbackUserId.length > 0)
+      ) {
+        await MessagesModel.createMessage({
+          club_id,
+          type: usuarioMessage.type || 'info',
+          title: usuarioMessage.title,
+          content: usuarioMessage.content,
+          sender: usuarioMessage.sender || 'Sistema',
+          targetUserIds: targetUserIds.length > 0 ? targetUserIds : fallbackUserId,
+          connection,
+        });
       }
 
       await connection.commit();
