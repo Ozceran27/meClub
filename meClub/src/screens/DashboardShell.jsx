@@ -81,6 +81,8 @@ export default function DashboardShell() {
     reservasMesActual: 0,
     reservasDiarias: [],
     reservasMensuales: [],
+    weatherStatus: null,
+    weatherTemp: null,
   });
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');

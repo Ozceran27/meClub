@@ -757,6 +757,8 @@ export async function getClubSummary({ clubId }) {
       reservasDiarias: [],
       reservasMensuales: [],
       reservasMesActual: 0,
+      weatherStatus: null,
+      weatherTemp: null,
     };
   }
   try {
@@ -776,6 +778,8 @@ export async function getClubSummary({ clubId }) {
         reservasDiarias: [],
         reservasMensuales: [],
         reservasMesActual: 0,
+        weatherStatus: null,
+        weatherTemp: null,
       };
     }
     // Esperado: { courtsAvailable, courtsMaintenance, courtsInactive, reservasHoy, reservasSemana, economiaMes, courtTypes, reservasPagadasHoy, reservasFinalizadasHoy, reservasMesActual, reservasDiarias, reservasMensuales }
@@ -798,6 +802,8 @@ export async function getClubSummary({ clubId }) {
       reservasMesActual: data.reservasMesActual ?? 0,
       reservasDiarias: Array.isArray(data.reservasDiarias) ? data.reservasDiarias : [],
       reservasMensuales: Array.isArray(data.reservasMensuales) ? data.reservasMensuales : [],
+      weatherStatus: data.weatherStatus ?? null,
+      weatherTemp: data.weatherTemp ?? null,
     };
   } catch (err) {
     console.warn('getClubSummary error', err);
