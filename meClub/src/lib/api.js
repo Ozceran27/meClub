@@ -160,6 +160,72 @@ const toBoolean = (value) => {
   return false;
 };
 
+function normalizeInboxItem(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const inboxId = toNumberOrNull(raw.inbox_id ?? raw.id);
+  const messageId = toNumberOrNull(raw.message_id ?? raw.messageId);
+  const userId = toNumberOrNull(raw.user_id ?? raw.userId);
+  const clubId = toNumberOrNull(raw.club_id ?? raw.clubId);
+
+  const readAt =
+    typeof raw.read_at === 'string'
+      ? raw.read_at
+      : typeof raw.readAt === 'string'
+      ? raw.readAt
+      : null;
+
+  const createdAt =
+    typeof raw.created_at === 'string'
+      ? raw.created_at
+      : typeof raw.createdAt === 'string'
+      ? raw.createdAt
+      : null;
+
+  const messageCreatedAt =
+    typeof raw.message_created_at === 'string'
+      ? raw.message_created_at
+      : typeof raw.messageCreatedAt === 'string'
+      ? raw.messageCreatedAt
+      : null;
+
+  const normalized = {
+    inboxId,
+    id: inboxId,
+    userId,
+    clubId,
+    messageId,
+    isRead: toBoolean(raw.is_read ?? raw.isRead),
+    readAt,
+    createdAt,
+    type: raw.type ?? null,
+    title: raw.title ?? null,
+    content: raw.content ?? null,
+    sender: raw.sender ?? null,
+    messageCreatedAt,
+  };
+
+  return normalized;
+}
+
+function extractInbox(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return { page: 1, limit: 40, total: 0, inbox: [] };
+  }
+
+  const data = payload.data && typeof payload.data === 'object' ? payload.data : payload;
+  const page = toPositiveIntOrZero(data.page) || 1;
+  const limit = toPositiveIntOrZero(data.limit) || 40;
+  const total = toPositiveIntOrZero(data.total);
+  const inbox = Array.isArray(data.inbox)
+    ? data.inbox
+        .map((item) => normalizeInboxItem(item))
+        .filter((item) => item && item.inboxId != null)
+    : [];
+
+  return { page, limit, total, inbox };
+}
+
 function normalizeReservation(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const reservaId = toNumberOrNull(raw.reserva_id);
@@ -873,5 +939,45 @@ export async function searchPlayers(term, { limit } = {}) {
   const search = params.toString();
   const response = await api.get(`/usuarios/buscar${search ? `?${search}` : ''}`);
   return extractPlayerSearch(response);
+}
+
+export async function getInbox({ page = 1, limit = 40 } = {}) {
+  const params = new URLSearchParams();
+  if (page !== undefined && page !== null) {
+    params.set('page', page);
+  }
+  if (limit !== undefined && limit !== null) {
+    params.set('limit', limit);
+  }
+  const search = params.toString();
+  const response = await api.get(`/mensajes/inbox${search ? `?${search}` : ''}`);
+  return extractInbox(response);
+}
+
+export async function markInboxRead(inboxId) {
+  if (inboxId === undefined || inboxId === null || inboxId === '') {
+    throw new Error('Identificador de inbox inválido');
+  }
+
+  await api.patch(`/mensajes/inbox/${encodeURIComponent(inboxId)}/leer`);
+  return true;
+}
+
+export async function deleteInbox(inboxId) {
+  if (inboxId === undefined || inboxId === null || inboxId === '') {
+    throw new Error('Identificador de inbox inválido');
+  }
+
+  await api.del(`/mensajes/inbox/${encodeURIComponent(inboxId)}`);
+  return true;
+}
+
+export async function createSystemMessage(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Datos de mensaje inválidos');
+  }
+
+  const response = await api.post('/mensajes', payload);
+  return response?.message ?? response;
 }
 
