@@ -227,6 +227,9 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
 
     const total = montoBase + montoGrabacion;
 
+    const canchaNombre = cancha.nombre || `Cancha ${cancha.cancha_id}`;
+    const horarioTexto = `${fecha} de ${hora_inicio} a ${hora_fin}`;
+
     let contactoNombre = contacto_nombre_payload;
     let contactoApellido = contacto_apellido_payload;
     let contactoTelefono = contacto_telefono_payload;
@@ -273,6 +276,21 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       usuarioReservaId = null;
     }
 
+    const clubMessage = {
+      type: 'info',
+      title: `Nueva reserva en ${canchaNombre}`,
+      content: `Se creó una reserva para ${canchaNombre} el ${horarioTexto}.`,
+    };
+
+    const usuarioMessage = usuarioReservaId
+      ? {
+          type: 'info',
+          title: `Tu reserva en ${canchaNombre}`,
+          content: `Tu reserva en ${canchaNombre} para el ${horarioTexto} fue creada correctamente.`,
+          targetUserIds: [usuarioReservaId],
+        }
+      : null;
+
     const reserva = await ReservasModel.crear({
       usuario_id: usuarioReservaId,
       creado_por_id: usuarioIdToken,
@@ -291,6 +309,10 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_apellido: contactoApellido,
       contacto_telefono: contactoTelefono,
       estado_pago: estadoPagoNormalizado,
+      notificaciones: {
+        clubMessage,
+        usuarioMessage,
+      },
     });
 
     return res.status(201).json({
@@ -513,7 +535,34 @@ router.delete('/:reserva_id', verifyToken, requireRole('club'), loadClub, async 
       return res.status(403).json({ mensaje: 'La reserva no pertenece a tu club' });
     }
 
-    await ReservasModel.eliminar({ reserva_id: reservaId, club_id: clubId });
+    const cancha = await CanchasModel.obtenerCanchaPorId(reserva.cancha_id);
+    const canchaNombre = cancha?.nombre || `Cancha ${reserva.cancha_id}`;
+    const horarioTexto = `${reserva.fecha} de ${reserva.hora_inicio} a ${reserva.hora_fin}`;
+
+    const clubMessage = {
+      type: 'warning',
+      title: `Reserva eliminada en ${canchaNombre}`,
+      content: `Se eliminó la reserva para ${canchaNombre} programada el ${horarioTexto}.`,
+    };
+
+    const usuarioMessage = reserva.usuario_id
+      ? {
+          type: 'warning',
+          title: 'Tu reserva fue cancelada',
+          content: `Tu reserva en ${canchaNombre} para el ${horarioTexto} fue cancelada por el club.`,
+          targetUserIds: [reserva.usuario_id],
+        }
+      : null;
+
+    await ReservasModel.eliminar({
+      reserva_id: reservaId,
+      club_id: clubId,
+      usuario_id: reserva.usuario_id,
+      notificaciones: {
+        clubMessage,
+        usuarioMessage,
+      },
+    });
     return res.json({ mensaje: 'Reserva eliminada' });
   } catch (err) {
     if (err && err.code === ReservasModel.RESERVA_NO_ENCONTRADA_CODE) {
