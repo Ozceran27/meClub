@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
+const MessagesModel = require('../models/messages.model');
 const PasswordResetsModel = require('../models/passwordResets.model');
 const logger = require('../utils/logger');
 const { prepareLogoValue } = require('../utils/logoStorage');
@@ -82,6 +83,23 @@ exports.register = async (req, res) => {
           uploadedLogoBuffer ??
           (foto_logo !== undefined ? prepareLogoValue(foto_logo).value : null),
       }, connection);
+
+      if (clubCreado?.club_id) {
+        try {
+          await MessagesModel.createMessage({
+            club_id: clubCreado.club_id,
+            type: 'info',
+            title: '¡Bienvenido a MeClub!',
+            content:
+              'Tu club ya está listo. Invita a tu equipo y personaliza tu perfil para comenzar a recibir reservas.',
+            sender: 'Sistema',
+            broadcast: true,
+            connection,
+          });
+        } catch (messageError) {
+          logger.error('No se pudo crear el mensaje de bienvenida del club:', messageError);
+        }
+      }
     }
 
     if (!process.env.JWT_SECRET) {
