@@ -83,16 +83,23 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         <View className="flex-row gap-6">
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(0)}>MIS CANCHAS</CardTitle>
-            <View className="mt-2 flex-row flex-wrap items-baseline gap-2">
+            <View className="mt-2">
               <Text className="text-[32px] font-extrabold leading-tight tracking-tight">
                 <Text className="text-emerald-200">{courtsTotal}</Text>
                 <Text className="text-white"> Canchas Total</Text>
               </Text>
-              <Text className="text-white text-[14px] font-semibold" numberOfLines={1} ellipsizeMode="tail">
+            </View>
+            <View className="mt-1 px-1">
+              <Text
+                className="text-white text-[14px] font-semibold"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                accessibilityLabel="Tipos de cancha"
+              >
                 {courtTypesText}
               </Text>
             </View>
-            <View className="mt-2 flex-row items-center gap-4">
+            <View className="mt-3 flex-row flex-wrap items-center gap-4">
               <View className="flex-row items-baseline gap-1">
                 <Text className="text-emerald-300 text-[18px] font-semibold">
                   {summary.courtsAvailable ?? 0}
