@@ -121,14 +121,18 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         <View className="flex-row gap-6">
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(2)}>RESERVAS</CardTitle>
-            <Text className="text-white text-[32px] mt-2 font-bold">
-              {summary.reservasHoy ?? 0} hoy
+            <Text className="text-white text-[32px] mt-2 font-bold leading-tight">
+              {summary.reservasHoy ?? 0} hoy | {summary.reservasFinalizadasHoy ?? 0} finalizada |{' '}
+              {summary.reservasPagadasHoy ?? 0} pagada
             </Text>
-            <Text className="text-white/60 mt-1">+{summary.reservasSemana ?? 0} esta semana</Text>
-            <Text className="text-white/80 mt-1">
-              Pagadas: {summary.reservasPagadasHoy ?? 0} · Finalizadas: {summary.reservasFinalizadasHoy ?? 0}
-            </Text>
-            <Text className="text-white/60">Acumulado mensual: {summary.reservasMesActual ?? 0}</Text>
+            <View className="mt-3 gap-1">
+              <Text className="text-white/70 text-[15px] leading-tight">
+                +{summary.reservasSemana ?? 0} esta semana
+              </Text>
+              <Text className="text-white/70 text-[15px] leading-tight">
+                +{summary.reservasMesActual ?? 0} este mes
+              </Text>
+            </View>
             <Pressable
               onPress={() => go('reservas')}
               className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25"
