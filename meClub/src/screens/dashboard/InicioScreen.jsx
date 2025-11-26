@@ -39,18 +39,27 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
   return (
     <>
       <View className="py-6 gap-3">
-        <View className="flex-row flex-wrap items-center justify-between gap-3">
-          <View className="flex-1 min-w-[200px]">
-            <Text className="text-white text-[36px] font-extrabold tracking-tight">
-              Hola, <Text className="text-mc-warn">{firstName}</Text>
-            </Text>
-            <Text className="text-white/60 mt-1">{today}</Text>
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="flex-1 min-w-[240px] gap-2">
+            <View className="flex-row flex-wrap items-center gap-3">
+              <Text className="text-white text-[32px] sm:text-[36px] font-extrabold tracking-tight">
+                Hola, <Text className="text-mc-warn">{firstName}</Text>
+              </Text>
+              <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1">
+                <Ionicons name="partly-sunny-outline" size={16} color="#FDE68A" />
+                <Text className="text-amber-100 text-[12px] font-semibold tracking-wide">{weatherTemp}</Text>
+                <Text className="text-white/80 text-[12px]" numberOfLines={1}>
+                  {weatherStatus}
+                </Text>
+              </View>
+            </View>
+            <Text className="text-white/60">{today}</Text>
           </View>
 
           <View
-            className="flex-1 flex-row flex-wrap items-center justify-center gap-2"
+            className="ml-auto flex-row items-center"
             accessibilityRole="text"
-            accessibilityLabel="Indicadores de demanda y clima"
+            accessibilityLabel="Indicador de demanda"
           >
             <View
               className={`flex-row items-center gap-2 rounded-full border px-3 py-1 ${demandStyles}`}
@@ -63,14 +72,6 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
               />
               <Text className={`${demandTextColor} text-[12px] font-semibold tracking-wide`}>
                 {demandLabel}
-              </Text>
-            </View>
-
-            <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1">
-              <Ionicons name="partly-sunny-outline" size={16} color="#FDE68A" />
-              <Text className="text-amber-100 text-[12px] font-semibold tracking-wide">{weatherTemp}</Text>
-              <Text className="text-white/80 text-[12px]" numberOfLines={1}>
-                {weatherStatus}
               </Text>
             </View>
           </View>
