@@ -130,16 +130,29 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
         <View className="flex-row gap-6">
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(2)}>RESERVAS</CardTitle>
-            <Text className="text-white text-[32px] mt-2 font-bold leading-tight">
-              {summary.reservasHoy ?? 0} hoy | {summary.reservasFinalizadasHoy ?? 0} finalizada |{' '}
-              {summary.reservasPagadasHoy ?? 0} pagada
-            </Text>
+            <View className="mt-2 flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
+              <Text className="text-white text-[32px] font-bold leading-tight">
+                {summary.reservasHoy ?? 0} <Text className="text-white">hoy</Text>
+              </Text>
+              <Text className="text-white/50 text-[24px] font-bold leading-tight">|</Text>
+              <Text className="text-white text-[32px] font-bold leading-tight">
+                <Text className="text-sky-300">{summary.reservasFinalizadasHoy ?? 0}</Text>{' '}
+                <Text className="text-white">finalizada</Text>
+              </Text>
+              <Text className="text-white/50 text-[24px] font-bold leading-tight">|</Text>
+              <Text className="text-white text-[32px] font-bold leading-tight">
+                <Text className="text-emerald-300">{summary.reservasPagadasHoy ?? 0}</Text>{' '}
+                <Text className="text-white">pagada</Text>
+              </Text>
+            </View>
             <View className="mt-3 gap-1">
               <Text className="text-white/70 text-[15px] leading-tight">
-                +{summary.reservasSemana ?? 0} esta semana
+                <Text className="text-emerald-300 font-semibold">+{summary.reservasSemana ?? 0}</Text> esta
+                semana
               </Text>
               <Text className="text-white/70 text-[15px] leading-tight">
-                +{summary.reservasMesActual ?? 0} este mes
+                <Text className="text-emerald-300 font-semibold">+{summary.reservasMesActual ?? 0}</Text> este
+                mes
               </Text>
             </View>
             <Pressable
