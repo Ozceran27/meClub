@@ -92,7 +92,7 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
 
 export default function DashboardShell() {
   const navigation = useNavigation();
-  const { user, logout } = useAuth();
+  const { user, ready, logout } = useAuth();
   const [activeKey, setActiveKey] = useState('inicio');
   const [unreadCount, setUnreadCount] = useState(0);
   const [summary, setSummary] = useState({
@@ -114,6 +114,10 @@ export default function DashboardShell() {
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const clubId = useMemo(() => {
+    const parsed = Number(user?.clubId ?? user?.club?.club_id ?? user?.club?.id);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [user?.club?.club_id, user?.club?.id, user?.clubId]);
   const updateUnreadCount = useCallback((nextValue) => {
     setUnreadCount((prev) => {
       const resolved = typeof nextValue === 'function' ? nextValue(prev) : nextValue;
@@ -133,8 +137,14 @@ export default function DashboardShell() {
   useEffect(() => {
     let alive = true;
     (async () => {
+      if (!ready) return;
+      if (!clubId) {
+        setSummary((prev) => ({ ...prev, economiaMes: 0 }));
+        setErr('No encontramos el club asociado a tu perfil');
+        return;
+      }
       try {
-        const data = await getClubSummary({ clubId: user?.clubId || user?.club?.id });
+        const data = await getClubSummary({ clubId });
         if (alive && data) {
           setSummary(data);
           setErr('');
@@ -144,7 +154,7 @@ export default function DashboardShell() {
       }
     })();
     return () => { alive = false; };
-  }, [user?.clubId, user?.club?.id]);
+  }, [clubId, ready]);
 
   const refreshInboxSummary = useCallback(async () => {
     try {
