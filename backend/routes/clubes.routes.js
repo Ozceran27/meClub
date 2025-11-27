@@ -57,6 +57,13 @@ const parseNullableString = (value, fieldName) => {
   return trimmed === '' ? null : trimmed;
 };
 
+const parseIcono = (value) => {
+  const parsed = parseNullableString(value, 'icono');
+  if (parsed === undefined || parsed === null) return parsed;
+
+  return parsed.slice(0, 64);
+};
+
 const parsePositiveInteger = (value, fieldName, { required = false } = {}) => {
   if (value === undefined) {
     if (required) {
@@ -564,12 +571,14 @@ router.post('/mis-gastos', async (req, res) => {
     const descripcion = parseNullableString(req.body.descripcion, 'descripcion');
     const monto = parseDecimal(req.body.monto, 'monto', { required: true });
     const fecha = parseFecha(req.body.fecha);
+    const icono = parseIcono(req.body.icono ?? req.body.icon);
 
     const gasto = await GastosModel.crear(req.club.club_id, {
       categoria,
       descripcion: descripcion === undefined ? null : descripcion,
       monto,
       fecha,
+      icono,
     });
 
     res.status(201).json({ mensaje: 'Gasto registrado', gasto });
@@ -599,6 +608,9 @@ router.put('/mis-gastos/:gasto_id', async (req, res) => {
     if (req.body.descripcion !== undefined) updates.descripcion = parseNullableString(req.body.descripcion, 'descripcion');
     if (req.body.monto !== undefined) updates.monto = parseDecimal(req.body.monto, 'monto', { required: true });
     if (req.body.fecha !== undefined) updates.fecha = parseFecha(req.body.fecha);
+    if (req.body.icono !== undefined || req.body.icon !== undefined) {
+      updates.icono = parseIcono(req.body.icono ?? req.body.icon);
+    }
 
     const gasto = await GastosModel.actualizar(gastoId, req.club.club_id, updates);
     res.json({ mensaje: 'Gasto actualizado', gasto });
