@@ -1187,17 +1187,12 @@ export async function getClubSummary({ clubId }) {
   }
 }
 
-export async function getClubEconomy({ clubId, weekStart }) {
+export async function getClubEconomy({ clubId }) {
   if (!clubId && clubId !== 0) {
     throw new Error('Identificador de club inválido');
   }
 
-  const params = new URLSearchParams();
-  if (weekStart) {
-    params.set('semana', weekStart);
-  }
-  const search = params.toString();
-  const path = `/clubes/${encodeURIComponent(clubId)}/economia${search ? `?${search}` : ''}`;
+  const path = `/clubes/${encodeURIComponent(clubId)}/economia`;
 
   const response = await api.get(path);
   return extractEconomy(response);

@@ -103,6 +103,21 @@ const formatDateOnly = (date) => {
   return safeDate ? safeDate.toISOString().slice(0, 10) : '';
 };
 
+const formatDateRangeLabel = (startDate, endDate) => {
+  const start = parseDateValue(startDate);
+  const end = parseDateValue(endDate);
+
+  if (!start || !end) return '';
+
+  const formatter = (date) =>
+    date.toLocaleDateString('es-AR', {
+      month: 'short',
+      day: 'numeric',
+    });
+
+  return `${formatter(start)} - ${formatter(end)}`;
+};
+
 const formatWeekRangeLabel = (weekStart) => {
   const startDate = startOfWeek(weekStart);
   const endDate = new Date(startDate);
@@ -117,38 +132,44 @@ const formatWeekRangeLabel = (weekStart) => {
   return `${formatter(startDate)} - ${formatter(endDate)}`;
 };
 
-const buildDailyIncome = ({ rawItems = [], weekStart, fallbackTotal = 0 }) => {
+const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   const items = Array.isArray(rawItems) ? rawItems : [];
-  const baseWeekStart = startOfWeek(weekStart);
-  const weekEnd = new Date(baseWeekStart);
-  weekEnd.setDate(baseWeekStart.getDate() + 6);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lastSevenDays = Array.from({ length: 7 }, (_, idx) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - idx));
+    return date;
+  });
 
   const matchByDay = (targetIndex, targetDate) =>
     items.find((item) => {
       const rawDate = item.fecha ?? item.date;
       const parsedDate = parseDateValue(rawDate);
-      if (parsedDate && parsedDate.toDateString() === targetDate.toDateString()) return true;
+      if (parsedDate && formatDateOnly(parsedDate) === formatDateOnly(targetDate)) return true;
 
       const normalizedDay = normalizeWeekdayValue(item.dia ?? item.label);
       return normalizedDay === targetIndex;
     });
 
-  const chartItems = WEEKDAY_SHORT_LABELS.map((label, index) => {
-    const currentDate = new Date(baseWeekStart);
-    currentDate.setDate(baseWeekStart.getDate() + index);
-    const match = matchByDay(index, currentDate) || {};
+  const chartItems = lastSevenDays.map((currentDate) => {
+    const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
+    const match = matchByDay(dayIndex, currentDate) || {};
     const value = toNumberOrZero(
       match.total ?? match.monto ?? match.value ?? match.ingresos ?? match.cantidad
     );
 
     return {
-      label,
+      label: WEEKDAY_SHORT_LABELS[dayIndex],
       value,
       date: formatDateOnly(currentDate),
     };
   });
 
   let total = chartItems.reduce((acc, item) => acc + item.value, 0);
+  const rangeStart = formatDateOnly(lastSevenDays[0]);
+  const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
 
   if (!items.length && total === 0) {
     const stubBase = fallbackTotal || 7000;
@@ -162,8 +183,8 @@ const buildDailyIncome = ({ rawItems = [], weekStart, fallbackTotal = 0 }) => {
     return {
       items: stubbed,
       total,
-      weekStart: formatDateOnly(baseWeekStart),
-      weekEnd: formatDateOnly(weekEnd),
+      startDate: rangeStart,
+      endDate: rangeEnd,
       isStub: true,
     };
   }
@@ -171,8 +192,8 @@ const buildDailyIncome = ({ rawItems = [], weekStart, fallbackTotal = 0 }) => {
   return {
     items: chartItems,
     total,
-    weekStart: formatDateOnly(baseWeekStart),
-    weekEnd: formatDateOnly(weekEnd),
+    startDate: rangeStart,
+    endDate: rangeEnd,
     isStub: false,
   };
 };
@@ -231,11 +252,11 @@ const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
   return { items: chartItems, total, isStub: false };
 };
 
-const getEconomyQueryOptions = ({ clubId, enabled, weekStart }) =>
+const getEconomyQueryOptions = ({ clubId, enabled }) =>
   queryOptions({
-    queryKey: ['economia', clubId, weekStart || 'actual'],
+    queryKey: ['economia', clubId],
     enabled: !!clubId && enabled,
-    queryFn: async () => getClubEconomy({ clubId, weekStart }),
+    queryFn: async () => getClubEconomy({ clubId }),
     staleTime: ECONOMY_STALE_TIME,
     select: (economy) => {
       const buildBreakdown = (source = {}) =>
@@ -274,7 +295,6 @@ const getEconomyQueryOptions = ({ clubId, enabled, weekStart }) =>
 
       const dailyIncome = buildDailyIncome({
         rawItems: economy?.ingresosDiarios,
-        weekStart: economy?.semanaSeleccionada ?? weekStart,
         fallbackTotal: ingresosSemanalesProyectados || ingresosSemanalesReales,
       });
 
@@ -367,7 +387,7 @@ const getEconomyQueryOptions = ({ clubId, enabled, weekStart }) =>
         ingresosDiarios: dailyIncome.items,
         ingresosDiariosTotal: dailyIncome.total,
         ingresosSemanalesSerie: weeklyIncome.items,
-        selectedWeek: { start: dailyIncome.weekStart, end: dailyIncome.weekEnd },
+        selectedWeek: { start: dailyIncome.startDate, end: dailyIncome.endDate },
         economiaMensual: normalizeMonthlyEconomy(),
       };
     },
@@ -901,27 +921,13 @@ export default function EconomiaScreen() {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
-  const [selectedWeekStart, setSelectedWeekStart] = useState(() => formatDateOnly(startOfWeek()));
 
   const clubId = useMemo(() => {
     const parsed = Number(user?.clubId ?? user?.club?.club_id ?? user?.club?.id);
     return Number.isFinite(parsed) ? parsed : null;
   }, [user?.club?.club_id, user?.club?.id, user?.clubId]);
 
-  const economyQuery = useQuery(
-    getEconomyQueryOptions({ clubId, enabled: ready, weekStart: selectedWeekStart })
-  );
-
-  const shiftSelectedWeek = (delta) => {
-    setSelectedWeekStart((previous) => {
-      const base = startOfWeek(previous);
-      base.setDate(base.getDate() + delta * 7);
-      return formatDateOnly(base);
-    });
-  };
-
-  const goToPreviousWeek = () => shiftSelectedWeek(-1);
-  const goToNextWeek = () => shiftSelectedWeek(1);
+  const economyQuery = useQuery(getEconomyQueryOptions({ clubId, enabled: ready }));
 
   const expenseQuery = useQuery({
     queryKey: ['expenses', clubId, page, EXPENSES_PAGE_SIZE],
@@ -1006,10 +1012,10 @@ export default function EconomiaScreen() {
   const ultimoFlujoMensual = economiaMensual[economiaMensual.length - 1];
   const ingresosDiarios = economy?.ingresosDiarios ?? [];
   const ingresosDiariosTotal = economy?.ingresosDiariosTotal ?? 0;
-  const selectedWeek = economy?.selectedWeek ?? { start: selectedWeekStart };
+  const selectedWeek = economy?.selectedWeek ?? {};
   const selectedWeekRangeLabel = useMemo(
-    () => formatWeekRangeLabel(selectedWeek?.start ?? selectedWeekStart),
-    [selectedWeek?.start, selectedWeekStart]
+    () => formatDateRangeLabel(selectedWeek?.start, selectedWeek?.end),
+    [selectedWeek?.start, selectedWeek?.end]
   );
 
   const expenseLoading = expenseQuery.isPending || expenseQuery.isFetching;
@@ -1218,27 +1224,7 @@ export default function EconomiaScreen() {
               <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
             </View>
 
-            <View className="flex-row items-center justify-between mt-2">
-              <View className="flex-row gap-2">
-                <TouchableOpacity
-                  onPress={goToPreviousWeek}
-                  accessibilityRole="button"
-                  accessibilityLabel="Semana anterior"
-                  disabled={chartLoading}
-                  className="rounded-lg bg-white/10 px-3 py-2"
-                >
-                  <Text className="text-white">←</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={goToNextWeek}
-                  accessibilityRole="button"
-                  accessibilityLabel="Semana siguiente"
-                  disabled={chartLoading}
-                  className="rounded-lg bg-white/10 px-3 py-2"
-                >
-                  <Text className="text-white">→</Text>
-                </TouchableOpacity>
-              </View>
+            <View className="items-end mt-2">
               <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
             </View>
 
