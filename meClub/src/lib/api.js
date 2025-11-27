@@ -281,6 +281,33 @@ const normalizeMonthlySeries = (source) => {
     .filter(Boolean);
 };
 
+const normalizeDailyIncomeSeries = (raw) => {
+  const items = Array.isArray(raw) ? raw : [];
+  return items
+    .map((item, index) => {
+      const total = toNumberOrZero(
+        item?.total ?? item?.monto ?? item?.value ?? item?.ingresos ?? item?.cantidad
+      );
+
+      if (!Number.isFinite(total)) return null;
+
+      return {
+        total,
+        fecha: item?.fecha ?? item?.date ?? item?.dia_fecha ?? null,
+        dia:
+          item?.dia ??
+          item?.day ??
+          item?.day_of_week ??
+          item?.dayOfWeek ??
+          item?.weekday ??
+          null,
+        label: item?.label ?? null,
+        index,
+      };
+    })
+    .filter(Boolean);
+};
+
 const extractEconomy = (payload) => {
   const data = payload?.data ?? payload ?? {};
 
@@ -304,6 +331,16 @@ const extractEconomy = (payload) => {
       data.ingresos_mensuales
   );
 
+  const ingresosDiarios = normalizeDailyIncomeSeries(
+    data.ingresos?.diarios ??
+      data.ingresosDiarios ??
+      data.ingresos_diarios ??
+      data.ingresosDiariosSemana
+  );
+
+  const semanaSeleccionada =
+    data.semanaSeleccionada ?? data.semana ?? data.week ?? data.weekStart ?? data.semana_inicio;
+
   return {
     ingresos: { mes: ingresosMes, semana: ingresosSemana },
     reservas: { mes: reservasMes, semana: reservasSemana },
@@ -316,6 +353,8 @@ const extractEconomy = (payload) => {
     gastos: { mes: toNumberOrZero(data.gastos?.mes ?? data.gastosMes ?? data.gastos_mes) },
     balanceMensual: toNumberOrZero(data.balanceMensual ?? data.balance ?? data.balance_mensual),
     ingresosMensualesHistoricos,
+    ingresosDiarios,
+    semanaSeleccionada,
   };
 };
 
@@ -1036,12 +1075,19 @@ export async function getClubSummary({ clubId }) {
   }
 }
 
-export async function getClubEconomy({ clubId }) {
+export async function getClubEconomy({ clubId, weekStart }) {
   if (!clubId && clubId !== 0) {
     throw new Error('Identificador de club inválido');
   }
 
-  const response = await api.get(`/clubes/${encodeURIComponent(clubId)}/economia`);
+  const params = new URLSearchParams();
+  if (weekStart) {
+    params.set('semana', weekStart);
+  }
+  const search = params.toString();
+  const path = `/clubes/${encodeURIComponent(clubId)}/economia${search ? `?${search}` : ''}`;
+
+  const response = await api.get(path);
   return extractEconomy(response);
 }
 
