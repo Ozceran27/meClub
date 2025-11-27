@@ -58,31 +58,42 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
           monto: source?.[estado] ?? 0,
         }));
 
-      const sumValues = (source = {}) =>
-        Object.values(source).reduce((acc, val) => acc + (Number(val) || 0), 0);
+      const sumByStates = (source = {}, estados = []) =>
+        estados.reduce((acc, estado) => acc + (Number(source?.[estado]) || 0), 0);
 
       const ingresosMes = economy?.ingresos?.mes ?? {};
       const ingresosSemana = economy?.ingresos?.semana ?? {};
 
+      const estadosReales = ['pagado', 'senado'];
+      const estadosProyectados = ['pagado', 'senado', 'pendiente_pago'];
+
+      const ingresosMensualesReales = sumByStates(ingresosMes, estadosReales);
+      const ingresosMensualesProyectados = sumByStates(ingresosMes, estadosProyectados);
+      const ingresosSemanalesReales = sumByStates(ingresosSemana, estadosReales);
+      const ingresosSemanalesProyectados = sumByStates(ingresosSemana, estadosProyectados);
+
       return {
         ingresosMes: {
-          total: sumValues(ingresosMes),
+          total: ingresosMensualesReales,
+          projected: ingresosMensualesProyectados,
           breakdown: buildBreakdown(ingresosMes),
         },
         ingresosSemana: {
-          total: sumValues(ingresosSemana),
+          total: ingresosSemanalesReales,
+          projected: ingresosSemanalesProyectados,
           breakdown: buildBreakdown(ingresosSemana),
         },
         gastosMes: economy?.gastos?.mes ?? economy?.gastos ?? 0,
         gastosSemana: economy?.gastos?.semana ?? 0,
         balanceMensual:
           economy?.balanceMensual ??
-          (sumValues(ingresosMes) || 0) - (economy?.gastos?.mes ?? economy?.gastos ?? 0),
+          (ingresosMensualesReales || 0) - (economy?.gastos?.mes ?? economy?.gastos ?? 0),
         balanceSemanal:
-          economy?.balanceSemanal ?? (sumValues(ingresosSemana) || 0) - (economy?.gastos?.semana ?? 0),
+          economy?.balanceSemanal ??
+          (ingresosSemanalesReales || 0) - (economy?.gastos?.semana ?? 0),
         proyeccion: {
-          mes: economy?.proyeccion?.mes ?? sumValues(ingresosMes),
-          semana: economy?.proyeccion?.semana ?? sumValues(ingresosSemana),
+          mes: ingresosMensualesProyectados,
+          semana: ingresosSemanalesProyectados,
         },
         reservas: economy?.reservas ?? { mes: 0, semana: 0 },
       };
@@ -468,6 +479,11 @@ export default function EconomiaScreen() {
             subtitle={showLoader ? '' : `Semanal: ${formatCurrency(ingresosSemanales?.total)}`}
             loading={showLoader}
           >
+            {!showLoader ? (
+              <Text className="text-white/60">
+                ingresos proyectados {formatCurrency(ingresosMensuales?.projected)}
+              </Text>
+            ) : null}
             <BreakdownList
               title="Detalle mensual"
               breakdown={ingresosMensuales?.breakdown}
