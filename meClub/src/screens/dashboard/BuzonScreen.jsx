@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import { deleteInbox, getInbox, markInboxRead } from '../../lib/api';
@@ -65,6 +57,9 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
   const [loading, setLoading] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [error, setError] = useState('');
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteFeedback, setDeleteFeedback] = useState({ type: '', message: '' });
+  const [deleting, setDeleting] = useState(false);
 
   const sortedMessages = useMemo(() => {
     return [...messages].sort((a, b) => {
@@ -106,6 +101,12 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
     loadInbox();
   }, [loadInbox]);
 
+  useEffect(() => {
+    setShowDeleteConfirmation(false);
+    setDeleteFeedback({ type: '', message: '' });
+    setDeleting(false);
+  }, [selectedMessage?.inboxId]);
+
   const openMessage = useCallback(
     async (message) => {
       if (!message) return;
@@ -140,42 +141,48 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
 
   const handleDelete = useCallback(() => {
     if (!selectedMessage) return;
+    setDeleteFeedback({ type: '', message: '' });
+    setShowDeleteConfirmation((prev) => !prev);
+  }, [selectedMessage]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!selectedMessage) return;
     const wasUnread = !selectedMessage.isRead;
-    Alert.alert(
-      'Eliminar mensaje',
-      'Esta acción no se puede deshacer. ¿Deseas continuar?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteInbox(selectedMessage.inboxId);
-              setSelectedMessage(null);
-              setMessages((prev) => prev.filter((item) => item.inboxId !== selectedMessage.inboxId));
-              const nextTotal = total > 0 ? total - 1 : 0;
-              setTotal(nextTotal);
-              setHasMore(page * PAGE_LIMIT < nextTotal);
-              if (messages.length === 1 && page > 1) {
-                setPage((prev) => Math.max(1, prev - 1));
-              }
-              if (wasUnread && typeof onUnreadCountChange === 'function') {
-                onUnreadCountChange((prev) => Math.max(0, prev - 1));
-              }
-              if (typeof refreshInboxSummary === 'function') {
-                refreshInboxSummary();
-              }
-            } catch (err) {
-              setError(err?.message || 'No se pudo eliminar el mensaje');
-            }
-          },
-        },
-      ]
-    );
+    setDeleting(true);
+    setDeleteFeedback({ type: '', message: '' });
+    try {
+      await deleteInbox(selectedMessage.inboxId);
+      setMessages((prev) => prev.filter((item) => item.inboxId !== selectedMessage.inboxId));
+      const nextTotal = total > 0 ? total - 1 : 0;
+      setTotal(nextTotal);
+      setHasMore(page * PAGE_LIMIT < nextTotal);
+      if (messages.length === 1 && page > 1) {
+        setPage((prev) => Math.max(1, prev - 1));
+      }
+      if (wasUnread && typeof onUnreadCountChange === 'function') {
+        onUnreadCountChange((prev) => Math.max(0, prev - 1));
+      }
+      if (typeof refreshInboxSummary === 'function') {
+        refreshInboxSummary();
+      }
+      setDeleteFeedback({ type: 'success', message: 'Mensaje eliminado correctamente' });
+      setShowDeleteConfirmation(false);
+      setTimeout(() => setSelectedMessage(null), 800);
+    } catch (err) {
+      setDeleteFeedback({
+        type: 'error',
+        message: err?.message || 'No se pudo eliminar el mensaje',
+      });
+    } finally {
+      setDeleting(false);
+    }
   }, [messages.length, onUnreadCountChange, page, refreshInboxSummary, selectedMessage, total]);
 
-  const closeModal = useCallback(() => setSelectedMessage(null), []);
+  const closeModal = useCallback(() => {
+    setSelectedMessage(null);
+    setShowDeleteConfirmation(false);
+    setDeleteFeedback({ type: '', message: '' });
+  }, []);
 
   const pagination = (
     <View className="flex-row justify-between items-center mt-4">
@@ -300,22 +307,70 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
               </Text>
             </Card>
 
-            <View className="flex-row justify-end gap-3 mt-4">
-              <Pressable
-                onPress={handleDelete}
-                className="flex-row items-center gap-2 px-4 py-3 rounded-xl border border-rose-400/40 bg-rose-500/10"
+            {deleteFeedback.message ? (
+              <View
+                className={`mt-4 px-4 py-3 rounded-xl border ${
+                  deleteFeedback.type === 'success'
+                    ? 'border-emerald-400/40 bg-emerald-500/10'
+                    : 'border-rose-400/40 bg-rose-500/10'
+                }`}
               >
-                <Ionicons name="trash-outline" size={18} color="#FCA5A5" />
-                <Text className="text-rose-200 font-semibold">Eliminar</Text>
-              </Pressable>
-              <Pressable
-                onPress={closeModal}
-                className="flex-row items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5"
-              >
-                <Ionicons name="checkmark-outline" size={18} color="#E2E8F0" />
-                <Text className="text-white font-semibold">Cerrar</Text>
-              </Pressable>
-            </View>
+                <Text
+                  className={`font-semibold ${
+                    deleteFeedback.type === 'success' ? 'text-emerald-100' : 'text-rose-200'
+                  }`}
+                >
+                  {deleteFeedback.message}
+                </Text>
+              </View>
+            ) : null}
+
+            {showDeleteConfirmation ? (
+              <View className="flex-row justify-end gap-3 mt-4">
+                <Pressable
+                  onPress={() => {
+                    setShowDeleteConfirmation(false);
+                    setDeleteFeedback({ type: '', message: '' });
+                  }}
+                  disabled={deleting}
+                  className={`flex-row items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5 ${
+                    deleting ? 'opacity-50' : ''
+                  }`}
+                >
+                  <Ionicons name="close-outline" size={18} color="#E2E8F0" />
+                  <Text className="text-white font-semibold">Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deleting}
+                  className={`flex-row items-center gap-2 px-4 py-3 rounded-xl border border-rose-400/40 bg-rose-500/10 ${
+                    deleting ? 'opacity-50' : ''
+                  }`}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FCA5A5" />
+                  <Text className="text-rose-200 font-semibold">
+                    {deleting ? 'Eliminando...' : 'Confirmar eliminación'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View className="flex-row justify-end gap-3 mt-4">
+                <Pressable
+                  onPress={handleDelete}
+                  className="flex-row items-center gap-2 px-4 py-3 rounded-xl border border-rose-400/40 bg-rose-500/10"
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FCA5A5" />
+                  <Text className="text-rose-200 font-semibold">Eliminar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={closeModal}
+                  className="flex-row items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5"
+                >
+                  <Ionicons name="checkmark-outline" size={18} color="#E2E8F0" />
+                  <Text className="text-white font-semibold">Cerrar</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
