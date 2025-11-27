@@ -19,7 +19,7 @@ import {
   updateClubExpense,
 } from '../../lib/api';
 import { useAuth } from '../../features/auth/useAuth';
-import Svg, { Rect, Path } from 'react-native-svg';
+import Svg, { Rect, Path, Text as SvgText } from 'react-native-svg';
 
 const statusLabelMap = {
   pagado: 'Pagado',
@@ -158,24 +158,60 @@ function BarChart({ data = [], height = 140 }) {
   const maxValue = Math.max(...data.map((d) => d.value || 0), 1);
   const barWidth = 36;
   const gap = 12;
-  const chartWidth = data.length * (barWidth + gap) + gap;
+  const padding = { top: 8, right: gap, bottom: 28, left: gap };
+  const chartWidth = data.length * (barWidth + gap) + padding.left + padding.right - gap;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  const formatBarLabel = (item) => {
+    if (item.label) return item.label;
+
+    const formatDate = (rawDate) => {
+      if (!rawDate) return '';
+      const date = new Date(rawDate);
+      if (Number.isNaN(date.getTime())) return String(rawDate);
+      return date.toLocaleDateString('es-AR', { month: 'short', day: 'numeric' });
+    };
+
+    const startDate =
+      item.fecha || item.date || item.startDate || item.fecha_inicio || item.inicio || item.desde;
+    const endDate = item.endDate || item.fecha_fin || item.fin || item.hasta;
+
+    if (startDate && endDate) {
+      return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    }
+
+    return formatDate(startDate) || formatDate(endDate) || '';
+  };
 
   return (
     <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
       {data.map((item, index) => {
-        const barHeight = Math.max((Number(item.value) / maxValue) * (height - 32), 4);
-        const x = gap + index * (barWidth + gap);
-        const y = height - barHeight - 16;
+        const barHeight = Math.max((Number(item.value) / maxValue) * chartHeight, 4);
+        const x = padding.left + index * (barWidth + gap);
+        const y = padding.top + (chartHeight - barHeight);
+        const label = formatBarLabel(item);
         return (
-          <Rect
-            key={item.label}
-            x={x}
-            y={y}
-            width={barWidth}
-            height={barHeight}
-            rx={8}
-            fill="#38bdf8"
-          />
+          <React.Fragment key={`${label || index}`}>
+            <Rect
+              x={x}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              rx={8}
+              fill="#38bdf8"
+            />
+            {label ? (
+              <SvgText
+                x={x + barWidth / 2}
+                y={height - padding.bottom / 2}
+                fill="white"
+                fontSize="12"
+                textAnchor="middle"
+              >
+                {label}
+              </SvgText>
+            ) : null}
+          </>
         );
       })}
     </Svg>
@@ -585,7 +621,26 @@ export default function EconomiaScreen() {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <BarChart
                     data={economy?.ingresosSemana?.breakdown?.map((item) => ({
-                      label: item.label,
+                      label:
+                        item.label ||
+                        (() => {
+                          const formatDate = (value) => {
+                            if (!value) return '';
+                            const date = new Date(value);
+                            if (Number.isNaN(date.getTime())) return String(value);
+                            return date.toLocaleDateString('es-AR', { weekday: 'short' });
+                          };
+
+                          const startDate =
+                            item.fecha || item.date || item.startDate || item.fecha_inicio;
+                          const endDate = item.endDate || item.fecha_fin;
+
+                          if (startDate && endDate) {
+                            return `${formatDate(startDate)}-${formatDate(endDate)}`;
+                          }
+
+                          return formatDate(startDate) || formatDate(endDate) || '';
+                        })(),
                       value: item.monto,
                     }))}
                   />
