@@ -2,6 +2,8 @@ const db = require('../config/db');
 const { normalizeLogoValue, prepareLogoValue } = require('../utils/logoStorage');
 const { normalizeCourtImage } = require('../utils/courtImage');
 const { normalizeHour } = require('../utils/datetime');
+const { normalizarEstadoPago } = require('../constants/reservasEstados');
+const GastosModel = require('./gastos.model');
 
 const toNullableNumber = (value) => {
   if (value === undefined || value === null) return null;
@@ -493,6 +495,98 @@ const ClubesModel = {
       reservasMesActual,
       weatherStatus: weatherResponse.status,
       weatherTemp: weatherResponse.temperature,
+    };
+  },
+
+  obtenerEconomia: async (club_id) => {
+    const ingresosMensualesPromise = db.query(
+      `SELECT r.estado_pago, COALESCE(SUM(r.monto), 0) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND DATE_FORMAT(r.fecha, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')
+       GROUP BY r.estado_pago`,
+      [club_id]
+    );
+
+    const ingresosSemanalesPromise = db.query(
+      `SELECT r.estado_pago, COALESCE(SUM(r.monto), 0) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)
+       GROUP BY r.estado_pago`,
+      [club_id]
+    );
+
+    const reservasMensualesPromise = db.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND DATE_FORMAT(r.fecha, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')`,
+      [club_id]
+    );
+
+    const reservasSemanalesPromise = db.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)`,
+      [club_id]
+    );
+
+    const gastosMensualesPromise = GastosModel.obtenerTotalMes(club_id);
+
+    const [
+      [ingresosMensualesRows],
+      [ingresosSemanalesRows],
+      [reservasMensualesRows],
+      [reservasSemanalesRows],
+      gastosMensuales,
+    ] = await Promise.all([
+      ingresosMensualesPromise,
+      ingresosSemanalesPromise,
+      reservasMensualesPromise,
+      reservasSemanalesPromise,
+      gastosMensualesPromise,
+    ]);
+
+    const estadosBase = { pagado: 0, senado: 0, pendiente_pago: 0 };
+
+    const acumularIngresos = (rows = []) =>
+      rows.reduce(
+        (acc, row) => {
+          const estado = normalizarEstadoPago(row?.estado_pago) || 'pendiente_pago';
+          const total = row?.total === null || row?.total === undefined ? 0 : Number(row.total);
+          if (acc[estado] === undefined) acc[estado] = 0;
+          acc[estado] += total;
+          return acc;
+        },
+        { ...estadosBase }
+      );
+
+    const ingresosMes = acumularIngresos(ingresosMensualesRows);
+    const ingresosSemana = acumularIngresos(ingresosSemanalesRows);
+
+    const reservasMes = Number(reservasMensualesRows?.[0]?.total) || 0;
+    const reservasSemana = Number(reservasSemanalesRows?.[0]?.total) || 0;
+
+    const proyeccionMes = Object.values(ingresosMes).reduce((acc, val) => acc + val, 0);
+    const proyeccionSemana = Object.values(ingresosSemana).reduce((acc, val) => acc + val, 0);
+
+    const balanceMensual = proyeccionMes - gastosMensuales;
+
+    return {
+      ingresos: {
+        mes: ingresosMes,
+        semana: ingresosSemana,
+      },
+      reservas: { mes: reservasMes, semana: reservasSemana },
+      proyeccion: { mes: proyeccionMes, semana: proyeccionSemana },
+      gastos: { mes: gastosMensuales },
+      balanceMensual,
     };
   },
 };
