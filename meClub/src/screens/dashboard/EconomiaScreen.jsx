@@ -37,7 +37,7 @@ export default function EconomiaScreen({ summary = {} }) {
             Ingresos del mes
           </Text>
           {!error 
-            ? <Text className="text-white text-[40px] font-extrabold mt-3">{isPending ? "Loading..." : data}</Text> 
+            ? <Text className="text-white text-[40px] font-extrabold mt-3">{isPending ? "Cargando..." : data}</Text> 
             : <Text className="text-white text-[40px] font-extrabold mt-3">OCURRIO UN ERROR</Text>}
           <Text className="text-white/50 mt-2">
             Mantén al día tus registros económicos y controla la salud financiera del club.
