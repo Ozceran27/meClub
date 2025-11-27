@@ -424,7 +424,7 @@ function BarChart({ data = [], height = 140 }) {
                 {label}
               </SvgText>
             ) : null}
-          </>
+          </React.Fragment>
         );
       })}
     </Svg>
