@@ -220,6 +220,7 @@ const normalizeExpenseItem = (raw) => {
 
   const gastoId = toNumberOrNull(raw.gasto_id ?? raw.gastoId ?? raw.id);
   const clubId = toNumberOrNull(raw.club_id ?? raw.clubId);
+  const icono = raw.icono ?? raw.icon ?? raw.emoji ?? null;
 
   return {
     id: gastoId,
@@ -227,6 +228,8 @@ const normalizeExpenseItem = (raw) => {
     clubId,
     categoria: raw.categoria || 'Sin categoría',
     descripcion: raw.descripcion ?? null,
+    icono,
+    icon: icono,
     monto: toNumberOrZero(raw.monto),
     fecha:
       typeof raw.fecha === 'string'
@@ -1135,13 +1138,14 @@ export async function listClubExpenses({ date, page, limit } = {}) {
   return extractExpenseList(response);
 }
 
-export async function createClubExpense({ categoria, descripcion, monto, fecha } = {}) {
+export async function createClubExpense({ categoria, descripcion, monto, fecha, icono } = {}) {
   if (!categoria || monto === undefined || monto === null) {
     throw new Error('categoria y monto son requeridos');
   }
 
   const payload = { categoria, monto };
   if (descripcion !== undefined) payload.descripcion = descripcion;
+  if (icono !== undefined) payload.icono = icono;
   if (fecha !== undefined) payload.fecha = fecha;
 
   const response = await api.post('/clubes/mis-gastos', payload);
@@ -1158,6 +1162,7 @@ export async function updateClubExpense(gastoId, updates = {}) {
   if (updates.categoria !== undefined) payload.categoria = updates.categoria;
   if (updates.descripcion !== undefined) payload.descripcion = updates.descripcion;
   if (updates.monto !== undefined) payload.monto = updates.monto;
+  if (updates.icono !== undefined) payload.icono = updates.icono;
   if (updates.fecha !== undefined) payload.fecha = updates.fecha;
 
   const response = await api.put(`/clubes/mis-gastos/${encodeURIComponent(gastoId)}`, payload);

@@ -591,17 +591,20 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
   const [categoria, setCategoria] = useState(initialValue?.categoria || '');
   const [descripcion, setDescripcion] = useState(initialValue?.descripcion || '');
   const [monto, setMonto] = useState(initialValue?.monto?.toString() || '');
+  const [icono, setIcono] = useState(initialValue?.icono || initialValue?.icon || '');
 
   useEffect(() => {
     setCategoria(initialValue?.categoria || '');
     setDescripcion(initialValue?.descripcion || '');
     setMonto(initialValue?.monto?.toString() || '');
+    setIcono(initialValue?.icono || initialValue?.icon || '');
   }, [initialValue]);
 
   const handleSubmit = () => {
     const parsedMonto = Number(monto);
-    if (!categoria || Number.isNaN(parsedMonto)) return;
-    onSubmit({ categoria, descripcion, monto: parsedMonto });
+    const normalizedIcono = icono?.trim?.() || '';
+    if (!categoria || !normalizedIcono || Number.isNaN(parsedMonto)) return;
+    onSubmit({ categoria, descripcion, monto: parsedMonto, icono: normalizedIcono });
   };
 
   return (
@@ -642,6 +645,17 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 className="bg-white/10 rounded-xl px-4 py-3 text-white"
                 accessibilityLabel="Monto del gasto"
+              />
+            </View>
+            <View>
+              <Text className="text-white/70 mb-2">Icono</Text>
+              <TextInput
+                value={icono}
+                onChangeText={setIcono}
+                placeholder="Ej. 💡 o bolt"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                className="bg-white/10 rounded-xl px-4 py-3 text-white"
+                accessibilityLabel="Icono del gasto"
               />
             </View>
             <View className="flex-row gap-3 mt-2">
@@ -693,10 +707,17 @@ function ExpenseTable({ expenses = [], onEdit, onDelete, loading }) {
           className="flex-row items-center justify-between rounded-xl bg-white/5 border border-white/5 px-4 py-3"
           accessibilityLabel={`${expense.categoria} ${formatCurrency(expense.monto)}`}
         >
-          <View className="flex-1">
-            <Text className="text-white font-semibold">{expense.categoria}</Text>
-            {expense.descripcion ? <Text className="text-white/60 text-sm">{expense.descripcion}</Text> : null}
-            <Text className="text-white/70 text-xs mt-1">{expense.fecha ?? 'Sin fecha'}</Text>
+          <View className="flex-1 flex-row gap-3 items-start">
+            {expense.icono || expense.icon ? (
+              <Text className="text-white text-lg mt-1">{expense.icono || expense.icon}</Text>
+            ) : null}
+            <View className="flex-1">
+              <Text className="text-white font-semibold">{expense.categoria}</Text>
+              {expense.descripcion ? (
+                <Text className="text-white/60 text-sm">{expense.descripcion}</Text>
+              ) : null}
+              <Text className="text-white/70 text-xs mt-1">{expense.fecha ?? 'Sin fecha'}</Text>
+            </View>
           </View>
           <View className="items-end gap-2 ml-4">
             <Text className="text-white font-bold">{formatCurrency(expense.monto)}</Text>
@@ -901,7 +922,6 @@ export default function EconomiaScreen() {
           <MetricCard
             title="Gastos registrados"
             value={showLoader ? 'Cargando…' : formatCurrency(gastosMensuales)}
-            subtitle={showLoader ? '' : `Semanal: ${formatCurrency(gastosSemanales)}`}
             loading={showLoader}
           >
             <View className="gap-2 mt-2">
@@ -913,11 +933,17 @@ export default function EconomiaScreen() {
                 </View>
               ) : recentExpenses.length ? (
                 <View className="gap-1" accessibilityLabel="Gastos recientes" accessible>
-                  {recentExpenses.map((expense) => (
-                    <Text key={expense.id} className="text-white/60 text-sm">
-                      {expense.descripcion || expense.categoria}: {formatCurrency(expense.monto)}
-                    </Text>
-                  ))}
+                  {recentExpenses.map((expense) => {
+                    const expenseIcon = expense.icono || expense.icon || '•';
+                    return (
+                      <View key={expense.id} className="flex-row items-center gap-2">
+                        <Text className="text-white text-base">{expenseIcon}</Text>
+                        <Text className="text-white/60 text-base">
+                          {expense.descripcion || expense.categoria}: {formatCurrency(expense.monto)}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : (
                 <Text className="text-white/40 text-sm">Sin gastos recientes</Text>
