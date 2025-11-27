@@ -54,7 +54,7 @@ const EXPENSE_ICON_OPTIONS = [
 const DEFAULT_EXPENSE_ICON = EXPENSE_ICON_OPTIONS[0].value;
 
 const getNormalizedExpenseIcon = (expense) => {
-  const rawIcon = expense?.icono ?? expense?.icon;
+  const rawIcon = expense?.icono ?? expense?.icon ?? expense?.simbolo;
   if (typeof rawIcon === 'string') {
     const trimmed = rawIcon.trim();
     return trimmed || DEFAULT_EXPENSE_ICON;
@@ -513,8 +513,16 @@ function BarChart({ data = [], height = 140 }) {
     </View>
   );
 
-  const getBarValue = (item = {}) =>
-    toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos ?? item.cantidad);
+  const getBarValue = (item = {}) => {
+    const breakdownTotal = ['pagado', 'senado'].reduce(
+      (acc, key) => acc + toNumberOrZero(item[key] ?? item.ingresos?.[key] ?? item.estados?.[key]),
+      0
+    );
+
+    if (breakdownTotal > 0) return breakdownTotal;
+
+    return toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos ?? item.cantidad);
+  };
 
   const maxValue = Math.max(...data.map((d) => getBarValue(d)), 1);
   const padding = { top: 8, right: 12, bottom: 40, left: 12 };
@@ -587,13 +595,7 @@ function BarChart({ data = [], height = 140 }) {
       className="w-full"
       onLayout={(event) => setLayoutWidth(event?.nativeEvent?.layout?.width || null)}
     >
-      <Svg
-        height={height}
-        width={chartWidth}
-        viewBox={`0 0 ${chartWidth} ${height}`}
-        accessibilityLabel="Gráfico de barras"
-        accessible
-      >
+      <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`} aria-label="Gráfico de barras">
         {data.map((item, index) => {
           const value = getBarValue(item);
           const barHeight = Math.max((value / maxValue) * chartHeight, 4);
@@ -609,12 +611,10 @@ function BarChart({ data = [], height = 140 }) {
                 height={barHeight}
                 rx={8}
                 fill="#38bdf8"
-                onPressIn={() => setActiveIndex(index)}
-                onPressOut={() => setActiveIndex(null)}
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
-                accessibilityRole="button"
-                accessibilityLabel={`${label || 'Barra'}: ${formatValue(value)}`}
+                onTouchStart={() => setActiveIndex(index)}
+                onTouchEnd={() => setActiveIndex(null)}
               />
               {label ? (
                 <SvgText
@@ -739,10 +739,10 @@ function AreaChart({ data = [], height = 160 }) {
             r={5}
             fill="#22d3ee"
             opacity={0.8}
-            onPressIn={() => setActiveIndex(index)}
-            onPressOut={() => setActiveIndex(null)}
             onMouseEnter={() => setActiveIndex(index)}
             onMouseLeave={() => setActiveIndex(null)}
+            onTouchStart={() => setActiveIndex(index)}
+            onTouchEnd={() => setActiveIndex(null)}
           />
           <SvgText
             x={point.x}
@@ -901,10 +901,10 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
                 cy={point.y}
                 r={3.6}
                 fill={serie.color}
-                onPressIn={() => setActiveIndex(index)}
-                onPressOut={() => setActiveIndex(null)}
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
+                onTouchStart={() => setActiveIndex(index)}
+                onTouchEnd={() => setActiveIndex(null)}
               />
             ))}
           </React.Fragment>
@@ -1435,7 +1435,11 @@ export default function EconomiaScreen() {
                         (item.startDate || item.endDate
                           ? formatWeekRangeLabel(item.startDate || item.endDate)
                           : ''),
-                      value: toNumberOrZero(item.value ?? item.total ?? item.monto),
+                      value:
+                        ['pagado', 'senado'].reduce(
+                          (acc, key) => acc + toNumberOrZero(item?.[key] ?? item?.ingresos?.[key]),
+                          0
+                        ) || toNumberOrZero(item.value ?? item.total ?? item.monto),
                     }))}
                   />
                 </ScrollView>
