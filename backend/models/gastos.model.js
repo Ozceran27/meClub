@@ -40,14 +40,21 @@ const normalizeDate = (value) => {
 };
 
 const GastosModel = {
-  listarPorMes: async (clubId, fechaReferencia = new Date()) => {
+  listarPorMes: async (clubId, fechaReferencia = new Date(), options = {}) => {
+    const limit = Number(options.limit) || 20;
+    const page = Number(options.page) || 1;
+    const normalizedLimit = Math.max(1, Math.min(limit, 100));
+    const normalizedPage = Math.max(1, page);
+    const offset = (normalizedPage - 1) * normalizedLimit;
+
     const [rows] = await db.query(
       `SELECT gasto_id, club_id, categoria, descripcion, monto, fecha
        FROM gastos
        WHERE club_id = ?
          AND DATE_FORMAT(fecha, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
-       ORDER BY fecha DESC, gasto_id DESC`,
-      [clubId, fechaReferencia]
+       ORDER BY fecha DESC, gasto_id DESC
+       LIMIT ? OFFSET ?`,
+      [clubId, fechaReferencia, normalizedLimit, offset]
     );
 
     const gastos = rows.map((row) => ({
@@ -72,7 +79,27 @@ const GastosModel = {
 
     const total = porCategoria.reduce((acc, row) => acc + row.total, 0);
 
-    return { gastos, resumen: { porCategoria, total } };
+    const [countRows] = await db.query(
+      `SELECT COUNT(*) AS total
+       FROM gastos
+       WHERE club_id = ?
+         AND DATE_FORMAT(fecha, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')`,
+      [clubId, fechaReferencia]
+    );
+
+    const totalFilas = countRows?.[0]?.total ?? 0;
+    const totalPaginas = Math.max(1, Math.ceil(totalFilas / normalizedLimit));
+
+    return {
+      gastos,
+      resumen: { porCategoria, total },
+      meta: {
+        total: totalFilas,
+        limit: normalizedLimit,
+        page: normalizedPage,
+        totalPaginas,
+      },
+    };
   },
 
   crear: async (clubId, { categoria, descripcion = null, monto, fecha }) => {

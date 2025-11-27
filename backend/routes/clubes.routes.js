@@ -97,6 +97,17 @@ const parseDecimal = (value, fieldName, { required = false } = {}) => {
   return Math.round(numeric * 100) / 100;
 };
 
+const parsePaginationValue = (value, fieldName, { defaultValue, max = 100 } = {}) => {
+  if (value === undefined) return defaultValue;
+
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    throwValidationError(`${fieldName} debe ser un entero positivo`);
+  }
+
+  return Math.min(numeric, max);
+};
+
 const parseOptionalTime = (value, fieldName) => {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -529,8 +540,15 @@ router.get('/mis-servicios', async (req, res) => {
 router.get('/mis-gastos', async (req, res) => {
   try {
     const fechaReferencia = parseFecha(req.query.fecha);
-    const { gastos, resumen } = await GastosModel.listarPorMes(req.club.club_id, fechaReferencia);
-    res.json({ club_id: req.club.club_id, gastos, resumen });
+    const limit = parsePaginationValue(req.query.limit, 'limit', { defaultValue: 20, max: 50 });
+    const page = parsePaginationValue(req.query.page, 'page', { defaultValue: 1, max: 1000 });
+
+    const { gastos, resumen, meta } = await GastosModel.listarPorMes(
+      req.club.club_id,
+      fechaReferencia,
+      { limit, page }
+    );
+    res.json({ club_id: req.club.club_id, gastos, resumen, meta });
   } catch (err) {
     if (err.statusCode === 400) {
       return res.status(400).json({ mensaje: err.message });

@@ -234,10 +234,19 @@ const extractExpenseList = (payload) => {
     ? gastosRaw.map((item) => normalizeExpenseItem(item)).filter(Boolean)
     : [];
 
+  const metaRaw = payload.meta ?? payload.pagination ?? {};
+  const totalItems = toNumberOrZero(metaRaw.total ?? metaRaw.count ?? gastos.length);
+  const pageSize = toNumberOrZero(metaRaw.limit ?? metaRaw.pageSize ?? (gastos.length || 1)) || 1;
+  const page = toNumberOrZero(metaRaw.page ?? metaRaw.currentPage) || 1;
+  const totalPaginas =
+    toNumberOrZero(metaRaw.totalPaginas ?? metaRaw.total_pages ?? metaRaw.pages) ||
+    Math.max(1, Math.ceil(totalItems / pageSize));
+
   return {
     clubId: toNumberOrNull(payload.club_id ?? payload.clubId ?? gastos?.[0]?.clubId),
     gastos,
     resumen: extractExpenseSummary(payload.resumen ?? payload.summary ?? payload),
+    meta: { total: totalItems, limit: pageSize, page, totalPaginas },
   };
 };
 
@@ -996,9 +1005,11 @@ export async function getClubEconomy({ clubId }) {
   return extractEconomy(response);
 }
 
-export async function listClubExpenses({ date } = {}) {
+export async function listClubExpenses({ date, page, limit } = {}) {
   const params = new URLSearchParams();
   if (date) params.set('fecha', date);
+  if (page) params.set('page', page);
+  if (limit) params.set('limit', limit);
   const search = params.toString();
   const response = await api.get(`/clubes/mis-gastos${search ? `?${search}` : ''}`);
   return extractExpenseList(response);

@@ -27,6 +27,10 @@ const statusLabelMap = {
   pendiente_pago: 'Pendiente',
 };
 
+const ECONOMY_STALE_TIME = 60 * 1000;
+const EXPENSES_STALE_TIME = 30 * 1000;
+const EXPENSES_PAGE_SIZE = 10;
+
 const statusColorMap = {
   pagado: 'text-emerald-300',
   senado: 'text-amber-200',
@@ -45,6 +49,7 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
     queryKey: ['economia', clubId],
     enabled: !!clubId && enabled,
     queryFn: async () => getClubEconomy({ clubId }),
+    staleTime: ECONOMY_STALE_TIME,
     select: (economy) => {
       const buildBreakdown = (source = {}) =>
         ['pagado', 'senado', 'pendiente_pago'].map((estado) => ({
@@ -359,6 +364,7 @@ export default function EconomiaScreen() {
   const { user, ready } = useAuth();
   const queryClient = useQueryClient();
   const [periodo, setPeriodo] = useState('mes');
+  const [page, setPage] = useState(1);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -371,24 +377,43 @@ export default function EconomiaScreen() {
   const economyQuery = useQuery(getEconomyQueryOptions({ clubId, enabled: ready }));
 
   const expenseQuery = useQuery({
-    queryKey: ['expenses', clubId, periodo],
+    queryKey: ['expenses', clubId, page, EXPENSES_PAGE_SIZE],
     enabled: !!clubId && ready,
-    queryFn: () => listClubExpenses(),
+    queryFn: () => listClubExpenses({ page, limit: EXPENSES_PAGE_SIZE }),
+    staleTime: EXPENSES_STALE_TIME,
+    keepPreviousData: true,
   });
+
+  const invalidateExpenses = () => queryClient.invalidateQueries({ queryKey: ['expenses', clubId] });
+  const invalidateEconomy = () => queryClient.invalidateQueries({ queryKey: ['economia', clubId] });
 
   const createExpense = useMutation({
     mutationFn: (payload) => createClubExpense(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+    onSuccess: () => {
+      setPage(1);
+      invalidateExpenses();
+      invalidateEconomy();
+    },
   });
 
   const updateExpense = useMutation({
     mutationFn: ({ id, ...updates }) => updateClubExpense(id, updates),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+    onSuccess: () => {
+      invalidateExpenses();
+      invalidateEconomy();
+    },
   });
 
   const deleteExpense = useMutation({
     mutationFn: (expenseId) => deleteClubExpense(expenseId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+    onSuccess: () => {
+      invalidateExpenses();
+      invalidateEconomy();
+      setExpenseToDelete(null);
+      if ((expenseQuery.data?.gastos?.length ?? 0) <= 1 && page > 1) {
+        setPage((prev) => Math.max(1, prev - 1));
+      }
+    },
   });
 
   const { data: economy, isPending, isFetching, isError, error } = economyQuery;
@@ -401,6 +426,19 @@ export default function EconomiaScreen() {
 
   const ingresosSeleccionados = periodo === 'mes' ? economy?.ingresosMes : economy?.ingresosSemana;
   const totalReservas = periodo === 'mes' ? economy?.reservas?.mes : economy?.reservas?.semana;
+
+  const expenseLoading = expenseQuery.isPending || expenseQuery.isFetching;
+  const expenseErrorMessage = expenseQuery.isError
+    ? expenseQuery.error?.message || 'No se pudieron cargar tus gastos.'
+    : '';
+  const expensePagination = expenseQuery.data?.meta ?? {
+    page,
+    limit: EXPENSES_PAGE_SIZE,
+    totalPaginas: 1,
+    total: expenseQuery.data?.gastos?.length ?? 0,
+  };
+  const canGoPrevPage = expensePagination.page > 1;
+  const canGoNextPage = expensePagination.page < (expensePagination.totalPaginas || 1);
 
   const handleSaveExpense = (payload) => {
     if (editingExpense) {
@@ -423,9 +461,7 @@ export default function EconomiaScreen() {
 
   const handleDeleteExpense = () => {
     if (!expenseToDelete) return;
-    deleteExpense.mutate(expenseToDelete.id, {
-      onSuccess: () => setExpenseToDelete(null),
-    });
+    deleteExpense.mutate(expenseToDelete.id);
   };
 
   return (
@@ -554,6 +590,18 @@ export default function EconomiaScreen() {
               ) : null}
             </View>
           </View>
+          {expenseErrorMessage ? (
+            <View className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+              <Text className="text-red-100 mb-2">{expenseErrorMessage}</Text>
+              <TouchableOpacity
+                onPress={() => expenseQuery.refetch()}
+                accessibilityRole="button"
+                className="self-start rounded-lg bg-white/10 px-3 py-2"
+              >
+                <Text className="text-white">Reintentar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           <ExpenseTable
             expenses={expenseQuery.data?.gastos ?? []}
             onEdit={(expense) => {
@@ -561,12 +609,47 @@ export default function EconomiaScreen() {
               setShowExpenseModal(true);
             }}
             onDelete={setExpenseToDelete}
-            loading={expenseQuery.isPending}
+            loading={expenseLoading}
           />
           {expenseToDelete ? (
             <Text className="text-red-300 mt-3">
               Estás por borrar "{expenseToDelete.categoria}" por {formatCurrency(expenseToDelete.monto)}.
             </Text>
+          ) : null}
+          {!expenseErrorMessage ? (
+            <View className="mt-4 flex-row items-center justify-between">
+              <Text className="text-white/60 text-sm">
+                Página {expensePagination.page} de {expensePagination.totalPaginas || 1} ·{' '}
+                {expensePagination.total} gastos
+              </Text>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={!canGoPrevPage || expenseQuery.isFetching}
+                  className={`rounded-lg px-3 py-2 ${
+                    !canGoPrevPage || expenseQuery.isFetching ? 'bg-white/5' : 'bg-white/10'
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Página anterior"
+                >
+                  <Text className="text-white">Anterior</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setPage((prev) => prev + 1)}
+                  disabled={!canGoNextPage || expenseQuery.isFetching}
+                  className={`rounded-lg px-3 py-2 ${
+                    !canGoNextPage || expenseQuery.isFetching ? 'bg-white/5' : 'bg-white/10'
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Página siguiente"
+                >
+                  <Text className="text-white">Siguiente</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+          {expenseQuery.isFetching && !expenseQuery.isPending ? (
+            <Text className="text-white/60 text-xs mt-2">Actualizando lista de gastos…</Text>
           ) : null}
         </Card>
       </View>
