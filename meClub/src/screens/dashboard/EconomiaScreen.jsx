@@ -836,7 +836,27 @@ export default function EconomiaScreen() {
   const reservasMensuales = economy?.reservas?.mes;
   const reservasSemanales = economy?.reservas?.semana;
   const balanceMensual = economy?.balanceMensual;
-  const balanceSemanal = economy?.balanceSemanal;
+  const currentMonthLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('es-AR', {
+        month: 'long',
+      }),
+    []
+  );
+  const balanceStatus = useMemo(() => {
+    const parsedBalance = Number(balanceMensual);
+    const amount = Number.isFinite(parsedBalance) ? parsedBalance : 0;
+
+    if (amount < 0) {
+      return { label: 'riesgoso', colorClass: 'text-rose-300', iconColor: 'bg-rose-400' };
+    }
+
+    if (amount >= 150000) {
+      return { label: 'saludable', colorClass: 'text-emerald-300', iconColor: 'bg-emerald-400' };
+    }
+
+    return { label: 'débil', colorClass: 'text-amber-200', iconColor: 'bg-amber-300' };
+  }, [balanceMensual]);
   const ultimoFlujoMensual = economiaMensual[economiaMensual.length - 1];
   const ingresosDiarios = economy?.ingresosDiarios ?? [];
   const ingresosDiariosTotal = economy?.ingresosDiariosTotal ?? 0;
@@ -983,13 +1003,19 @@ export default function EconomiaScreen() {
           <MetricCard
             title="Balance"
             value={showLoader ? 'Cargando…' : formatCurrency(balanceMensual)}
-            subtitle={showLoader ? '' : `Balance semanal: ${formatCurrency(balanceSemanal)}`}
             loading={showLoader}
           >
             {!showLoader ? (
-              <View className="gap-1">
-                <Text className="text-white/70">Proyección mensual: {formatCurrency(economy?.proyeccion?.mes)}</Text>
-                <Text className="text-white/70">Proyección semanal: {formatCurrency(economy?.proyeccion?.semana)}</Text>
+              <View className="gap-2">
+                <Text className="text-white/60">
+                  Total proyectado mes de {currentMonthLabel}
+                </Text>
+                <View className="flex-row items-center gap-2">
+                  <View className={`h-2.5 w-2.5 rounded-full ${balanceStatus.iconColor}`} />
+                  <Text className={`${balanceStatus.colorClass} font-semibold capitalize`}>
+                    {balanceStatus.label}
+                  </Text>
+                </View>
               </View>
             ) : null}
           </MetricCard>
