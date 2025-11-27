@@ -234,13 +234,13 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
           </Card>
         ) : null}
 
-        <View className="mt-2 flex-col gap-3">
+        <View className="mt-1 flex-col gap-2">
           {sortedMessages.map((message) => (
             <Pressable key={message.inboxId} onPress={() => openMessage(message)}>
               <Card
-                className={`border ${message.isRead ? 'border-white/10' : 'border-cyan-400/30'} bg-gradient-to-br from-[#0F172A]/90 to-[#0B1224]/90`}
+                className={`border ${message.isRead ? 'border-white/10' : 'border-cyan-400/30'} bg-gradient-to-br from-[#0F172A]/90 to-[#0B1224]/90 p-4`}
               >
-                <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-row items-start justify-between gap-2">
                   <View className="flex-1 gap-2">
                     <Text className="text-white text-lg font-semibold" numberOfLines={1}>
                       {message.title || 'Sin título'}
@@ -248,7 +248,7 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
                     <Text className="text-white/70 text-sm" numberOfLines={2}>
                       {message.content || 'Sin contenido'}
                     </Text>
-                    <View className="flex-row items-center gap-3 mt-2">
+                    <View className="flex-row items-center gap-2 mt-1">
                       <TypePill type={message.type} />
                       <Text className="text-white/50 text-sm" numberOfLines={1}>
                         {formatDate(message.createdAt || message.messageCreatedAt)}
@@ -294,7 +294,7 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
               </Pressable>
             </View>
 
-            <Card className="bg-white/5 border border-white/10">
+            <Card className="bg-white/5 border border-white/10 p-4">
               <Text className="text-white/90 leading-6">
                 {selectedMessage?.content || 'Sin contenido disponible'}
               </Text>
