@@ -169,8 +169,23 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
     return date;
   });
 
-  const sumByStates = (source = {}, states = []) =>
-    states.reduce((acc, key) => acc + toNumberOrZero(source?.[key]), 0);
+  const getStateIncome = (source = {}) => {
+    const candidates = [source, source?.estados, source?.ingresos, source?.ingresos?.estados];
+    for (const candidate of candidates) {
+      const hasBreakdown = ['pagado', 'senado'].some(
+        (state) => candidate?.[state] !== undefined && candidate?.[state] !== null
+      );
+      if (hasBreakdown) {
+        const total = ['pagado', 'senado'].reduce(
+          (acc, state) => acc + toNumberOrZero(candidate?.[state]),
+          0
+        );
+        return { hasBreakdown: true, total };
+      }
+    }
+
+    return { hasBreakdown: false, total: 0 };
+  };
 
   const matchByDay = (targetIndex, targetDate) =>
     items.find((item) => {
@@ -185,14 +200,11 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   const chartItems = lastSevenDays.map((currentDate) => {
     const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
     const match = matchByDay(dayIndex, currentDate) || {};
-    const hasStateBreakdown = ['pagado', 'senado', 'pendiente_pago'].some(
-      (state) => match[state] !== undefined && match[state] !== null
-    );
-    const breakdownTotal = sumByStates(match, ['pagado', 'senado']);
+    const { hasBreakdown, total: breakdownTotal } = getStateIncome(match);
     const fallbackValue = toNumberOrZero(
       match.total ?? match.monto ?? match.value ?? match.ingresos ?? match.cantidad
     );
-    const value = hasStateBreakdown ? breakdownTotal : fallbackValue;
+    const value = hasBreakdown ? breakdownTotal : fallbackValue;
 
     return {
       label: WEEKDAY_SHORT_LABELS[dayIndex],
@@ -205,7 +217,7 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   const rangeStart = formatDateOnly(lastSevenDays[0]);
   const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
 
-  if (!items.length && total === 0) {
+  if (total <= 0) {
     const stubBase = fallbackTotal || 7000;
     const average = stubBase / WEEKDAY_SHORT_LABELS.length;
     const multipliers = [0.95, 1.08, 1.02, 1.12, 0.9, 1.18, 0.85];
@@ -243,7 +255,14 @@ const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
             item.label ||
             (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
 
-          const value = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
+          const stateSources = [item, item.estados, item.ingresos, item.ingresos?.estados];
+          const stateSource = stateSources.find((source) =>
+            ['pagado', 'senado'].some((state) => source?.[state] !== undefined && source?.[state] !== null)
+          );
+
+          const value = stateSource
+            ? ['pagado', 'senado'].reduce((acc, state) => acc + toNumberOrZero(stateSource?.[state]), 0)
+            : toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
 
           return label
             ? {
@@ -259,25 +278,31 @@ const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
 
   let total = chartItems.reduce((acc, item) => acc + item.value, 0);
 
-  if (!chartItems.length) {
+  if (!chartItems.length || total <= 0) {
     const baseTotal = fallbackTotal || 42000;
     const average = baseTotal / weeksBack;
     const multipliers = [0.9, 1, 1.08, 0.95, 1.15, 1.02];
     const currentWeek = startOfWeek(new Date());
 
-    const stubbed = Array.from({ length: weeksBack }, (_, idx) => {
-      const start = new Date(currentWeek);
-      start.setDate(currentWeek.getDate() - (weeksBack - idx - 1) * 7);
-      const end = new Date(start);
-      end.setDate(start.getDate() + 6);
+    const stubbed = (chartItems.length
+      ? chartItems
+      : Array.from({ length: weeksBack }, (_, idx) => {
+          const start = new Date(currentWeek);
+          start.setDate(currentWeek.getDate() - (weeksBack - idx - 1) * 7);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
 
-      return {
-        label: formatWeekRangeLabel(start),
-        startDate: formatDateOnly(start),
-        endDate: formatDateOnly(end),
-        value: Math.max(0, Math.round(average * multipliers[idx % multipliers.length])),
-      };
-    });
+          return {
+            label: formatWeekRangeLabel(start),
+            startDate: formatDateOnly(start),
+            endDate: formatDateOnly(end),
+            value: 0,
+          };
+        })
+    ).map((item, idx) => ({
+      ...item,
+      value: Math.max(0, Math.round(average * multipliers[idx % multipliers.length])),
+    }));
 
     total = stubbed.reduce((acc, item) => acc + item.value, 0);
     return { items: stubbed, total, isStub: true };
@@ -488,7 +513,10 @@ function BarChart({ data = [], height = 140 }) {
     </View>
   );
 
-  const maxValue = Math.max(...data.map((d) => d.value || 0), 1);
+  const getBarValue = (item = {}) =>
+    toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos ?? item.cantidad);
+
+  const maxValue = Math.max(...data.map((d) => getBarValue(d)), 1);
   const padding = { top: 8, right: 12, bottom: 40, left: 12 };
   const estimatedWidth = Math.max(220, Math.min(540, data.length * 64));
   const effectiveWidth = layoutWidth || estimatedWidth;
@@ -530,17 +558,18 @@ function BarChart({ data = [], height = 140 }) {
     );
 
   const activeItem = activeIndex !== null ? data[activeIndex] : null;
+  const activeValue = getBarValue(activeItem || {});
   const activeBarX =
     activeIndex !== null ? padding.left + activeIndex * (barWidth + gap) : null;
   const activeBarHeight =
     activeItem !== null && activeItem !== undefined
-      ? Math.max((Number(activeItem?.value) / maxValue) * chartHeight, 4)
+      ? Math.max((activeValue / maxValue) * chartHeight, 4)
       : null;
   const activeCenterX = activeBarX !== null ? activeBarX + barWidth / 2 : null;
   const activeTopY =
     activeBarHeight !== null ? padding.top + (chartHeight - activeBarHeight) : null;
   const tooltipLabel = activeItem?.label || formatBarLabel(activeItem || {});
-  const tooltipValue = formatValue(activeItem?.value);
+  const tooltipValue = formatValue(activeValue);
   const tooltipWidth = Math.min(
     180,
     Math.max(96, ((tooltipLabel?.length || 0) + tooltipValue.length) * 4)
@@ -566,7 +595,8 @@ function BarChart({ data = [], height = 140 }) {
         accessible
       >
         {data.map((item, index) => {
-          const barHeight = Math.max((Number(item.value) / maxValue) * chartHeight, 4);
+          const value = getBarValue(item);
+          const barHeight = Math.max((value / maxValue) * chartHeight, 4);
           const x = padding.left + index * (barWidth + gap);
           const y = padding.top + (chartHeight - barHeight);
           const label = formatBarLabel(item);
@@ -584,7 +614,7 @@ function BarChart({ data = [], height = 140 }) {
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
                 accessibilityRole="button"
-                accessibilityLabel={`${label || 'Barra'}: ${formatValue(item.value)}`}
+                accessibilityLabel={`${label || 'Barra'}: ${formatValue(value)}`}
               />
               {label ? (
                 <SvgText
