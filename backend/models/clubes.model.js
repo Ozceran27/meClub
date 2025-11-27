@@ -524,6 +524,20 @@ const ClubesModel = {
       [club_id, weekStart || new Date()]
     );
 
+    const ingresosSemanalesSeriePromise = db.query(
+      `SELECT YEARWEEK(r.fecha, 1) AS semana,
+              MIN(r.fecha) AS fecha_inicio,
+              MAX(r.fecha) AS fecha_fin,
+              COALESCE(SUM(r.monto), 0) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+       GROUP BY YEARWEEK(r.fecha, 1)
+       ORDER BY semana DESC
+       LIMIT 12`,
+      [club_id]
+    );
+
     const reservasMensualesPromise = db.query(
       `SELECT COUNT(*) AS total
        FROM reservas r
@@ -568,6 +582,7 @@ const ClubesModel = {
     const [
       [ingresosMensualesRows],
       [ingresosSemanalesRows],
+      [ingresosSemanalesSerieRows],
       [reservasMensualesRows],
       [reservasSemanalesRows],
       gastosMensuales,
@@ -576,6 +591,7 @@ const ClubesModel = {
     ] = await Promise.all([
       ingresosMensualesPromise,
       ingresosSemanalesPromise,
+      ingresosSemanalesSeriePromise,
       reservasMensualesPromise,
       reservasSemanalesPromise,
       gastosMensualesPromise,
@@ -607,6 +623,28 @@ const ClubesModel = {
     const proyeccionSemana = Object.values(ingresosSemana).reduce((acc, val) => acc + val, 0);
 
     const balanceMensual = proyeccionMes - gastosMensuales;
+
+    const ingresosSemanalesSerie = (ingresosSemanalesSerieRows || [])
+      .map((row, index) => {
+        const semana = row?.semana;
+        const total = row?.total === null || row?.total === undefined ? 0 : Number(row.total);
+        const inicio = row?.fecha_inicio ? new Date(row.fecha_inicio) : null;
+        const fin = row?.fecha_fin ? new Date(row.fecha_fin) : null;
+
+        const labelBase =
+          semana && String(semana).length >= 4
+            ? `S${String(semana).slice(-2)}`
+            : `S${ingresosSemanalesSerieRows.length - index}`;
+
+        return {
+          semana,
+          total,
+          fecha_inicio: inicio ? inicio.toISOString().slice(0, 10) : null,
+          fecha_fin: fin ? fin.toISOString().slice(0, 10) : null,
+          label: labelBase,
+        };
+      })
+      .reverse();
 
     const monthTimeline = Array.from({ length: monthsBack }, (_, index) => {
       const current = new Date(monthRangeStart);
@@ -649,6 +687,7 @@ const ClubesModel = {
         mes: ingresosMes,
         semana: ingresosSemana,
       },
+      ingresosSemanalesSerie,
       reservas: { mes: reservasMes, semana: reservasSemana },
       proyeccion: { mes: proyeccionMes, semana: proyeccionSemana },
       gastos: { mes: gastosMensuales },

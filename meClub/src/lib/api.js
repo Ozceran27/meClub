@@ -311,6 +311,73 @@ const normalizeMonthlySeries = (source) => {
     .filter(Boolean);
 };
 
+const parseYearWeekToDate = (token) => {
+  if (!token) return null;
+  const match = token.toString().match(/^(\d{4})-?(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const week = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(week)) return null;
+
+  const january4th = new Date(year, 0, 4);
+  const dayOfWeek = january4th.getDay() || 7;
+  const isoWeekStart = new Date(january4th);
+  isoWeekStart.setDate(january4th.getDate() - (dayOfWeek - 1) + (week - 1) * 7);
+  return isoWeekStart;
+};
+
+const normalizeWeeklyIncomeSeries = (raw) => {
+  const items = Array.isArray(raw) ? raw : [];
+  return items
+    .map((item, index) => {
+      const value = toNumberOrZero(
+        item?.total ?? item?.monto ?? item?.value ?? item?.ingresos ?? item?.cantidad
+      );
+
+      const weekToken = item?.semana ?? item?.week ?? item?.weekNumber;
+      const startDateRaw =
+        item?.startDate ||
+        item?.fecha_inicio ||
+        item?.inicio ||
+        item?.desde ||
+        parseYearWeekToDate(weekToken);
+      const startDate = startDateRaw ? new Date(startDateRaw) : null;
+
+      const endDateRaw = item?.endDate || item?.fecha_fin || item?.fin || item?.hasta;
+      const endDate = endDateRaw
+        ? new Date(endDateRaw)
+        : startDate
+          ? new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000)
+          : null;
+
+      const formatter = (date) =>
+        date.toLocaleDateString('es-AR', {
+          month: 'short',
+          day: 'numeric',
+        });
+
+      const label =
+        item?.label ||
+        (startDate
+          ? `${formatter(startDate)} - ${formatter(endDate || startDate)}`
+          : weekToken
+            ? `Semana ${weekToken}`
+            : `S${index + 1}`);
+
+      if (!label && !value) return null;
+
+      return {
+        label,
+        value,
+        startDate: startDate?.toISOString().slice(0, 10) || null,
+        endDate: endDate?.toISOString().slice(0, 10) || null,
+        week: weekToken ?? null,
+      };
+    })
+    .filter(Boolean);
+};
+
 const normalizeDailyIncomeSeries = (raw) => {
   const items = Array.isArray(raw) ? raw : [];
   return items
@@ -374,6 +441,13 @@ const extractEconomy = (payload) => {
       data.ingresosDiariosSemana
   );
 
+  const ingresosSemanalesSerie = normalizeWeeklyIncomeSeries(
+    data.ingresosSemanalesSerie ??
+      data.ingresos?.semanalesSerie ??
+      data.ingresos?.semanales ??
+      data.ingresosSemanalSerie
+  );
+
   const semanaSeleccionada =
     data.semanaSeleccionada ?? data.semana ?? data.week ?? data.weekStart ?? data.semana_inicio;
 
@@ -390,6 +464,7 @@ const extractEconomy = (payload) => {
     balanceMensual: toNumberOrZero(data.balanceMensual ?? data.balance ?? data.balance_mensual),
     ingresosMensualesHistoricos,
     ingresosDiarios,
+    ingresosSemanalesSerie,
     semanaSeleccionada,
     economiaMensual,
   };
