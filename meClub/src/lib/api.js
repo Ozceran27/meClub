@@ -1250,7 +1250,10 @@ export async function createClubExpense({ categoria, descripcion, monto, fecha, 
 
   const payload = { categoria, monto };
   if (descripcion !== undefined) payload.descripcion = descripcion;
-  if (icono !== undefined) payload.icono = icono;
+  if (icono !== undefined) {
+    payload.icono = icono;
+    payload.icon = icono;
+  }
   if (fecha !== undefined) payload.fecha = fecha;
 
   const response = await api.post('/clubes/mis-gastos', payload);
@@ -1274,7 +1277,10 @@ export async function updateClubExpense(gastoId, updates = {}) {
   if (updates.categoria !== undefined) payload.categoria = updates.categoria;
   if (updates.descripcion !== undefined) payload.descripcion = updates.descripcion;
   if (updates.monto !== undefined) payload.monto = updates.monto;
-  if (updates.icono !== undefined) payload.icono = updates.icono;
+  if (updates.icono !== undefined) {
+    payload.icono = updates.icono;
+    payload.icon = updates.icono;
+  }
   if (updates.fecha !== undefined) payload.fecha = updates.fecha;
 
   const response = await api.put(`/clubes/mis-gastos/${encodeURIComponent(gastoId)}`, payload);
