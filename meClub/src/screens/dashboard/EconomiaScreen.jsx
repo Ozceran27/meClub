@@ -427,6 +427,10 @@ export default function EconomiaScreen() {
   const expenseErrorMessage = expenseQuery.isError
     ? expenseQuery.error?.message || 'No se pudieron cargar tus gastos.'
     : '';
+  const recentExpenses = useMemo(() => {
+    const expenses = expenseQuery.data?.gastos ?? [];
+    return expenses.slice(0, 3);
+  }, [expenseQuery.data?.gastos]);
   const expensePagination = expenseQuery.data?.meta ?? {
     page,
     limit: EXPENSES_PAGE_SIZE,
@@ -501,7 +505,27 @@ export default function EconomiaScreen() {
             value={showLoader ? 'Cargando…' : formatCurrency(gastosMensuales)}
             subtitle={showLoader ? '' : `Semanal: ${formatCurrency(gastosSemanales)}`}
             loading={showLoader}
-          />
+          >
+            <View className="gap-2 mt-2">
+              {expenseLoading ? (
+                <View className="gap-2" accessibilityLabel="Cargando gastos recientes" accessible>
+                  <View className="h-3 w-40 rounded-full bg-white/10" />
+                  <View className="h-3 w-48 rounded-full bg-white/10" />
+                  <View className="h-3 w-44 rounded-full bg-white/10" />
+                </View>
+              ) : recentExpenses.length ? (
+                <View className="gap-1" accessibilityLabel="Gastos recientes" accessible>
+                  {recentExpenses.map((expense) => (
+                    <Text key={expense.id} className="text-white/60 text-sm">
+                      {expense.descripcion || expense.categoria}: {formatCurrency(expense.monto)}
+                    </Text>
+                  ))}
+                </View>
+              ) : (
+                <Text className="text-white/40 text-sm">Sin gastos recientes</Text>
+              )}
+            </View>
+          </MetricCard>
 
           <MetricCard
             title="Reservas"
