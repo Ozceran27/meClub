@@ -143,6 +143,9 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
     return date;
   });
 
+  const sumByStates = (source = {}, states = []) =>
+    states.reduce((acc, key) => acc + toNumberOrZero(source?.[key]), 0);
+
   const matchByDay = (targetIndex, targetDate) =>
     items.find((item) => {
       const rawDate = item.fecha ?? item.date;
@@ -156,9 +159,14 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   const chartItems = lastSevenDays.map((currentDate) => {
     const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
     const match = matchByDay(dayIndex, currentDate) || {};
-    const value = toNumberOrZero(
+    const hasStateBreakdown = ['pagado', 'senado', 'pendiente_pago'].some(
+      (state) => match[state] !== undefined && match[state] !== null
+    );
+    const breakdownTotal = sumByStates(match, ['pagado', 'senado']);
+    const fallbackValue = toNumberOrZero(
       match.total ?? match.monto ?? match.value ?? match.ingresos ?? match.cantidad
     );
+    const value = hasStateBreakdown ? breakdownTotal : fallbackValue;
 
     return {
       label: WEEKDAY_SHORT_LABELS[dayIndex],
