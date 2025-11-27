@@ -144,6 +144,34 @@ const toPositiveIntOrZero = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
+const toPaymentBreakdown = (source = {}) => {
+  const base = { pagado: 0, senado: 0, pendiente_pago: 0 };
+
+  if (Array.isArray(source)) {
+    return source.reduce((acc, item) => {
+      const key = normalizePaymentStatusValue(
+        item?.estado_pago ?? item?.estadoPago ?? item?.estado
+      );
+      const normalizedKey = key || 'pendiente_pago';
+      acc[normalizedKey] = (acc[normalizedKey] || 0) + toNumberOrZero(item?.total);
+      return acc;
+    }, { ...base });
+  }
+
+  if (source && typeof source === 'object') {
+    return {
+      ...base,
+      pagado: toNumberOrZero(source.pagado ?? source.pago ?? source.paid),
+      senado: toNumberOrZero(source.senado ?? source.señado ?? source.senadoPago),
+      pendiente_pago: toNumberOrZero(
+        source.pendiente_pago ?? source.pendientePago ?? source.pending
+      ),
+    };
+  }
+
+  return { ...base };
+};
+
 const toNumberOrZero = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -158,6 +186,88 @@ const toBoolean = (value) => {
     return ['1', 'true', 'si', 'sí', 'on', 'yes'].includes(normalized);
   }
   return false;
+};
+
+const normalizeExpenseItem = (raw) => {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const gastoId = toNumberOrNull(raw.gasto_id ?? raw.gastoId ?? raw.id);
+  const clubId = toNumberOrNull(raw.club_id ?? raw.clubId);
+
+  return {
+    id: gastoId,
+    gastoId,
+    clubId,
+    categoria: raw.categoria || 'Sin categoría',
+    descripcion: raw.descripcion ?? null,
+    monto: toNumberOrZero(raw.monto),
+    fecha:
+      typeof raw.fecha === 'string'
+        ? raw.fecha
+        : raw.fecha instanceof Date
+        ? raw.fecha.toISOString()
+        : raw.fecha ?? null,
+  };
+};
+
+const extractExpenseSummary = (payload) => {
+  const summary = payload?.resumen ?? payload?.summary ?? payload ?? {};
+  const porCategoria = Array.isArray(summary.porCategoria)
+    ? summary.porCategoria.map((item) => ({
+        categoria: item?.categoria || 'Sin categoría',
+        total: toNumberOrZero(item?.total),
+      }))
+    : [];
+  const total = toNumberOrZero(summary.total ?? porCategoria.reduce((acc, it) => acc + (it?.total || 0), 0));
+
+  return { porCategoria, total };
+};
+
+const extractExpenseList = (payload) => {
+  if (!payload || typeof payload !== 'object') {
+    return { clubId: null, gastos: [], resumen: { porCategoria: [], total: 0 } };
+  }
+
+  const gastosRaw =
+    payload.gastos ?? payload.data?.gastos ?? payload.data ?? payload.items ?? payload ?? [];
+  const gastos = Array.isArray(gastosRaw)
+    ? gastosRaw.map((item) => normalizeExpenseItem(item)).filter(Boolean)
+    : [];
+
+  return {
+    clubId: toNumberOrNull(payload.club_id ?? payload.clubId ?? gastos?.[0]?.clubId),
+    gastos,
+    resumen: extractExpenseSummary(payload.resumen ?? payload.summary ?? payload),
+  };
+};
+
+const extractEconomy = (payload) => {
+  const data = payload?.data ?? payload ?? {};
+
+  const ingresosMes = toPaymentBreakdown(
+    data.ingresos?.mes ?? data.ingresosMes ?? data.ingresos_mes ?? data.ingresosMensuales
+  );
+  const ingresosSemana = toPaymentBreakdown(
+    data.ingresos?.semana ?? data.ingresosSemana ?? data.ingresos_semana ?? data.ingresosSemanales
+  );
+
+  const reservasMes = toNumberOrZero(data.reservas?.mes ?? data.reservasMes ?? data.reservas_mes);
+  const reservasSemana = toNumberOrZero(
+    data.reservas?.semana ?? data.reservasSemana ?? data.reservas_semana
+  );
+
+  return {
+    ingresos: { mes: ingresosMes, semana: ingresosSemana },
+    reservas: { mes: reservasMes, semana: reservasSemana },
+    proyeccion: {
+      mes: toNumberOrZero(data.proyeccion?.mes ?? data.proyeccionMes ?? data.proyeccion_mes),
+      semana: toNumberOrZero(
+        data.proyeccion?.semana ?? data.proyeccionSemana ?? data.proyeccion_semana
+      ),
+    },
+    gastos: { mes: toNumberOrZero(data.gastos?.mes ?? data.gastosMes ?? data.gastos_mes) },
+    balanceMensual: toNumberOrZero(data.balanceMensual ?? data.balance ?? data.balance_mensual),
+  };
 };
 
 function normalizeInboxItem(raw) {
@@ -875,6 +985,62 @@ export async function getClubSummary({ clubId }) {
     console.warn('getClubSummary error', err);
     throw err;
   }
+}
+
+export async function getClubEconomy({ clubId }) {
+  if (!clubId && clubId !== 0) {
+    throw new Error('Identificador de club inválido');
+  }
+
+  const response = await api.get(`/clubes/${encodeURIComponent(clubId)}/economia`);
+  return extractEconomy(response);
+}
+
+export async function listClubExpenses({ date } = {}) {
+  const params = new URLSearchParams();
+  if (date) params.set('fecha', date);
+  const search = params.toString();
+  const response = await api.get(`/clubes/mis-gastos${search ? `?${search}` : ''}`);
+  return extractExpenseList(response);
+}
+
+export async function createClubExpense({ categoria, descripcion, monto, fecha } = {}) {
+  if (!categoria || monto === undefined || monto === null) {
+    throw new Error('categoria y monto son requeridos');
+  }
+
+  const payload = { categoria, monto };
+  if (descripcion !== undefined) payload.descripcion = descripcion;
+  if (fecha !== undefined) payload.fecha = fecha;
+
+  const response = await api.post('/clubes/mis-gastos', payload);
+  const gasto = response?.gasto ?? response?.data ?? response;
+  return normalizeExpenseItem(gasto);
+}
+
+export async function updateClubExpense(gastoId, updates = {}) {
+  if (!gastoId && gastoId !== 0) {
+    throw new Error('Identificador de gasto inválido');
+  }
+
+  const payload = {};
+  if (updates.categoria !== undefined) payload.categoria = updates.categoria;
+  if (updates.descripcion !== undefined) payload.descripcion = updates.descripcion;
+  if (updates.monto !== undefined) payload.monto = updates.monto;
+  if (updates.fecha !== undefined) payload.fecha = updates.fecha;
+
+  const response = await api.put(`/clubes/mis-gastos/${encodeURIComponent(gastoId)}`, payload);
+  const gasto = response?.gasto ?? response?.data ?? response;
+  return normalizeExpenseItem(gasto);
+}
+
+export async function deleteClubExpense(gastoId) {
+  if (!gastoId && gastoId !== 0) {
+    throw new Error('Identificador de gasto inválido');
+  }
+
+  await api.del(`/clubes/mis-gastos/${encodeURIComponent(gastoId)}`);
+  return true;
 }
 
 export async function getReservationsPanel({ date } = {}) {

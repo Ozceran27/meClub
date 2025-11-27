@@ -20,10 +20,33 @@ const resolveNivelId = (club, usuario) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
 
+const resolveClubId = (club, usuario) => {
+  const candidates = [
+    usuario?.clubId,
+    usuario?.club_id,
+    usuario?.club?.club_id,
+    usuario?.club?.id,
+    club?.club_id,
+    club?.id,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
 const withDerivedUserFields = (data) => {
   if (!data) return data;
   const next = { ...data };
   next.nivel_id = resolveNivelId(next.club, next);
+  const resolvedClubId = resolveClubId(next.club, next);
+  if (resolvedClubId) next.clubId = resolvedClubId;
+  if (!next.clubNombre && next.club?.nombre) next.clubNombre = next.club.nombre;
   if ('foto_logo' in next) {
     next.clubLogoUrl = resolveAssetUrl(next.foto_logo);
   } else if (next.clubLogoUrl && next.foto_logo == null) {
@@ -60,7 +83,12 @@ export function AuthProvider({ children }) {
       ...usuario,
       foto_logo: club?.foto_logo ?? usuario?.foto_logo ?? null,
       nivel_id: resolveNivelId(club, usuario),
-      ...(club ? { clubId: club.club_id, clubNombre: club.nombre } : {}),
+      ...(club
+        ? {
+            clubId: resolveClubId(club, usuario) ?? club.club_id ?? club.id,
+            clubNombre: club.nombre,
+          }
+        : {}),
     });
 
     await setItem(tokenKey, token);
