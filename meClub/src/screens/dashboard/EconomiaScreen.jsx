@@ -209,7 +209,21 @@ const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
             item.label ||
             (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
 
-          const value = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
+          const stateBreakdown = item.ingresos || item.estados;
+          const hasStateBreakdown =
+            stateBreakdown && typeof stateBreakdown === 'object' && !Array.isArray(stateBreakdown);
+
+          const statesValue = hasStateBreakdown
+            ? ['pagado', 'senado'].reduce(
+                (acc, key) => acc + toNumberOrZero(stateBreakdown?.[key]),
+                0
+              )
+            : null;
+
+          const value =
+            statesValue !== null
+              ? statesValue
+              : toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
 
           return label
             ? {
@@ -1235,7 +1249,7 @@ export default function EconomiaScreen() {
                         (item.startDate || item.endDate
                           ? formatWeekRangeLabel(item.startDate || item.endDate)
                           : ''),
-                      value: toNumberOrZero(item.value ?? item.total ?? item.monto),
+                      value: item.value,
                     }))}
                   />
                 </ScrollView>
