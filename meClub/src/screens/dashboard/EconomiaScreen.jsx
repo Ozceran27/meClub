@@ -129,7 +129,11 @@ function BreakdownList({ title, breakdown = [], loading }) {
 
 function MetricCard({ title, value, subtitle, children, loading }) {
   return (
-    <Card className="flex-1 min-w-[240px]" accessibilityLabel={`${title} ${value}`} accessible>
+    <Card
+      className="flex-1 min-w-[240px]"
+      accessibilityLabel={`${title} ${value}${subtitle ? `, ${subtitle}` : ''}`}
+      accessible
+    >
       <CardTitle colorClass="text-white/80">{title}</CardTitle>
       <View className="mt-3 gap-2">
         {loading ? (
@@ -529,10 +533,29 @@ export default function EconomiaScreen() {
 
           <MetricCard
             title="Reservas"
-            value={showLoader ? 'Cargando…' : `${reservasMensuales ?? 0} mensuales`}
-            subtitle={showLoader ? '' : `Semanal: ${reservasSemanales ?? 0}`}
+            value={showLoader ? 'Cargando…' : (reservasMensuales ?? 0)}
+            subtitle={showLoader ? '' : 'Total mensual'}
             loading={showLoader}
-          />
+          >
+            {!showLoader ? (
+              <View
+                className="gap-1"
+                accessibilityLabel={`Reservas del mes ${reservasMensuales ?? 0}, reservas de la semana ${
+                  reservasSemanales ?? 0
+                }`}
+                accessible
+              >
+                <Text className="text-white/60">
+                  Reservas del mes:{' '}
+                  <Text className="text-white font-semibold">{reservasMensuales ?? 0}</Text>
+                </Text>
+                <Text className="text-white/60">
+                  Reservas de la semana:{' '}
+                  <Text className="text-white font-semibold">{reservasSemanales ?? 0}</Text>
+                </Text>
+              </View>
+            ) : null}
+          </MetricCard>
 
           <MetricCard
             title="Balance"
