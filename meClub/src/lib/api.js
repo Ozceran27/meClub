@@ -215,12 +215,39 @@ const toBoolean = (value) => {
   return false;
 };
 
+const extractIconValue = (source) => {
+  if (!source) return null;
+  if (typeof source === 'string') {
+    const trimmed = source.trim();
+    return trimmed || null;
+  }
+
+  if (typeof source === 'object') {
+    const candidates = [
+      source.icono,
+      source.icon,
+      source.emoji,
+      source.value,
+      source.simbolo,
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate) {
+        const normalized = extractIconValue(candidate);
+        if (normalized) return normalized;
+      }
+    }
+  }
+
+  return null;
+};
+
 const normalizeExpenseItem = (raw) => {
   if (!raw || typeof raw !== 'object') return null;
 
   const gastoId = toNumberOrNull(raw.gasto_id ?? raw.gastoId ?? raw.id);
   const clubId = toNumberOrNull(raw.club_id ?? raw.clubId);
-  const icono = raw.icono ?? raw.icon ?? raw.emoji ?? null;
+  const icono = extractIconValue(raw);
 
   return {
     id: gastoId,
