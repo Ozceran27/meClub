@@ -358,9 +358,11 @@ const normalizeWeeklyIncomeSeries = (raw) => {
   const items = Array.isArray(raw) ? raw : [];
   return items
     .map((item, index) => {
-      const value = toNumberOrZero(
-        item?.total ?? item?.monto ?? item?.value ?? item?.ingresos ?? item?.cantidad
-      );
+      const breakdown = toPaymentBreakdown(item?.ingresos ?? item?.estados ?? item);
+      const breakdownTotal = (breakdown.pagado || 0) + (breakdown.senado || 0);
+      const value =
+        breakdownTotal ||
+        toNumberOrZero(item?.total ?? item?.monto ?? item?.value ?? item?.ingresos ?? item?.cantidad);
 
       const weekToken = item?.semana ?? item?.week ?? item?.weekNumber;
       const startDateRaw =
@@ -400,6 +402,8 @@ const normalizeWeeklyIncomeSeries = (raw) => {
         startDate: startDate?.toISOString().slice(0, 10) || null,
         endDate: endDate?.toISOString().slice(0, 10) || null,
         week: weekToken ?? null,
+        ...breakdown,
+        ingresos: breakdown,
       };
     })
     .filter(Boolean);
@@ -409,9 +413,11 @@ const normalizeDailyIncomeSeries = (raw) => {
   const items = Array.isArray(raw) ? raw : [];
   return items
     .map((item, index) => {
-      const total = toNumberOrZero(
-        item?.total ?? item?.monto ?? item?.value ?? item?.ingresos ?? item?.cantidad
-      );
+      const breakdown = toPaymentBreakdown(item?.ingresos ?? item?.estados ?? item);
+      const breakdownTotal = (breakdown.pagado || 0) + (breakdown.senado || 0);
+      const total =
+        breakdownTotal ||
+        toNumberOrZero(item?.total ?? item?.monto ?? item?.value ?? item?.ingresos ?? item?.cantidad);
 
       if (!Number.isFinite(total)) return null;
 
@@ -427,6 +433,8 @@ const normalizeDailyIncomeSeries = (raw) => {
           null,
         label: item?.label ?? null,
         index,
+        ...breakdown,
+        ingresos: breakdown,
       };
     })
     .filter(Boolean);
@@ -1247,7 +1255,14 @@ export async function createClubExpense({ categoria, descripcion, monto, fecha, 
 
   const response = await api.post('/clubes/mis-gastos', payload);
   const gasto = response?.gasto ?? response?.data ?? response;
-  return normalizeExpenseItem(gasto);
+  const normalized = normalizeExpenseItem(gasto);
+
+  if (normalized && !normalized.icono && icono) {
+    normalized.icono = icono;
+    normalized.icon = icono;
+  }
+
+  return normalized;
 }
 
 export async function updateClubExpense(gastoId, updates = {}) {
@@ -1264,7 +1279,15 @@ export async function updateClubExpense(gastoId, updates = {}) {
 
   const response = await api.put(`/clubes/mis-gastos/${encodeURIComponent(gastoId)}`, payload);
   const gasto = response?.gasto ?? response?.data ?? response;
-  return normalizeExpenseItem(gasto);
+  const normalized = normalizeExpenseItem(gasto);
+
+  const fallbackIcon = updates.icono ?? updates.icon;
+  if (normalized && !normalized.icono && fallbackIcon) {
+    normalized.icono = fallbackIcon;
+    normalized.icon = fallbackIcon;
+  }
+
+  return normalized;
 }
 
 export async function deleteClubExpense(gastoId) {
