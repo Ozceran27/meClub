@@ -16,6 +16,7 @@ const LocalidadesModel = require('../models/localidades.model');
 const ServiciosModel = require('../models/servicios.model');
 const ClubesServiciosModel = require('../models/clubesServicios.model');
 const ClubesImpuestosModel = require('../models/clubesImpuestos.model');
+const GastosModel = require('../models/gastos.model');
 const { normalizeHour } = require('../utils/datetime');
 
 // Aplica middlewares de autenticación/rol y carga de club
@@ -28,6 +29,7 @@ router.use(
     '/mis-tarifas',
     '/mis-servicios',
     '/mis-impuestos',
+    '/mis-gastos',
   ],
   verifyToken,
   requireRole('club'),
@@ -109,6 +111,27 @@ const parseOptionalTime = (value, fieldName) => {
   }
 
   return normalized;
+};
+
+const parseRequiredString = (value, fieldName) => {
+  const parsed = parseNullableString(value, fieldName);
+  if (!parsed) {
+    throwValidationError(`${fieldName} es obligatorio`);
+  }
+  return parsed;
+};
+
+const parseFecha = (value) => {
+  if (value === undefined || value === null || value === '') {
+    return new Date();
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throwValidationError('fecha inválida');
+  }
+
+  return parsed;
 };
 
 const parseBooleanLike = (value, fieldName) => {
@@ -502,6 +525,93 @@ router.get('/mis-servicios', async (req, res) => {
   }
 });
 
+// ---------------- Mis gastos (CRUD)
+router.get('/mis-gastos', async (req, res) => {
+  try {
+    const fechaReferencia = parseFecha(req.query.fecha);
+    const { gastos, resumen } = await GastosModel.listarPorMes(req.club.club_id, fechaReferencia);
+    res.json({ club_id: req.club.club_id, gastos, resumen });
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+router.post('/mis-gastos', async (req, res) => {
+  try {
+    const categoria = parseRequiredString(req.body.categoria, 'categoria');
+    const descripcion = parseNullableString(req.body.descripcion, 'descripcion');
+    const monto = parseDecimal(req.body.monto, 'monto', { required: true });
+    const fecha = parseFecha(req.body.fecha);
+
+    const gasto = await GastosModel.crear(req.club.club_id, {
+      categoria,
+      descripcion: descripcion === undefined ? null : descripcion,
+      monto,
+      fecha,
+    });
+
+    res.status(201).json({ mensaje: 'Gasto registrado', gasto });
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+router.put('/mis-gastos/:gasto_id', async (req, res) => {
+  try {
+    const gastoId = Number(req.params.gasto_id);
+    if (!Number.isInteger(gastoId)) {
+      return res.status(400).json({ mensaje: 'gasto_id inválido' });
+    }
+
+    const existente = await GastosModel.obtenerPorId(gastoId, req.club.club_id);
+    if (!existente) {
+      return res.status(404).json({ mensaje: 'Gasto no encontrado' });
+    }
+
+    const updates = {};
+    if (req.body.categoria !== undefined) updates.categoria = parseRequiredString(req.body.categoria, 'categoria');
+    if (req.body.descripcion !== undefined) updates.descripcion = parseNullableString(req.body.descripcion, 'descripcion');
+    if (req.body.monto !== undefined) updates.monto = parseDecimal(req.body.monto, 'monto', { required: true });
+    if (req.body.fecha !== undefined) updates.fecha = parseFecha(req.body.fecha);
+
+    const gasto = await GastosModel.actualizar(gastoId, req.club.club_id, updates);
+    res.json({ mensaje: 'Gasto actualizado', gasto });
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+router.delete('/mis-gastos/:gasto_id', async (req, res) => {
+  try {
+    const gastoId = Number(req.params.gasto_id);
+    if (!Number.isInteger(gastoId)) {
+      return res.status(400).json({ mensaje: 'gasto_id inválido' });
+    }
+
+    const eliminado = await GastosModel.eliminar(gastoId, req.club.club_id);
+    if (!eliminado) {
+      return res.status(404).json({ mensaje: 'Gasto no encontrado' });
+    }
+
+    res.json({ mensaje: 'Gasto eliminado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
 router.patch('/mis-servicios', async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.servicio_ids) ? req.body.servicio_ids : null;
@@ -777,6 +887,21 @@ router.get('/publico/:club_id', async (req, res) => {
 
     const canchas = await CanchasModel.listarPorClub(club_id);
     res.json({ club, canchas });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+});
+
+// ---------------- Economía del club
+router.get('/:club_id/economia', async (req, res) => {
+  try {
+    const { club_id } = req.params;
+    const club = await ClubesModel.obtenerClubPorId(club_id);
+    if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
+
+    const data = await ClubesModel.obtenerEconomia(club_id);
+    res.json({ data });
   } catch (err) {
     console.error(err);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
