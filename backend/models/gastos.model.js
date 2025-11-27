@@ -39,6 +39,15 @@ const normalizeDate = (value) => {
   return parsed;
 };
 
+const normalizeIcon = (value) => {
+  if (value === undefined || value === null) return null;
+
+  const stringValue = String(value).trim();
+  if (!stringValue) return null;
+
+  return stringValue.slice(0, 64);
+};
+
 const GastosModel = {
   listarPorMes: async (clubId, fechaReferencia = new Date(), options = {}) => {
     const limit = Number(options.limit) || 20;
@@ -48,7 +57,7 @@ const GastosModel = {
     const offset = (normalizedPage - 1) * normalizedLimit;
 
     const [rows] = await db.query(
-      `SELECT gasto_id, club_id, categoria, descripcion, monto, fecha
+      `SELECT gasto_id, club_id, categoria, descripcion, icono, monto, fecha
        FROM gastos
        WHERE club_id = ?
          AND DATE_FORMAT(fecha, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
@@ -61,6 +70,7 @@ const GastosModel = {
       ...row,
       monto: row.monto === null ? 0 : Number(row.monto),
       descripcion: row.descripcion || null,
+      icono: row.icono || null,
     }));
 
     const [resumenRows] = await db.query(
@@ -102,16 +112,17 @@ const GastosModel = {
     };
   },
 
-  crear: async (clubId, { categoria, descripcion = null, monto, fecha }) => {
+  crear: async (clubId, { categoria, descripcion = null, monto, fecha, icono }) => {
     const categoriaValue = normalizeString(categoria, 'categoria', { required: true });
     const descripcionValue = descripcion === undefined ? null : normalizeString(descripcion, 'descripcion');
     const montoValue = normalizeDecimal(monto, 'monto');
     const fechaValue = normalizeDate(fecha);
+    const iconoValue = normalizeIcon(icono);
 
     const [result] = await db.query(
-      `INSERT INTO gastos (club_id, categoria, descripcion, monto, fecha)
-       VALUES (?, ?, ?, ?, ?)`,
-      [clubId, categoriaValue, descripcionValue, montoValue, fechaValue]
+      `INSERT INTO gastos (club_id, categoria, descripcion, icono, monto, fecha)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [clubId, categoriaValue, descripcionValue, iconoValue, montoValue, fechaValue]
     );
 
     return {
@@ -119,17 +130,19 @@ const GastosModel = {
       club_id: clubId,
       categoria: categoriaValue,
       descripcion: descripcionValue,
+      icono: iconoValue,
       monto: montoValue,
       fecha: fechaValue,
     };
   },
 
-  actualizar: async (gastoId, clubId, { categoria, descripcion, monto, fecha }) => {
+  actualizar: async (gastoId, clubId, { categoria, descripcion, monto, fecha, icono }) => {
     const fields = {};
     if (categoria !== undefined) fields.categoria = normalizeString(categoria, 'categoria');
     if (descripcion !== undefined) fields.descripcion = normalizeString(descripcion, 'descripcion');
     if (monto !== undefined) fields.monto = normalizeDecimal(monto, 'monto');
     if (fecha !== undefined) fields.fecha = normalizeDate(fecha);
+    if (icono !== undefined) fields.icono = normalizeIcon(icono);
 
     if (Object.keys(fields).length === 0) {
       return GastosModel.obtenerPorId(gastoId, clubId);
@@ -161,7 +174,7 @@ const GastosModel = {
 
   obtenerPorId: async (gastoId, clubId) => {
     const [rows] = await db.query(
-      `SELECT gasto_id, club_id, categoria, descripcion, monto, fecha
+      `SELECT gasto_id, club_id, categoria, descripcion, icono, monto, fecha
        FROM gastos
        WHERE gasto_id = ? AND club_id = ?
        LIMIT 1`,
@@ -175,6 +188,7 @@ const GastosModel = {
       ...row,
       descripcion: row.descripcion || null,
       monto: row.monto === null ? 0 : Number(row.monto),
+      icono: row.icono || null,
     };
   },
 
