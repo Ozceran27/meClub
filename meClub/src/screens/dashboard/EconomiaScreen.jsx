@@ -73,8 +73,13 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
           total: sumValues(ingresosSemana),
           breakdown: buildBreakdown(ingresosSemana),
         },
-        gastosMes: economy?.gastos?.mes ?? 0,
-        balanceMensual: economy?.balanceMensual ?? 0,
+        gastosMes: economy?.gastos?.mes ?? economy?.gastos ?? 0,
+        gastosSemana: economy?.gastos?.semana ?? 0,
+        balanceMensual:
+          economy?.balanceMensual ??
+          (sumValues(ingresosMes) || 0) - (economy?.gastos?.mes ?? economy?.gastos ?? 0),
+        balanceSemanal:
+          economy?.balanceSemanal ?? (sumValues(ingresosSemana) || 0) - (economy?.gastos?.semana ?? 0),
         proyeccion: {
           mes: economy?.proyeccion?.mes ?? sumValues(ingresosMes),
           semana: economy?.proyeccion?.semana ?? sumValues(ingresosSemana),
@@ -194,31 +199,6 @@ function AreaChart({ data = [], height = 160 }) {
       />
       <Path d={`M${points.join(' L ')}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
     </Svg>
-  );
-}
-
-function FilterToggle({ value, onChange }) {
-  const options = [
-    { label: 'Semana', value: 'semana' },
-    { label: 'Mes', value: 'mes' },
-  ];
-
-  return (
-    <View className="flex-row bg-white/5 border border-white/10 rounded-full p-1" accessible accessibilityRole="tablist">
-      {options.map((option) => (
-        <TouchableOpacity
-          key={option.value}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: value === option.value }}
-          onPress={() => onChange(option.value)}
-          className={`px-4 py-2 rounded-full ${
-            value === option.value ? 'bg-white/20' : 'bg-transparent'
-          }`}
-        >
-          <Text className="text-white font-semibold">{option.label}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
   );
 }
 
@@ -363,7 +343,6 @@ function ExpenseTable({ expenses = [], onEdit, onDelete, loading }) {
 export default function EconomiaScreen() {
   const { user, ready } = useAuth();
   const queryClient = useQueryClient();
-  const [periodo, setPeriodo] = useState('mes');
   const [page, setPage] = useState(1);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
@@ -424,8 +403,14 @@ export default function EconomiaScreen() {
       ? error?.message || 'No se pudo cargar la economía del club.'
       : '';
 
-  const ingresosSeleccionados = periodo === 'mes' ? economy?.ingresosMes : economy?.ingresosSemana;
-  const totalReservas = periodo === 'mes' ? economy?.reservas?.mes : economy?.reservas?.semana;
+  const ingresosMensuales = economy?.ingresosMes;
+  const ingresosSemanales = economy?.ingresosSemana;
+  const gastosMensuales = economy?.gastosMes;
+  const gastosSemanales = economy?.gastosSemana;
+  const reservasMensuales = economy?.reservas?.mes;
+  const reservasSemanales = economy?.reservas?.semana;
+  const balanceMensual = economy?.balanceMensual;
+  const balanceSemanal = economy?.balanceSemanal;
 
   const expenseLoading = expenseQuery.isPending || expenseQuery.isFetching;
   const expenseErrorMessage = expenseQuery.isError
@@ -471,9 +456,6 @@ export default function EconomiaScreen() {
           Economía
         </Text>
         <Text className="text-white/60 mt-1">Resumen económico del club</Text>
-        <View className="mt-4">
-          <FilterToggle value={periodo} onChange={setPeriodo} />
-        </View>
       </View>
 
       {errorMessage ? <Text className="text-red-300 mb-4">{errorMessage}</Text> : null}
@@ -481,38 +463,50 @@ export default function EconomiaScreen() {
       <View className="gap-4">
         <View className="flex-row flex-wrap gap-4">
           <MetricCard
-            title={`Ingresos del ${periodo === 'mes' ? 'mes' : 'período semanal'}`}
-            value={showLoader ? 'Cargando…' : formatCurrency(ingresosSeleccionados?.total)}
-            subtitle={isFetching && !showLoader ? 'Actualizando…' : ''}
+            title="Ingresos"
+            value={showLoader ? 'Cargando…' : formatCurrency(ingresosMensuales?.total)}
+            subtitle={showLoader ? '' : `Semanal: ${formatCurrency(ingresosSemanales?.total)}`}
             loading={showLoader}
           >
             <BreakdownList
-              title="Por estado"
-              breakdown={ingresosSeleccionados?.breakdown}
+              title="Detalle mensual"
+              breakdown={ingresosMensuales?.breakdown}
+              loading={showLoader}
+            />
+            <BreakdownList
+              title="Detalle semanal"
+              breakdown={ingresosSemanales?.breakdown}
               loading={showLoader}
             />
           </MetricCard>
 
           <MetricCard
             title="Gastos registrados"
-            value={showLoader ? 'Cargando…' : formatCurrency(economy?.gastosMes)}
-            subtitle="Incluye egresos registrados en mis gastos"
+            value={showLoader ? 'Cargando…' : formatCurrency(gastosMensuales)}
+            subtitle={showLoader ? '' : `Semanal: ${formatCurrency(gastosSemanales)}`}
             loading={showLoader}
           />
 
           <MetricCard
             title="Reservas"
-            value={showLoader ? 'Cargando…' : `${totalReservas ?? 0}`}
-            subtitle={`Reservas del ${periodo}`}
+            value={showLoader ? 'Cargando…' : `${reservasMensuales ?? 0} mensuales`}
+            subtitle={showLoader ? '' : `Semanal: ${reservasSemanales ?? 0}`}
             loading={showLoader}
           />
 
           <MetricCard
-            title="Balance mensual"
-            value={showLoader ? 'Cargando…' : formatCurrency(economy?.balanceMensual)}
-            subtitle="Ingresos proyectados - gastos"
+            title="Balance"
+            value={showLoader ? 'Cargando…' : formatCurrency(balanceMensual)}
+            subtitle={showLoader ? '' : `Balance semanal: ${formatCurrency(balanceSemanal)}`}
             loading={showLoader}
-          />
+          >
+            {!showLoader ? (
+              <View className="gap-1">
+                <Text className="text-white/70">Proyección mensual: {formatCurrency(economy?.proyeccion?.mes)}</Text>
+                <Text className="text-white/70">Proyección semanal: {formatCurrency(economy?.proyeccion?.semana)}</Text>
+              </View>
+            ) : null}
+          </MetricCard>
         </View>
 
         <View className="flex-row flex-wrap gap-4">
