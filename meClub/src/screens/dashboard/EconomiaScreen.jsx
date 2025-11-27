@@ -341,19 +341,22 @@ function BreakdownList({ title, breakdown = [], loading }) {
 }
 
 function MetricCard({ title, value, subtitle, children, loading }) {
+  const hasValue = value !== undefined && value !== null && value !== '';
+  const accessibleLabel = `${title}${hasValue ? ` ${value}` : ''}${subtitle ? `, ${subtitle}` : ''}`;
+
   return (
     <Card
       className="flex-1 min-w-[240px]"
-      accessibilityLabel={`${title} ${value}${subtitle ? `, ${subtitle}` : ''}`}
+      accessibilityLabel={accessibleLabel}
       accessible
     >
       <CardTitle colorClass="text-white/80">{title}</CardTitle>
       <View className="mt-3 gap-2">
         {loading ? (
           <View className="h-9 w-32 rounded-lg bg-white/10" />
-        ) : (
+        ) : hasValue ? (
           <Text className="text-white text-[32px] font-extrabold mt-1">{value}</Text>
-        )}
+        ) : null}
         {subtitle ? <Text className="text-white/50">{subtitle}</Text> : null}
         {children}
       </View>
@@ -953,26 +956,26 @@ export default function EconomiaScreen() {
 
           <MetricCard
             title="Reservas"
-            value={showLoader ? 'Cargando…' : (reservasMensuales ?? 0)}
-            subtitle={showLoader ? '' : 'Total mensual'}
+            value={showLoader ? 'Cargando…' : undefined}
+            subtitle=""
             loading={showLoader}
           >
             {!showLoader ? (
               <View
-                className="gap-1"
+                className="gap-3"
                 accessibilityLabel={`Reservas del mes ${reservasMensuales ?? 0}, reservas de la semana ${
                   reservasSemanales ?? 0
                 }`}
                 accessible
               >
-                <Text className="text-white/60">
-                  Reservas del mes:{' '}
-                  <Text className="text-white font-semibold">{reservasMensuales ?? 0}</Text>
-                </Text>
-                <Text className="text-white/60">
-                  Reservas de la semana:{' '}
-                  <Text className="text-white font-semibold">{reservasSemanales ?? 0}</Text>
-                </Text>
+                <View className="gap-1">
+                  <Text className="text-white text-3xl font-extrabold">{reservasMensuales ?? 0}</Text>
+                  <Text className="text-white/60 text-sm uppercase tracking-[0.12em]">Total mensual</Text>
+                </View>
+                <View className="gap-1">
+                  <Text className="text-white text-3xl font-extrabold">{reservasSemanales ?? 0}</Text>
+                  <Text className="text-white/60 text-sm uppercase tracking-[0.12em]">Total semanal</Text>
+                </View>
               </View>
             ) : null}
           </MetricCard>
