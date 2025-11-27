@@ -250,6 +250,37 @@ const extractExpenseList = (payload) => {
   };
 };
 
+const normalizeMonthlySeries = (source) => {
+  if (!Array.isArray(source)) return [];
+
+  return source
+    .map((item, index) => {
+      if (item === null || item === undefined) return null;
+
+      if (typeof item === 'number') {
+        return { periodo: String(index), total: item };
+      }
+
+      const period =
+        item.periodo ||
+        item.period ||
+        item.periodo_mes ||
+        item.mes ||
+        item.month ||
+        item.fecha ||
+        item.label;
+
+      const total = toNumberOrZero(
+        item.total ?? item.monto ?? item.value ?? item.ingresos ?? item.cantidad
+      );
+
+      if (!period) return null;
+
+      return { periodo: String(period), total };
+    })
+    .filter(Boolean);
+};
+
 const extractEconomy = (payload) => {
   const data = payload?.data ?? payload ?? {};
 
@@ -265,6 +296,14 @@ const extractEconomy = (payload) => {
     data.reservas?.semana ?? data.reservasSemana ?? data.reservas_semana
   );
 
+  const ingresosMensualesHistoricos = normalizeMonthlySeries(
+    data.ingresos?.historico ??
+      data.ingresos?.historicoMensual ??
+      data.ingresos?.mensuales ??
+      data.ingresosMensuales ??
+      data.ingresos_mensuales
+  );
+
   return {
     ingresos: { mes: ingresosMes, semana: ingresosSemana },
     reservas: { mes: reservasMes, semana: reservasSemana },
@@ -276,6 +315,7 @@ const extractEconomy = (payload) => {
     },
     gastos: { mes: toNumberOrZero(data.gastos?.mes ?? data.gastosMes ?? data.gastos_mes) },
     balanceMensual: toNumberOrZero(data.balanceMensual ?? data.balance ?? data.balance_mensual),
+    ingresosMensualesHistoricos,
   };
 };
 
