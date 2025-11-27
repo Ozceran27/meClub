@@ -761,6 +761,29 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
   const [monto, setMonto] = useState(initialValue?.monto?.toString() || '');
   const [icono, setIcono] = useState(initialValue?.icono || initialValue?.icon || '');
 
+  const iconOptions = useMemo(() => {
+    const baseOptions = [
+      { label: 'Luz', value: '💡' },
+      { label: 'Agua', value: '💧' },
+      { label: 'Alquiler', value: '🏠' },
+      { label: 'Salario', value: '💰' },
+      { label: 'Compras', value: '🛒' },
+      { label: 'Intereses', value: '📈' },
+      { label: 'Internet', value: '🌐' },
+      { label: 'Transporte', value: '🚌' },
+      { label: 'Comida', value: '🍽️' },
+      { label: 'Mantenimiento', value: '🛠️' },
+      { label: 'Impuestos', value: '💳' },
+    ];
+
+    const currentIcon = initialValue?.icono || initialValue?.icon;
+    if (currentIcon && !baseOptions.some((option) => option.value === currentIcon)) {
+      return [{ label: 'Actual', value: currentIcon }, ...baseOptions];
+    }
+
+    return baseOptions;
+  }, [initialValue?.icon, initialValue?.icono]);
+
   useEffect(() => {
     setCategoria(initialValue?.categoria || '');
     setDescripcion(initialValue?.descripcion || '');
@@ -771,7 +794,8 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
   const handleSubmit = () => {
     const parsedMonto = Number(monto);
     const normalizedIcono = icono?.trim?.() || '';
-    if (!categoria || !normalizedIcono || Number.isNaN(parsedMonto)) return;
+    const isValidIcon = iconOptions.some((option) => option.value === normalizedIcono);
+    if (!categoria || !normalizedIcono || Number.isNaN(parsedMonto) || !isValidIcon) return;
     onSubmit({ categoria, descripcion, monto: parsedMonto, icono: normalizedIcono });
   };
 
@@ -817,14 +841,28 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
             </View>
             <View>
               <Text className="text-white/70 mb-2">Icono</Text>
-              <TextInput
-                value={icono}
-                onChangeText={setIcono}
-                placeholder="Ej. 💡 o bolt"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                className="bg-white/10 rounded-xl px-4 py-3 text-white"
-                accessibilityLabel="Icono del gasto"
-              />
+              <View className="flex-row flex-wrap gap-3">
+                {iconOptions.map((option) => {
+                  const isSelected = option.value === icono;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      onPress={() => setIcono(option.value)}
+                      className={`w-[82px] items-center rounded-xl border px-3 py-2 ${
+                        isSelected ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-white/5'
+                      }`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      accessibilityLabel={`Icono ${option.label}`}
+                    >
+                      <Text className="text-white text-2xl">{option.value}</Text>
+                      <Text className="text-white/70 text-xs mt-1" numberOfLines={1}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
             <View className="flex-row gap-3 mt-2">
               <TouchableOpacity
@@ -877,7 +915,9 @@ function ExpenseTable({ expenses = [], onEdit, onDelete, loading }) {
         >
           <View className="flex-1 flex-row gap-3 items-start">
             {expense.icono || expense.icon ? (
-              <Text className="text-white text-lg mt-1">{expense.icono || expense.icon}</Text>
+              <Text className="text-white text-xl w-8 text-center leading-6">
+                {expense.icono || expense.icon}
+              </Text>
             ) : null}
             <View className="flex-1">
               <Text className="text-white font-semibold">{expense.categoria}</Text>
@@ -1107,13 +1147,16 @@ export default function EconomiaScreen() {
                   <View className="h-3 w-44 rounded-full bg-white/10" />
                 </View>
               ) : recentExpenses.length ? (
-                <View className="gap-1" accessibilityLabel="Gastos recientes" accessible>
+                <View className="gap-2" accessibilityLabel="Gastos recientes" accessible>
                   {recentExpenses.map((expense) => {
                     const expenseIcon = expense.icono || expense.icon || '•';
                     return (
-                      <View key={expense.id} className="flex-row items-center gap-2">
-                        <Text className="text-white text-base">{expenseIcon}</Text>
-                        <Text className="text-white/60 text-base">
+                      <View
+                        key={expense.id}
+                        className="flex-row items-center gap-3 rounded-xl bg-white/5 px-3 py-2"
+                      >
+                        <Text className="text-white text-xl w-8 text-center">{expenseIcon}</Text>
+                        <Text className="text-white/60 text-base flex-1">
                           {expense.descripcion || expense.categoria}: {formatCurrency(expense.monto)}
                         </Text>
                       </View>
