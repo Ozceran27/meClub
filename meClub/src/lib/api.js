@@ -144,6 +144,33 @@ const toPositiveIntOrZero = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
+const normalizeMonthlyEconomy = (source = []) => {
+  if (!Array.isArray(source)) return [];
+
+  return source
+    .map((item, index) => {
+      const period = item?.periodo ?? item?.period ?? item?.mes ?? item?.month ?? null;
+      const label = item?.label ?? null;
+      const ingresos = toPaymentBreakdown(item?.ingresos ?? item?.income ?? item?.ingresosMes);
+      const gastos = toNumberOrZero(item?.gastos ?? item?.expenses ?? item?.gastosMes);
+      const balance = toNumberOrZero(item?.balance ?? item?.resultado ?? item?.neto);
+
+      if (!period && !label && gastos === 0 && balance === 0 && !Object.values(ingresos).some(Boolean)) {
+        return null;
+      }
+
+      return {
+        periodo: period,
+        label,
+        ingresos,
+        gastos,
+        balance,
+        index,
+      };
+    })
+    .filter(Boolean);
+};
+
 const toPaymentBreakdown = (source = {}) => {
   const base = { pagado: 0, senado: 0, pendiente_pago: 0 };
 
@@ -323,12 +350,18 @@ const extractEconomy = (payload) => {
     data.reservas?.semana ?? data.reservasSemana ?? data.reservas_semana
   );
 
+  const economiaMensual = normalizeMonthlyEconomy(
+    data.economiaMensual ?? data.flujoMensual ?? data.ingresosGastosMensuales
+  );
+
   const ingresosMensualesHistoricos = normalizeMonthlySeries(
     data.ingresos?.historico ??
       data.ingresos?.historicoMensual ??
       data.ingresos?.mensuales ??
       data.ingresosMensuales ??
-      data.ingresos_mensuales
+      data.ingresos_mensuales ??
+      data.ingresosMensualesHistoricos ??
+      economiaMensual.map((item) => ({ periodo: item.periodo, total: item.balance + item.gastos }))
   );
 
   const ingresosDiarios = normalizeDailyIncomeSeries(
@@ -355,6 +388,7 @@ const extractEconomy = (payload) => {
     ingresosMensualesHistoricos,
     ingresosDiarios,
     semanaSeleccionada,
+    economiaMensual,
   };
 };
 

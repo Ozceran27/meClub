@@ -19,7 +19,7 @@ import {
   updateClubExpense,
 } from '../../lib/api';
 import { useAuth } from '../../features/auth/useAuth';
-import Svg, { Rect, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Rect, Path, Line, Circle, Text as SvgText } from 'react-native-svg';
 
 const statusLabelMap = {
   pagado: 'Pagado',
@@ -260,6 +260,26 @@ const getEconomyQueryOptions = ({ clubId, enabled, weekStart }) =>
         });
       };
 
+      const normalizeMonthlyEconomy = () => {
+        const monthly = Array.isArray(economy?.economiaMensual) ? economy.economiaMensual : [];
+        return monthly.map((item, index) => {
+          const ingresosTotal = ['pagado', 'senado', 'pendiente_pago'].reduce(
+            (acc, key) => acc + (Number(item?.ingresos?.[key]) || 0),
+            0
+          );
+
+          return {
+            label: item?.label || formatMonthLabel(item?.periodo) || `M${index + 1}`,
+            periodo: item?.periodo,
+            ingresos: ingresosTotal,
+            gastos: Number(item?.gastos) || 0,
+            balance: Number.isFinite(Number(item?.balance))
+              ? Number(item.balance)
+              : ingresosTotal - (Number(item?.gastos) || 0),
+          };
+        });
+      };
+
       return {
         ingresosMes: {
           total: ingresosMensualesReales,
@@ -288,6 +308,7 @@ const getEconomyQueryOptions = ({ clubId, enabled, weekStart }) =>
         ingresosDiarios: dailyIncome.items,
         ingresosDiariosTotal: dailyIncome.total,
         selectedWeek: { start: dailyIncome.weekStart, end: dailyIncome.weekEnd },
+        economiaMensual: normalizeMonthlyEconomy(),
       };
     },
   });
@@ -468,6 +489,100 @@ function AreaChart({ data = [], height = 160 }) {
           {point.label}
         </SvgText>
       ))}
+    </Svg>
+  );
+}
+
+function MultiAreaLineChart({ data = [], height = 200 }) {
+  if (!data.length) {
+    return (
+      <View className="h-[200px] justify-center items-center">
+        <Text className="text-white/40 text-xs">Sin datos</Text>
+      </View>
+    );
+  }
+
+  const maxValue = Math.max(
+    ...data.flatMap((item) => [item.ingresos, item.gastos, item.balance].map((val) => Math.abs(Number(val) || 0))),
+    1
+  );
+  const padding = { top: 16, right: 20, bottom: 36, left: 24 };
+  const minInnerWidth = 240;
+  const innerWidth = Math.max(minInnerWidth, (data.length - 1) * 64);
+  const chartWidth = innerWidth + padding.left + padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const baselineY = padding.top + chartHeight;
+  const step = data.length > 1 ? innerWidth / (data.length - 1) : 0;
+
+  const series = [
+    { key: 'ingresos', color: '#22d3ee', fill: 'rgba(34,211,238,0.12)' },
+    { key: 'gastos', color: '#f43f5e', fill: 'rgba(244,63,94,0.12)' },
+    { key: 'balance', color: '#a855f7', fill: 'rgba(168,85,247,0.12)' },
+  ];
+
+  const buildPoints = (key) =>
+    data.map((item, index) => ({
+      x: padding.left + index * step,
+      y: padding.top + chartHeight - ((Number(item?.[key]) || 0) / maxValue) * chartHeight,
+      label: item.label || '',
+      value: Number(item?.[key]) || 0,
+    }));
+
+  const buildPath = (points) =>
+    points
+      .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x},${point.y}`)
+      .join(' ');
+
+  return (
+    <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
+      <Line
+        x1={padding.left}
+        y1={baselineY}
+        x2={padding.left + innerWidth}
+        y2={baselineY}
+        stroke="#94a3b8"
+        strokeWidth={1}
+        opacity={0.35}
+      />
+
+      {series.map((serie) => {
+        const points = buildPoints(serie.key);
+        const path = buildPath(points);
+        const areaPath = `M${padding.left},${baselineY} ${path.replace('M', 'L')} L${padding.left + innerWidth},${baselineY} Z`;
+
+        return (
+          <React.Fragment key={serie.key}>
+            <Path d={areaPath} fill={serie.fill} stroke="none" />
+            <Path
+              d={path}
+              fill="none"
+              stroke={serie.color}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {points.map((point, index) => (
+              <Circle key={`${serie.key}-${index}`} cx={point.x} cy={point.y} r={3.4} fill={serie.color} />
+            ))}
+          </React.Fragment>
+        );
+      })}
+
+      {data.map((item, index) => {
+        const x = padding.left + index * step;
+        return (
+          <SvgText
+            key={`${item.label || index}-label`}
+            x={x}
+            y={height - padding.bottom / 2}
+            fill="white"
+            fontSize="12"
+            textAnchor="middle"
+          >
+            {item.label}
+          </SvgText>
+        );
+      })}
     </Svg>
   );
 }
@@ -691,12 +806,14 @@ export default function EconomiaScreen() {
   const ingresosMensuales = economy?.ingresosMes;
   const ingresosSemanales = economy?.ingresosSemana;
   const ingresosMensualesHistoricos = economy?.ingresosMensualesHistoricos ?? [];
+  const economiaMensual = economy?.economiaMensual ?? [];
   const gastosMensuales = economy?.gastosMes;
   const gastosSemanales = economy?.gastosSemana;
   const reservasMensuales = economy?.reservas?.mes;
   const reservasSemanales = economy?.reservas?.semana;
   const balanceMensual = economy?.balanceMensual;
   const balanceSemanal = economy?.balanceSemanal;
+  const ultimoFlujoMensual = economiaMensual[economiaMensual.length - 1];
   const ingresosDiarios = economy?.ingresosDiarios ?? [];
   const ingresosDiariosTotal = economy?.ingresosDiariosTotal ?? 0;
   const selectedWeek = economy?.selectedWeek ?? { start: selectedWeekStart };
@@ -951,98 +1068,135 @@ export default function EconomiaScreen() {
           </Card>
         </View>
 
-        <Card className="w-full">
-          <View className="flex-row items-center justify-between mb-3">
-            <CardTitle colorClass="text-white">Mis gastos</CardTitle>
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => {
-                  setEditingExpense(null);
-                  setShowExpenseModal(true);
-                }}
-                className="rounded-xl bg-emerald-500 px-4 py-3"
-                accessibilityRole="button"
-                accessibilityLabel="Agregar gasto"
-              >
-                <Text className="text-white font-semibold">Agregar gasto</Text>
-              </TouchableOpacity>
-              {expenseToDelete ? (
-                <TouchableOpacity
-                  onPress={handleDeleteExpense}
-                  disabled={deleteExpense.isPending}
-                  className="rounded-xl bg-red-500/90 px-4 py-3"
-                  accessibilityRole="button"
-                  accessibilityLabel="Confirmar borrado"
-                >
-                  <Text className="text-white font-semibold">
-                    {deleteExpense.isPending ? 'Eliminando…' : 'Confirmar borrado'}
+        <View className="flex-row flex-wrap gap-4">
+          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+            <View className="flex-row items-center justify-between">
+              <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
+              {ultimoFlujoMensual && !chartLoading ? (
+                <View className="items-end">
+                  <Text className="text-white text-lg font-semibold">
+                    {formatCurrency(ultimoFlujoMensual.balance)}
                   </Text>
-                </TouchableOpacity>
+                  <Text className="text-white/60 text-xs">{ultimoFlujoMensual.label}</Text>
+                </View>
               ) : null}
             </View>
-          </View>
-          {expenseErrorMessage ? (
-            <View className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-              <Text className="text-red-100 mb-2">{expenseErrorMessage}</Text>
-              <TouchableOpacity
-                onPress={() => expenseQuery.refetch()}
-                accessibilityRole="button"
-                className="self-start rounded-lg bg-white/10 px-3 py-2"
-              >
-                <Text className="text-white">Reintentar</Text>
-              </TouchableOpacity>
+
+            <View className="flex-row flex-wrap gap-3 mt-3">
+              {[{ label: 'Ingresos', color: 'bg-cyan-400' }, { label: 'Gastos', color: 'bg-rose-400' }, { label: 'Balance', color: 'bg-purple-400' }].map(
+                (item) => (
+                  <View key={item.label} className="flex-row items-center gap-2">
+                    <View className={`h-3 w-3 rounded-full ${item.color}`} />
+                    <Text className="text-white/70 text-xs">{item.label}</Text>
+                  </View>
+                )
+              )}
             </View>
-          ) : null}
-          <ExpenseTable
-            expenses={expenseQuery.data?.gastos ?? []}
-            onEdit={(expense) => {
-              setEditingExpense(expense);
-              setShowExpenseModal(true);
-            }}
-            onDelete={setExpenseToDelete}
-            loading={expenseLoading}
-          />
-          {expenseToDelete ? (
-            <Text className="text-red-300 mt-3">
-              Estás por borrar "{expenseToDelete.categoria}" por {formatCurrency(expenseToDelete.monto)}.
-            </Text>
-          ) : null}
-          {!expenseErrorMessage ? (
-            <View className="mt-4 flex-row items-center justify-between">
-              <Text className="text-white/60 text-sm">
-                Página {expensePagination.page} de {expensePagination.totalPaginas || 1} ·{' '}
-                {expensePagination.total} gastos
-              </Text>
+
+            <View className="mt-4">
+              {chartLoading ? (
+                <View className="h-[200px] rounded-2xl bg-white/10" />
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <MultiAreaLineChart data={economiaMensual} />
+                </ScrollView>
+              )}
+            </View>
+          </Card>
+
+          <Card className="flex-1 min-w-[320px]">
+            <View className="flex-row items-center justify-between mb-3">
+              <CardTitle colorClass="text-white">Mis gastos</CardTitle>
               <View className="flex-row gap-2">
                 <TouchableOpacity
-                  onPress={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={!canGoPrevPage || expenseQuery.isFetching}
-                  className={`rounded-lg px-3 py-2 ${
-                    !canGoPrevPage || expenseQuery.isFetching ? 'bg-white/5' : 'bg-white/10'
-                  }`}
+                  onPress={() => {
+                    setEditingExpense(null);
+                    setShowExpenseModal(true);
+                  }}
+                  className="rounded-xl bg-emerald-500 px-4 py-3"
                   accessibilityRole="button"
-                  accessibilityLabel="Página anterior"
+                  accessibilityLabel="Agregar gasto"
                 >
-                  <Text className="text-white">Anterior</Text>
+                  <Text className="text-white font-semibold">Agregar gasto</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setPage((prev) => prev + 1)}
-                  disabled={!canGoNextPage || expenseQuery.isFetching}
-                  className={`rounded-lg px-3 py-2 ${
-                    !canGoNextPage || expenseQuery.isFetching ? 'bg-white/5' : 'bg-white/10'
-                  }`}
-                  accessibilityRole="button"
-                  accessibilityLabel="Página siguiente"
-                >
-                  <Text className="text-white">Siguiente</Text>
-                </TouchableOpacity>
+                {expenseToDelete ? (
+                  <TouchableOpacity
+                    onPress={handleDeleteExpense}
+                    disabled={deleteExpense.isPending}
+                    className="rounded-xl bg-red-500/90 px-4 py-3"
+                    accessibilityRole="button"
+                    accessibilityLabel="Confirmar borrado"
+                  >
+                    <Text className="text-white font-semibold">
+                      {deleteExpense.isPending ? 'Eliminando…' : 'Confirmar borrado'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
             </View>
-          ) : null}
-          {expenseQuery.isFetching && !expenseQuery.isPending ? (
-            <Text className="text-white/60 text-xs mt-2">Actualizando lista de gastos…</Text>
-          ) : null}
-        </Card>
+            {expenseErrorMessage ? (
+              <View className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                <Text className="text-red-100 mb-2">{expenseErrorMessage}</Text>
+                <TouchableOpacity
+                  onPress={() => expenseQuery.refetch()}
+                  accessibilityRole="button"
+                  className="self-start rounded-lg bg-white/10 px-3 py-2"
+                >
+                  <Text className="text-white">Reintentar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            <ExpenseTable
+              expenses={expenseQuery.data?.gastos ?? []}
+              onEdit={(expense) => {
+                setEditingExpense(expense);
+                setShowExpenseModal(true);
+              }}
+              onDelete={setExpenseToDelete}
+              loading={expenseLoading}
+            />
+            {expenseToDelete ? (
+              <Text className="text-red-300 mt-3">
+                Estás por borrar "{expenseToDelete.categoria}" por {formatCurrency(expenseToDelete.monto)}.
+              </Text>
+            ) : null}
+            {!expenseErrorMessage ? (
+              <View className="mt-4 flex-row items-center justify-between">
+                <Text className="text-white/60 text-sm">
+                  Página {expensePagination.page} de {expensePagination.totalPaginas || 1} ·{' '}
+                  {expensePagination.total} gastos
+                </Text>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={!canGoPrevPage || expenseQuery.isFetching}
+                    className={`rounded-lg px-3 py-2 ${
+                      !canGoPrevPage || expenseQuery.isFetching ? 'bg-white/5' : 'bg-white/10'
+                    }`}
+                    accessibilityRole="button"
+                    accessibilityLabel="Página anterior"
+                  >
+                    <Text className="text-white">Anterior</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setPage((prev) => prev + 1)}
+                    disabled={!canGoNextPage || expenseQuery.isFetching}
+                    className={`rounded-lg px-3 py-2 ${
+                      !canGoNextPage || expenseQuery.isFetching ? 'bg-white/5' : 'bg-white/10'
+                    }`}
+                    accessibilityRole="button"
+                    accessibilityLabel="Página siguiente"
+                  >
+                    <Text className="text-white">Siguiente</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+            {expenseQuery.isFetching && !expenseQuery.isPending ? (
+              <Text className="text-white/60 text-xs mt-2">Actualizando lista de gastos…</Text>
+            ) : null}
+          </Card>
+        </View>
       </View>
 
       {showLoader && !errorMessage ? (
