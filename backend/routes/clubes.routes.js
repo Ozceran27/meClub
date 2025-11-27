@@ -915,10 +915,11 @@ router.get('/publico/:club_id', async (req, res) => {
 router.get('/:club_id/economia', async (req, res) => {
   try {
     const { club_id } = req.params;
+    const { semana } = req.query;
     const club = await ClubesModel.obtenerClubPorId(club_id);
     if (!club) return res.status(404).json({ mensaje: 'Club no encontrado' });
 
-    const data = await ClubesModel.obtenerEconomia(club_id);
+    const data = await ClubesModel.obtenerEconomia(club_id, { weekStart: semana });
     res.json({ data });
   } catch (err) {
     console.error(err);

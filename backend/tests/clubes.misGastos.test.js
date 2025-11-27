@@ -47,7 +47,7 @@ describe('Rutas de gastos y economía', () => {
     const res = await request(app).get('/1/economia');
 
     expect(res.status).toBe(200);
-    expect(ClubesModel.obtenerEconomia).toHaveBeenCalledWith('1');
+    expect(ClubesModel.obtenerEconomia).toHaveBeenCalledWith('1', { weekStart: undefined });
     expect(res.body.data).toEqual({ balanceMensual: 100 });
   });
 

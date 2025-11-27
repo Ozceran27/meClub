@@ -498,7 +498,12 @@ const ClubesModel = {
     };
   },
 
-  obtenerEconomia: async (club_id) => {
+  obtenerEconomia: async (club_id, { weekStart } = {}) => {
+    const monthsBack = 6;
+    const monthRangeStart = new Date();
+    monthRangeStart.setDate(1);
+    monthRangeStart.setMonth(monthRangeStart.getMonth() - (monthsBack - 1));
+
     const ingresosMensualesPromise = db.query(
       `SELECT r.estado_pago, COALESCE(SUM(r.monto), 0) AS total
        FROM reservas r
@@ -514,9 +519,9 @@ const ClubesModel = {
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
        WHERE c.club_id = ?
-         AND YEARWEEK(r.fecha, 1) = YEARWEEK(CURDATE(), 1)
+         AND YEARWEEK(r.fecha, 1) = YEARWEEK(?, 1)
        GROUP BY r.estado_pago`,
-      [club_id]
+      [club_id, weekStart || new Date()]
     );
 
     const reservasMensualesPromise = db.query(
@@ -539,18 +544,43 @@ const ClubesModel = {
 
     const gastosMensualesPromise = GastosModel.obtenerTotalMes(club_id);
 
+    const ingresosHistoricosPromise = db.query(
+      `SELECT DATE_FORMAT(r.fecha, '%Y-%m') AS periodo, r.estado_pago, COALESCE(SUM(r.monto), 0) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND r.fecha >= ?
+       GROUP BY DATE_FORMAT(r.fecha, '%Y-%m'), r.estado_pago
+       ORDER BY periodo ASC`,
+      [club_id, monthRangeStart]
+    );
+
+    const gastosHistoricosPromise = db.query(
+      `SELECT DATE_FORMAT(fecha, '%Y-%m') AS periodo, COALESCE(SUM(monto), 0) AS total
+       FROM gastos
+       WHERE club_id = ?
+         AND fecha >= ?
+       GROUP BY DATE_FORMAT(fecha, '%Y-%m')
+       ORDER BY periodo ASC`,
+      [club_id, monthRangeStart]
+    );
+
     const [
       [ingresosMensualesRows],
       [ingresosSemanalesRows],
       [reservasMensualesRows],
       [reservasSemanalesRows],
       gastosMensuales,
+      [ingresosHistoricosRows],
+      [gastosHistoricosRows],
     ] = await Promise.all([
       ingresosMensualesPromise,
       ingresosSemanalesPromise,
       reservasMensualesPromise,
       reservasSemanalesPromise,
       gastosMensualesPromise,
+      ingresosHistoricosPromise,
+      gastosHistoricosPromise,
     ]);
 
     const estadosBase = { pagado: 0, senado: 0, pendiente_pago: 0 };
@@ -578,6 +608,42 @@ const ClubesModel = {
 
     const balanceMensual = proyeccionMes - gastosMensuales;
 
+    const monthTimeline = Array.from({ length: monthsBack }, (_, index) => {
+      const current = new Date(monthRangeStart);
+      current.setMonth(monthRangeStart.getMonth() + index);
+      const year = current.getFullYear();
+      const month = String(current.getMonth() + 1).padStart(2, '0');
+      return `${year}-${month}`;
+    });
+
+    const ingresosPorPeriodo = ingresosHistoricosRows.reduce((acc, row) => {
+      const periodo = row?.periodo;
+      if (!periodo) return acc;
+      const estado = normalizarEstadoPago(row?.estado_pago) || 'pendiente_pago';
+      if (!acc[periodo]) acc[periodo] = { ...estadosBase };
+      acc[periodo][estado] = (acc[periodo][estado] || 0) + (Number(row?.total) || 0);
+      return acc;
+    }, {});
+
+    const gastosPorPeriodo = gastosHistoricosRows.reduce((acc, row) => {
+      const periodo = row?.periodo;
+      if (!periodo) return acc;
+      acc[periodo] = (acc[periodo] || 0) + (Number(row?.total) || 0);
+      return acc;
+    }, {});
+
+    const economiaMensual = monthTimeline.map((periodo) => {
+      const ingresosPeriodo = ingresosPorPeriodo[periodo] || { ...estadosBase };
+      const gastosPeriodo = gastosPorPeriodo[periodo] || 0;
+      const ingresosTotales = Object.values(ingresosPeriodo).reduce((acc, val) => acc + val, 0);
+      return {
+        periodo,
+        ingresos: ingresosPeriodo,
+        gastos: gastosPeriodo,
+        balance: ingresosTotales - gastosPeriodo,
+      };
+    });
+
     return {
       ingresos: {
         mes: ingresosMes,
@@ -587,6 +653,11 @@ const ClubesModel = {
       proyeccion: { mes: proyeccionMes, semana: proyeccionSemana },
       gastos: { mes: gastosMensuales },
       balanceMensual,
+      ingresosMensualesHistoricos: economiaMensual.map((item) => ({
+        periodo: item.periodo,
+        total: Object.values(item.ingresos).reduce((acc, val) => acc + val, 0),
+      })),
+      economiaMensual,
     };
   },
 };
