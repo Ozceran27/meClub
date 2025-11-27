@@ -37,6 +37,32 @@ const statusColorMap = {
   pendiente_pago: 'text-slate-100',
 };
 
+const EXPENSE_ICON_OPTIONS = [
+  { label: 'Luz', value: '💡' },
+  { label: 'Agua', value: '💧' },
+  { label: 'Alquiler', value: '🏠' },
+  { label: 'Salario', value: '💰' },
+  { label: 'Compras', value: '🛒' },
+  { label: 'Intereses', value: '📈' },
+  { label: 'Internet', value: '🌐' },
+  { label: 'Transporte', value: '🚌' },
+  { label: 'Comida', value: '🍽️' },
+  { label: 'Mantenimiento', value: '🛠️' },
+  { label: 'Impuestos', value: '💳' },
+];
+
+const DEFAULT_EXPENSE_ICON = EXPENSE_ICON_OPTIONS[0].value;
+
+const getNormalizedExpenseIcon = (expense) => {
+  const rawIcon = expense?.icono ?? expense?.icon;
+  if (typeof rawIcon === 'string') {
+    const trimmed = rawIcon.trim();
+    return trimmed || DEFAULT_EXPENSE_ICON;
+  }
+
+  return DEFAULT_EXPENSE_ICON;
+};
+
 const formatCurrency = (value) =>
   new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -918,19 +944,7 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
   const [icono, setIcono] = useState(initialValue?.icono || initialValue?.icon || '');
 
   const iconOptions = useMemo(() => {
-    const baseOptions = [
-      { label: 'Luz', value: '💡' },
-      { label: 'Agua', value: '💧' },
-      { label: 'Alquiler', value: '🏠' },
-      { label: 'Salario', value: '💰' },
-      { label: 'Compras', value: '🛒' },
-      { label: 'Intereses', value: '📈' },
-      { label: 'Internet', value: '🌐' },
-      { label: 'Transporte', value: '🚌' },
-      { label: 'Comida', value: '🍽️' },
-      { label: 'Mantenimiento', value: '🛠️' },
-      { label: 'Impuestos', value: '💳' },
-    ];
+    const baseOptions = EXPENSE_ICON_OPTIONS;
 
     const currentIcon = initialValue?.icono || initialValue?.icon;
     if (currentIcon && !baseOptions.some((option) => option.value === currentIcon)) {
@@ -1063,49 +1077,49 @@ function ExpenseTable({ expenses = [], onEdit, onDelete, loading }) {
 
   return (
     <View className="gap-3">
-      {expenses.map((expense) => (
-        <View
-          key={expense.id}
-          className="flex-row items-center justify-between rounded-xl bg-white/5 border border-white/5 px-4 py-3"
-          accessibilityLabel={`${expense.categoria} ${formatCurrency(expense.monto)}`}
-        >
-          <View className="flex-1 flex-row gap-3 items-start">
-            {expense.icono || expense.icon ? (
-              <Text className="text-white text-xl w-8 text-center leading-6">
-                {expense.icono || expense.icon}
-              </Text>
-            ) : null}
-            <View className="flex-1">
-              <Text className="text-white font-semibold">{expense.categoria}</Text>
-              {expense.descripcion ? (
-                <Text className="text-white/60 text-sm">{expense.descripcion}</Text>
-              ) : null}
-              <Text className="text-white/70 text-xs mt-1">{expense.fecha ?? 'Sin fecha'}</Text>
+      {expenses.map((expense) => {
+        const expenseIcon = getNormalizedExpenseIcon(expense);
+
+        return (
+          <View
+            key={expense.id}
+            className="flex-row items-center justify-between rounded-xl bg-white/5 border border-white/5 px-4 py-3"
+            accessibilityLabel={`${expense.categoria} ${formatCurrency(expense.monto)}`}
+          >
+            <View className="flex-1 flex-row gap-3 items-start">
+              <Text className="text-white text-xl w-8 text-center leading-6">{expenseIcon}</Text>
+              <View className="flex-1">
+                <Text className="text-white font-semibold">{expense.categoria}</Text>
+                {expense.descripcion ? (
+                  <Text className="text-white/60 text-sm">{expense.descripcion}</Text>
+                ) : null}
+                <Text className="text-white/70 text-xs mt-1">{expense.fecha ?? 'Sin fecha'}</Text>
+              </View>
+            </View>
+            <View className="items-end gap-2 ml-4">
+              <Text className="text-white font-bold">{formatCurrency(expense.monto)}</Text>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => onEdit(expense)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Editar gasto"
+                  className="rounded-lg bg-white/10 px-3 py-2"
+                >
+                  <Text className="text-white">Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => onDelete(expense)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Eliminar gasto"
+                  className="rounded-lg bg-red-500/90 px-3 py-2"
+                >
+                  <Text className="text-white">Borrar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-          <View className="items-end gap-2 ml-4">
-            <Text className="text-white font-bold">{formatCurrency(expense.monto)}</Text>
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => onEdit(expense)}
-                accessibilityRole="button"
-                accessibilityLabel="Editar gasto"
-                className="rounded-lg bg-white/10 px-3 py-2"
-              >
-                <Text className="text-white">Editar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => onDelete(expense)}
-                accessibilityRole="button"
-                accessibilityLabel="Eliminar gasto"
-                className="rounded-lg bg-red-500/90 px-3 py-2"
-              >
-                <Text className="text-white">Borrar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -1305,7 +1319,7 @@ export default function EconomiaScreen() {
               ) : recentExpenses.length ? (
                 <View className="gap-2" accessibilityLabel="Gastos recientes" accessible>
                   {recentExpenses.map((expense) => {
-                    const expenseIcon = expense.icono || expense.icon || '•';
+                    const expenseIcon = getNormalizedExpenseIcon(expense);
                     return (
                       <View
                         key={expense.id}
