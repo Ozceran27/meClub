@@ -878,8 +878,12 @@ export default function EconomiaScreen() {
         <View className="flex-row flex-wrap gap-4">
           <MetricCard
             title="Ingresos"
-            value={showLoader ? 'Cargando…' : formatCurrency(ingresosMensuales?.total)}
-            subtitle={showLoader ? '' : `Semanal: ${formatCurrency(ingresosSemanales?.total)}`}
+            value={
+              showLoader ? 'Cargando…' : `${formatCurrency(ingresosMensuales?.total)} este mes`
+            }
+            subtitle={
+              showLoader ? '' : `${formatCurrency(ingresosSemanales?.total)} esta semana`
+            }
             loading={showLoader}
           >
             {!showLoader ? (
@@ -890,11 +894,6 @@ export default function EconomiaScreen() {
             <BreakdownList
               title="Detalle mensual"
               breakdown={ingresosMensuales?.breakdown}
-              loading={showLoader}
-            />
-            <BreakdownList
-              title="Detalle semanal"
-              breakdown={ingresosSemanales?.breakdown}
               loading={showLoader}
             />
           </MetricCard>
