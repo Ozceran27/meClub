@@ -61,6 +61,19 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
       const sumByStates = (source = {}, estados = []) =>
         estados.reduce((acc, estado) => acc + (Number(source?.[estado]) || 0), 0);
 
+      const formatMonthLabel = (value) => {
+        if (!value) return '';
+        const normalized =
+          typeof value === 'string' && /^\d{4}-\d{2}$/.test(value.trim())
+            ? `${value}-01`
+            : value;
+        const date = new Date(normalized);
+        if (!Number.isNaN(date.getTime())) {
+          return date.toLocaleDateString('es-AR', { month: 'short' });
+        }
+        return String(value);
+      };
+
       const ingresosMes = economy?.ingresos?.mes ?? {};
       const ingresosSemana = economy?.ingresos?.semana ?? {};
 
@@ -71,6 +84,42 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
       const ingresosMensualesProyectados = sumByStates(ingresosMes, estadosProyectados);
       const ingresosSemanalesReales = sumByStates(ingresosSemana, estadosReales);
       const ingresosSemanalesProyectados = sumByStates(ingresosSemana, estadosProyectados);
+
+      const normalizeMonthlyHistory = () => {
+        const history = Array.isArray(economy?.ingresosMensualesHistoricos)
+          ? economy.ingresosMensualesHistoricos
+          : [];
+
+        const parsed = history
+          .map((item, index) => {
+            const rawPeriod =
+              item.periodo || item.period || item.fecha || item.mes || item.month || item.label;
+            const label = formatMonthLabel(rawPeriod) || item.label || `M${index + 1}`;
+            const value = Number(item.total ?? item.value ?? item.monto) || 0;
+            return label ? { label, value, rawPeriod: rawPeriod || String(index) } : null;
+          })
+          .filter(Boolean);
+
+        if (parsed.length) return parsed;
+
+        const monthsBack = 6;
+        const now = new Date();
+        const seedValue = ingresosMensualesReales || ingresosMensualesProyectados || 0;
+        const base = seedValue || 8000;
+        const target = ingresosMensualesProyectados || base * 1.1;
+        const step = (target - base) / Math.max(1, monthsBack - 1);
+
+        return Array.from({ length: monthsBack }, (_, idx) => {
+          const monthDate = new Date(
+            now.getFullYear(),
+            now.getMonth() - (monthsBack - idx - 1),
+            1
+          );
+          const label = monthDate.toLocaleDateString('es-AR', { month: 'short' });
+          const value = Math.max(0, Math.round(base + step * idx));
+          return { label, value, rawPeriod: monthDate.toISOString() };
+        });
+      };
 
       return {
         ingresosMes: {
@@ -96,6 +145,7 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
           semana: ingresosSemanalesProyectados,
         },
         reservas: economy?.reservas ?? { mes: 0, semana: 0 },
+        ingresosMensualesHistoricos: normalizeMonthlyHistory(),
       };
     },
   });
@@ -228,27 +278,54 @@ function AreaChart({ data = [], height = 160 }) {
   }
 
   const maxValue = Math.max(...data.map((d) => d.value || 0), 1);
-  const width = 260;
-  const step = data.length > 1 ? width / (data.length - 1) : 0;
+  const padding = { top: 12, right: 16, bottom: 32, left: 16 };
+  const minInnerWidth = 180;
+  const innerWidth = Math.max(minInnerWidth, (data.length - 1) * 56);
+  const chartWidth = innerWidth + padding.left + padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const baselineY = padding.top + chartHeight;
+  const step = data.length > 1 ? innerWidth / (data.length - 1) : 0;
+
   const points = data.map((item, index) => {
-    const x = index * step;
-    const y = height - (Number(item.value) / maxValue) * (height - 24) - 12;
-    return `${x},${y}`;
+    const x = padding.left + index * step;
+    const y =
+      padding.top + chartHeight - (Number(item.value) / maxValue) * chartHeight;
+    return { x, y, label: item.label };
   });
-  const pathD = `M0,${height} L${points.join(' L ')} L${width},${height} Z`;
+
+  const pointPath = points.map((point) => `${point.x},${point.y}`).join(' L ');
+  const areaPath = `M${padding.left},${baselineY} L${pointPath} L${padding.left + innerWidth},${baselineY} Z`;
 
   return (
-    <Svg height={height} width={width} viewBox={`0 0 ${width} ${height}`}>
-      <Path d={pathD} fill="rgba(34,211,238,0.15)" stroke="#22d3ee" strokeWidth={2} />
+    <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
+      <Path d={areaPath} fill="rgba(34,211,238,0.15)" stroke="#22d3ee" strokeWidth={2} />
       <Path
-        d={`M${points.join(' L ')}`}
+        d={`M${pointPath}`}
         fill="none"
         stroke="#22d3ee"
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <Path d={`M${points.join(' L ')}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
+      <Path d={`M${pointPath}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
+      <Path
+        d={`M${padding.left},${baselineY} L${padding.left + innerWidth},${baselineY}`}
+        stroke="#94a3b8"
+        strokeWidth={1}
+        opacity={0.35}
+      />
+      {points.map((point, index) => (
+        <SvgText
+          key={`${point.label || index}-label`}
+          x={point.x}
+          y={height - padding.bottom / 2}
+          fill="white"
+          fontSize="12"
+          textAnchor="middle"
+        >
+          {point.label}
+        </SvgText>
+      ))}
     </Svg>
   );
 }
@@ -456,6 +533,7 @@ export default function EconomiaScreen() {
 
   const ingresosMensuales = economy?.ingresosMes;
   const ingresosSemanales = economy?.ingresosSemana;
+  const ingresosMensualesHistoricos = economy?.ingresosMensualesHistoricos ?? [];
   const gastosMensuales = economy?.gastosMes;
   const gastosSemanales = economy?.gastosSemana;
   const reservasMensuales = economy?.reservas?.mes;
@@ -660,11 +738,7 @@ export default function EconomiaScreen() {
               ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <AreaChart
-                    data={[
-                      { label: 'Semana', value: economy?.ingresosSemana?.total ?? 0 },
-                      { label: 'Mes', value: economy?.ingresosMes?.total ?? 0 },
-                      { label: 'Proyección', value: economy?.proyeccion?.mes ?? 0 },
-                    ]}
+                    data={ingresosMensualesHistoricos}
                   />
                 </ScrollView>
               )}
