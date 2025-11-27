@@ -51,17 +51,29 @@ describe('Rutas de gastos y economía', () => {
     expect(res.body.data).toEqual({ balanceMensual: 100 });
   });
 
-  it('lista gastos del mes', async () => {
+  it('lista gastos del mes con paginación por defecto', async () => {
     const app = buildApp();
     const resumen = { porCategoria: [{ categoria: 'Servicios', total: 100 }], total: 100 };
     const gastos = [{ gasto_id: 1, categoria: 'Servicios', monto: 100, fecha: '2024-01-01' }];
-    GastosModel.listarPorMes.mockResolvedValue({ gastos, resumen });
+    const meta = { total: 1, limit: 20, page: 1, totalPaginas: 1 };
+    GastosModel.listarPorMes.mockResolvedValue({ gastos, resumen, meta });
 
     const res = await request(app).get('/mis-gastos');
 
     expect(res.status).toBe(200);
-    expect(GastosModel.listarPorMes).toHaveBeenCalledWith(77, expect.any(Date));
-    expect(res.body).toEqual({ club_id: 77, gastos, resumen });
+    expect(GastosModel.listarPorMes).toHaveBeenCalledWith(77, expect.any(Date), {
+      limit: 20,
+      page: 1,
+    });
+    expect(res.body).toEqual({ club_id: 77, gastos, resumen, meta });
+  });
+
+  it('valida parámetros de paginación', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/mis-gastos?page=-1');
+
+    expect(res.status).toBe(400);
+    expect(GastosModel.listarPorMes).not.toHaveBeenCalled();
   });
 
   it('crea un gasto validando campos obligatorios', async () => {
@@ -93,6 +105,15 @@ describe('Rutas de gastos y economía', () => {
     const res = await request(app).post('/mis-gastos').send({ monto: 10 });
 
     expect(res.status).toBe(400);
+    expect(GastosModel.crear).not.toHaveBeenCalled();
+  });
+
+  it('rechaza creación con monto no numérico', async () => {
+    const app = buildApp();
+    const res = await request(app).post('/mis-gastos').send({ categoria: 'Servicios', monto: 'abc' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ mensaje: 'monto debe ser un número positivo' });
     expect(GastosModel.crear).not.toHaveBeenCalled();
   });
 
