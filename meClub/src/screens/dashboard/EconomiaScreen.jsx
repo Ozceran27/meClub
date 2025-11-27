@@ -608,6 +608,8 @@ function BarChart({ data = [], height = 140 }) {
 }
 
 function AreaChart({ data = [], height = 160 }) {
+  const [activeIndex, setActiveIndex] = useState(null);
+
   if (!data.length) {
     return (
       <View className="h-[160px] justify-center items-center">
@@ -616,8 +618,13 @@ function AreaChart({ data = [], height = 160 }) {
     );
   }
 
+  const formatValue = (value) =>
+    new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
+      Number.isFinite(Number(value)) ? Number(value) : 0
+    );
+
   const maxValue = Math.max(...data.map((d) => d.value || 0), 1);
-  const padding = { top: 12, right: 16, bottom: 32, left: 16 };
+  const padding = { top: 20, right: 20, bottom: 36, left: 20 };
   const minInnerWidth = 180;
   const innerWidth = Math.max(minInnerWidth, (data.length - 1) * 56);
   const chartWidth = innerWidth + padding.left + padding.right;
@@ -629,11 +636,26 @@ function AreaChart({ data = [], height = 160 }) {
     const x = padding.left + index * step;
     const y =
       padding.top + chartHeight - (Number(item.value) / maxValue) * chartHeight;
-    return { x, y, label: item.label };
+    return { x, y, label: item.label, value: Number(item.value) || 0 };
   });
 
   const pointPath = points.map((point) => `${point.x},${point.y}`).join(' L ');
   const areaPath = `M${padding.left},${baselineY} L${pointPath} L${padding.left + innerWidth},${baselineY} Z`;
+
+  const activePoint = activeIndex !== null ? points[activeIndex] : null;
+  const tooltipLabel = activePoint?.label ?? '';
+  const tooltipValue = formatValue(activePoint?.value);
+  const tooltipWidth = Math.min(
+    180,
+    Math.max(96, ((tooltipLabel?.length || 0) + tooltipValue.length) * 4)
+  );
+  const tooltipX = activePoint
+    ? Math.min(
+        chartWidth - padding.right - tooltipWidth / 2,
+        Math.max(padding.left + tooltipWidth / 2, activePoint.x)
+      )
+    : 0;
+  const tooltipY = activePoint ? Math.max(padding.top + 6, activePoint.y - 10) : 0;
 
   return (
     <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
@@ -654,22 +676,64 @@ function AreaChart({ data = [], height = 160 }) {
         opacity={0.35}
       />
       {points.map((point, index) => (
-        <SvgText
-          key={`${point.label || index}-label`}
-          x={point.x}
-          y={height - padding.bottom / 2}
-          fill="white"
-          fontSize="12"
-          textAnchor="middle"
-        >
-          {point.label}
-        </SvgText>
+        <React.Fragment key={`${point.label || index}-point`}>
+          <Circle
+            cx={point.x}
+            cy={point.y}
+            r={5}
+            fill="#22d3ee"
+            opacity={0.8}
+            onPressIn={() => setActiveIndex(index)}
+            onPressOut={() => setActiveIndex(null)}
+            onMouseEnter={() => setActiveIndex(index)}
+            onMouseLeave={() => setActiveIndex(null)}
+          />
+          <SvgText
+            x={point.x}
+            y={height - padding.bottom / 2}
+            fill="white"
+            fontSize="12"
+            textAnchor="middle"
+          >
+            {point.label}
+          </SvgText>
+        </React.Fragment>
       ))}
+
+      {activePoint ? (
+        <React.Fragment>
+          <Rect
+            x={tooltipX - tooltipWidth / 2}
+            y={tooltipY - 40}
+            width={tooltipWidth}
+            height={34}
+            rx={8}
+            fill="rgba(15, 23, 42, 0.92)"
+            stroke="#22d3ee"
+            strokeWidth={1}
+          />
+          <SvgText
+            x={tooltipX}
+            y={tooltipY - 26}
+            fill="white"
+            fontSize="12"
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            {tooltipLabel}
+          </SvgText>
+          <SvgText x={tooltipX} y={tooltipY - 12} fill="#bae6fd" fontSize="12" textAnchor="middle">
+            {tooltipValue}
+          </SvgText>
+        </React.Fragment>
+      ) : null}
     </Svg>
   );
 }
 
 function MultiAreaLineChart({ data = [], height = 200 }) {
+  const [activeIndex, setActiveIndex] = useState(null);
+
   if (!data.length) {
     return (
       <View className="h-[200px] justify-center items-center">
@@ -682,7 +746,7 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
     ...data.flatMap((item) => [item.ingresos, item.gastos, item.balance].map((val) => Math.abs(Number(val) || 0))),
     1
   );
-  const padding = { top: 16, right: 20, bottom: 36, left: 24 };
+  const padding = { top: 24, right: 24, bottom: 40, left: 28 };
   const minInnerWidth = 240;
   const innerWidth = Math.max(minInnerWidth, (data.length - 1) * 64);
   const chartWidth = innerWidth + padding.left + padding.right;
@@ -691,9 +755,9 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
   const step = data.length > 1 ? innerWidth / (data.length - 1) : 0;
 
   const series = [
-    { key: 'ingresos', color: '#22d3ee', fill: 'rgba(34,211,238,0.12)' },
-    { key: 'gastos', color: '#f43f5e', fill: 'rgba(244,63,94,0.12)' },
-    { key: 'balance', color: '#a855f7', fill: 'rgba(168,85,247,0.12)' },
+    { key: 'ingresos', label: 'Ingresos', color: '#22d3ee', fill: 'rgba(34,211,238,0.12)' },
+    { key: 'gastos', label: 'Gastos', color: '#f43f5e', fill: 'rgba(244,63,94,0.12)' },
+    { key: 'balance', label: 'Balance', color: '#a855f7', fill: 'rgba(168,85,247,0.12)' },
   ];
 
   const buildPoints = (key) =>
@@ -704,10 +768,48 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
       value: Number(item?.[key]) || 0,
     }));
 
+  const seriesWithPoints = series.map((serie) => ({
+    ...serie,
+    points: buildPoints(serie.key),
+  }));
+
   const buildPath = (points) =>
     points
       .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x},${point.y}`)
       .join(' ');
+
+  const tooltipItem = activeIndex !== null ? data[activeIndex] : null;
+  const tooltipX = activeIndex !== null ? padding.left + activeIndex * step : 0;
+  const tooltipAnchorY =
+    activeIndex !== null
+      ? Math.min(
+          ...seriesWithPoints
+            .map((serie) => serie.points[activeIndex]?.y)
+            .filter((value) => value !== undefined)
+        )
+      : 0;
+  const tooltipEntries = seriesWithPoints.map((serie) => ({
+    ...serie,
+    formatted: formatCurrency(tooltipItem?.[serie.key] ?? 0),
+  }));
+  const tooltipLabel = tooltipItem?.label ?? '';
+  const tooltipWidth = Math.min(
+    220,
+    Math.max(
+      140,
+      Math.max(tooltipLabel.length * 6, ...tooltipEntries.map((entry) => (entry.formatted.length + entry.label.length + 3) * 4))
+    )
+  );
+  const tooltipHeight = 20 + tooltipEntries.length * 16 + 8;
+  const clampedTooltipX = activeIndex !== null
+    ? Math.min(
+        chartWidth - padding.right - tooltipWidth / 2,
+        Math.max(padding.left + tooltipWidth / 2, tooltipX)
+      )
+    : 0;
+  const clampedTooltipY = activeIndex !== null
+    ? Math.max(padding.top + 8, tooltipAnchorY - tooltipHeight + 8)
+    : 0;
 
   return (
     <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
@@ -721,9 +823,8 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
         opacity={0.35}
       />
 
-      {series.map((serie) => {
-        const points = buildPoints(serie.key);
-        const path = buildPath(points);
+      {seriesWithPoints.map((serie) => {
+        const path = buildPath(serie.points);
         const areaPath = `M${padding.left},${baselineY} ${path.replace('M', 'L')} L${padding.left + innerWidth},${baselineY} Z`;
 
         return (
@@ -737,8 +838,18 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {points.map((point, index) => (
-              <Circle key={`${serie.key}-${index}`} cx={point.x} cy={point.y} r={3.4} fill={serie.color} />
+            {serie.points.map((point, index) => (
+              <Circle
+                key={`${serie.key}-${index}`}
+                cx={point.x}
+                cy={point.y}
+                r={3.6}
+                fill={serie.color}
+                onPressIn={() => setActiveIndex(index)}
+                onPressOut={() => setActiveIndex(null)}
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseLeave={() => setActiveIndex(null)}
+              />
             ))}
           </React.Fragment>
         );
@@ -759,6 +870,43 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
           </SvgText>
         );
       })}
+
+      {tooltipItem ? (
+        <React.Fragment>
+          <Rect
+            x={clampedTooltipX - tooltipWidth / 2}
+            y={clampedTooltipY - tooltipHeight}
+            width={tooltipWidth}
+            height={tooltipHeight}
+            rx={10}
+            fill="rgba(15, 23, 42, 0.94)"
+            stroke="#38bdf8"
+            strokeWidth={1}
+          />
+          <SvgText
+            x={clampedTooltipX}
+            y={clampedTooltipY - tooltipHeight + 16}
+            fill="white"
+            fontSize="12"
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            {tooltipLabel}
+          </SvgText>
+          {tooltipEntries.map((entry, idx) => (
+            <SvgText
+              key={`${entry.key}-tooltip`}
+              x={clampedTooltipX}
+              y={clampedTooltipY - tooltipHeight + 32 + idx * 16}
+              fill={entry.color}
+              fontSize="12"
+              textAnchor="middle"
+            >
+              {`${entry.label}: ${entry.formatted}`}
+            </SvgText>
+          ))}
+        </React.Fragment>
+      ) : null}
     </Svg>
   );
 }
