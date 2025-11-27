@@ -45,10 +45,10 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
               <Text className="text-white text-[32px] sm:text-[36px] font-extrabold tracking-tight">
                 Hola, <Text className="text-mc-warn">{firstName}</Text>
               </Text>
-              <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1">
-                <Ionicons name="partly-sunny-outline" size={16} color="#FDE68A" />
-                <Text className="text-amber-100 text-[12px] font-semibold tracking-wide">{weatherTemp}</Text>
-                <Text className="text-white/80 text-[12px]" numberOfLines={1}>
+              <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5">
+                <Ionicons name="partly-sunny-outline" size={20} color="#FDE68A" />
+                <Text className="text-amber-100 text-[14px] font-semibold tracking-wide">{weatherTemp}</Text>
+                <Text className="text-white/80 text-[14px]" numberOfLines={1}>
                   {weatherStatus}
                 </Text>
               </View>
