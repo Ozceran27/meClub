@@ -180,7 +180,11 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     const horaInicioMs = new Date(`${fecha}T${hora_inicio}`).getTime();
     const horaFinMs = horaInicioMs + duracionHorasNumero * 60 * 60 * 1000;
     const horarioAbreMs = new Date(`${fecha}T${horarioDia.abre}`).getTime();
-    const horarioCierraMs = new Date(`${fecha}T${horarioDia.cierra}`).getTime();
+    let horarioCierraMs = new Date(`${fecha}T${horarioDia.cierra}`).getTime();
+
+    if (horarioCierraMs < horarioAbreMs) {
+      horarioCierraMs += 24 * 60 * 60 * 1000;
+    }
 
     const horariosInvalidos = [horaInicioMs, horaFinMs, horarioAbreMs, horarioCierraMs].some((value) =>
       Number.isNaN(value)
