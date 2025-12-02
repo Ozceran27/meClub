@@ -506,6 +506,7 @@ function MetricCard({ title, value, subtitle, children, loading }) {
 function BarChart({ data = [], height = 140 }) {
   const [layoutWidth, setLayoutWidth] = React.useState(null);
   const [activeIndex, setActiveIndex] = React.useState(null);
+  const [tooltipPosition, setTooltipPosition] = React.useState({ x: 0, y: 0 });
 
   if (!data.length) return (
     <View className="h-[140px] justify-center items-center">
@@ -582,17 +583,28 @@ function BarChart({ data = [], height = 140 }) {
     180,
     Math.max(96, ((tooltipLabel?.length || 0) + tooltipValue.length) * 4)
   );
-  const tooltipX = activeCenterX
+  const tooltipX = activeItem
     ? Math.min(
         chartWidth - padding.right - tooltipWidth / 2,
-        Math.max(padding.left + tooltipWidth / 2, activeCenterX)
+        Math.max(padding.left + tooltipWidth / 2, tooltipPosition.x)
       )
     : 0;
-  const tooltipY = activeTopY !== null ? Math.max(padding.top + 4, activeTopY - 8) : 0;
+
+  const tooltipY =
+    activeItem && tooltipPosition
+      ? Math.max(padding.top + 4, tooltipPosition.y - 24)
+      : 0;
+
+  const handlePointerMove = (event, index) => {
+    const { locationX = 0, locationY = 0 } = event?.nativeEvent || {};
+    setActiveIndex(index);
+    setTooltipPosition({ x: locationX, y: locationY });
+  };
 
   return (
     <View
       className="w-full"
+      style={{ position: 'relative' }}
       onLayout={(event) => setLayoutWidth(event?.nativeEvent?.layout?.width || null)}
     >
       <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`} aria-label="Gráfico de barras">
@@ -611,9 +623,11 @@ function BarChart({ data = [], height = 140 }) {
                 height={barHeight}
                 rx={8}
                 fill="#38bdf8"
-                onMouseEnter={() => setActiveIndex(index)}
+                onMouseEnter={(event) => handlePointerMove(event, index)}
+                onMouseMove={(event) => handlePointerMove(event, index)}
                 onMouseLeave={() => setActiveIndex(null)}
-                onTouchStart={() => setActiveIndex(index)}
+                onTouchStart={(event) => handlePointerMove(event, index)}
+                onTouchMove={(event) => handlePointerMove(event, index)}
                 onTouchEnd={() => setActiveIndex(null)}
               />
               {label ? (
@@ -630,41 +644,41 @@ function BarChart({ data = [], height = 140 }) {
             </React.Fragment>
           );
         })}
-
-        {activeItem ? (
-          <React.Fragment>
-            <Rect
-              x={tooltipX - tooltipWidth / 2}
-              y={tooltipY - 34}
-              width={tooltipWidth}
-              height={32}
-              rx={8}
-              fill="rgba(15, 23, 42, 0.92)"
-              stroke="#38bdf8"
-              strokeWidth={1}
-            />
-            <SvgText
-              x={tooltipX}
-              y={tooltipY - 22}
-              fill="white"
-              fontSize="12"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {tooltipLabel}
-            </SvgText>
-            <SvgText x={tooltipX} y={tooltipY - 10} fill="#bae6fd" fontSize="12" textAnchor="middle">
-              {tooltipValue}
-            </SvgText>
-          </React.Fragment>
-        ) : null}
       </Svg>
+
+      {activeItem ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            zIndex: 50,
+            top: tooltipY - 34,
+            left: tooltipX - tooltipWidth / 2,
+            width: tooltipWidth,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.92)',
+              borderColor: '#38bdf8',
+              borderWidth: 1,
+              borderRadius: 8,
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+            }}
+          >
+            <Text className="text-white font-bold text-xs text-center">{tooltipLabel}</Text>
+            <Text className="text-[#bae6fd] text-xs text-center">{tooltipValue}</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 function AreaChart({ data = [], height = 160 }) {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   if (!data.length) {
     return (
@@ -708,82 +722,91 @@ function AreaChart({ data = [], height = 160 }) {
   const tooltipX = activePoint
     ? Math.min(
         chartWidth - padding.right - tooltipWidth / 2,
-        Math.max(padding.left + tooltipWidth / 2, activePoint.x)
+        Math.max(padding.left + tooltipWidth / 2, tooltipPosition.x)
       )
     : 0;
-  const tooltipY = activePoint ? Math.max(padding.top + 6, activePoint.y - 10) : 0;
+  const tooltipY = activePoint ? Math.max(padding.top + 6, tooltipPosition.y - 24) : 0;
+
+  const handlePointerMove = (event, index) => {
+    const { locationX = 0, locationY = 0 } = event?.nativeEvent || {};
+    setActiveIndex(index);
+    setTooltipPosition({ x: locationX, y: locationY });
+  };
 
   return (
-    <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
-      <Path d={areaPath} fill="rgba(34,211,238,0.15)" stroke="#22d3ee" strokeWidth={2} />
-      <Path
-        d={`M${pointPath}`}
-        fill="none"
-        stroke="#22d3ee"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path d={`M${pointPath}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
-      <Path
-        d={`M${padding.left},${baselineY} L${padding.left + innerWidth},${baselineY}`}
-        stroke="#94a3b8"
-        strokeWidth={1}
-        opacity={0.35}
-      />
-      {points.map((point, index) => (
-        <React.Fragment key={`${point.label || index}-point`}>
-          <Circle
-            cx={point.x}
-            cy={point.y}
-            r={5}
-            fill="#22d3ee"
-            opacity={0.8}
-            onMouseEnter={() => setActiveIndex(index)}
-            onMouseLeave={() => setActiveIndex(null)}
-            onTouchStart={() => setActiveIndex(index)}
-            onTouchEnd={() => setActiveIndex(null)}
-          />
-          <SvgText
-            x={point.x}
-            y={height - padding.bottom / 2}
-            fill="white"
-            fontSize="12"
-            textAnchor="middle"
-          >
-            {point.label}
-          </SvgText>
-        </React.Fragment>
-      ))}
+    <View style={{ position: 'relative' }}>
+      <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
+        <Path d={areaPath} fill="rgba(34,211,238,0.15)" stroke="#22d3ee" strokeWidth={2} />
+        <Path
+          d={`M${pointPath}`}
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path d={`M${pointPath}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
+        <Path
+          d={`M${padding.left},${baselineY} L${padding.left + innerWidth},${baselineY}`}
+          stroke="#94a3b8"
+          strokeWidth={1}
+          opacity={0.35}
+        />
+        {points.map((point, index) => (
+          <React.Fragment key={`${point.label || index}-point`}>
+            <Circle
+              cx={point.x}
+              cy={point.y}
+              r={5}
+              fill="#22d3ee"
+              opacity={0.8}
+              onMouseEnter={(event) => handlePointerMove(event, index)}
+              onMouseMove={(event) => handlePointerMove(event, index)}
+              onMouseLeave={() => setActiveIndex(null)}
+              onTouchStart={(event) => handlePointerMove(event, index)}
+              onTouchMove={(event) => handlePointerMove(event, index)}
+              onTouchEnd={() => setActiveIndex(null)}
+            />
+            <SvgText
+              x={point.x}
+              y={height - padding.bottom / 2}
+              fill="white"
+              fontSize="12"
+              textAnchor="middle"
+            >
+              {point.label}
+            </SvgText>
+          </React.Fragment>
+        ))}
+      </Svg>
 
       {activePoint ? (
-        <React.Fragment>
-          <Rect
-            x={tooltipX - tooltipWidth / 2}
-            y={tooltipY - 40}
-            width={tooltipWidth}
-            height={34}
-            rx={8}
-            fill="rgba(15, 23, 42, 0.92)"
-            stroke="#22d3ee"
-            strokeWidth={1}
-          />
-          <SvgText
-            x={tooltipX}
-            y={tooltipY - 26}
-            fill="white"
-            fontSize="12"
-            fontWeight="bold"
-            textAnchor="middle"
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            zIndex: 50,
+            top: tooltipY - 40,
+            left: tooltipX - tooltipWidth / 2,
+            width: tooltipWidth,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.92)',
+              borderColor: '#22d3ee',
+              borderWidth: 1,
+              borderRadius: 8,
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+            }}
           >
-            {tooltipLabel}
-          </SvgText>
-          <SvgText x={tooltipX} y={tooltipY - 12} fill="#bae6fd" fontSize="12" textAnchor="middle">
-            {tooltipValue}
-          </SvgText>
-        </React.Fragment>
+            <Text className="text-white font-bold text-xs text-center">{tooltipLabel}</Text>
+            <Text className="text-[#bae6fd] text-xs text-center">{tooltipValue}</Text>
+          </View>
+        </View>
       ) : null}
-    </Svg>
+    </View>
   );
 }
 
