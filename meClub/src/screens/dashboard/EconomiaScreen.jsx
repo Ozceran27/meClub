@@ -133,7 +133,13 @@ const startOfWeek = (value) => {
 
 const formatDateOnly = (date) => {
   const safeDate = parseDateValue(date);
-  return safeDate ? safeDate.toISOString().slice(0, 10) : '';
+  if (!safeDate) return '';
+
+  const year = safeDate.getFullYear();
+  const month = String(safeDate.getMonth() + 1).padStart(2, '0');
+  const day = String(safeDate.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 };
 
 const formatDateRangeLabel = (startDate, endDate) => {
@@ -208,8 +214,8 @@ const buildDailyIncome = ({ rawItems = [] }) => {
 
     return {
       label: WEEKDAY_SHORT_LABELS[dayIndex],
-      value,
-      date: formatDateOnly(currentDate),
+      value: normalizedByDate[key] || 0,
+      date: key,
     };
   });
 
@@ -570,7 +576,7 @@ function BarChart({ data = [], height = 140 }) {
   const activeTopY =
     activeBarHeight !== null ? padding.top + (chartHeight - activeBarHeight) : null;
   const tooltipLabel = activeItem?.label || formatBarLabel(activeItem || {});
-  const tooltipValue = formatValue(activeValue);
+  const tooltipValue = activeValue !== null ? `$${formatValue(activeValue)}` : '';
   const tooltipWidth = Math.min(
     180,
     Math.max(96, ((tooltipLabel?.length || 0) + tooltipValue.length) * 4)
@@ -713,7 +719,7 @@ function AreaChart({ data = [], height = 160 }) {
 
   const activePoint = activeIndex !== null ? points[activeIndex] : null;
   const tooltipLabel = activePoint?.label ?? '';
-  const tooltipValue = formatValue(activePoint?.value);
+  const tooltipValue = activePoint ? `$${formatValue(activePoint?.value)}` : '';
   const tooltipWidth = Math.min(
     180,
     Math.max(96, ((tooltipLabel?.length || 0) + tooltipValue.length) * 4)
