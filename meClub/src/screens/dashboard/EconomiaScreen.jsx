@@ -1418,108 +1418,116 @@ export default function EconomiaScreen() {
 
         <View className="flex-row flex-wrap gap-4">
           <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
-              <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
-            </View>
-            <View className="mt-4">
-              {chartLoading ? (
-                <View className="h-[140px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <BarChart
-                    data={ingresosSemanalesSerie.map((item) => ({
-                      ...item,
-                      label:
-                        item.label ||
-                        (item.startDate || item.endDate
-                          ? formatWeekRangeLabel(item.startDate || item.endDate)
-                          : ''),
-                      value:
-                        ['pagado', 'senado'].reduce(
-                          (acc, key) => acc + toNumberOrZero(item?.[key] ?? item?.ingresos?.[key]),
-                          0
-                        ) || toNumberOrZero(item.value ?? item.total ?? item.monto),
-                    }))}
-                  />
-                </ScrollView>
-              )}
-            </View>
-          </Card>
-
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
-              <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
-            </View>
-            <View className="mt-4">
-              {showLoader ? (
-                <View className="h-[160px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <AreaChart
-                    data={ingresosMensualesHistoricos}
-                  />
-                </ScrollView>
-              )}
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
+                <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
+              </View>
+              <View className="flex-1 justify-end mt-4">
+                {chartLoading ? (
+                  <View className="h-[140px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <BarChart
+                      data={ingresosSemanalesSerie.map((item) => ({
+                        ...item,
+                        label:
+                          item.label ||
+                          (item.startDate || item.endDate
+                            ? formatWeekRangeLabel(item.startDate || item.endDate)
+                            : ''),
+                        value:
+                          ['pagado', 'senado'].reduce(
+                            (acc, key) => acc + toNumberOrZero(item?.[key] ?? item?.ingresos?.[key]),
+                            0
+                          ) || toNumberOrZero(item.value ?? item.total ?? item.monto),
+                      }))}
+                    />
+                  </ScrollView>
+                )}
+              </View>
             </View>
           </Card>
 
           <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
-              <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
+                <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
+              </View>
+              <View className="flex-1 justify-end mt-4">
+                {showLoader ? (
+                  <View className="h-[160px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <AreaChart
+                      data={ingresosMensualesHistoricos}
+                    />
+                  </ScrollView>
+                )}
+              </View>
             </View>
+          </Card>
 
-            <View className="items-end mt-2">
-              <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
-            </View>
+          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
+                <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+              </View>
 
-            <View className="mt-4">
-              {chartLoading ? (
-                <View className="h-[160px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <BarChart data={ingresosDiarios} height={160} />
-                </ScrollView>
-              )}
+              <View className="items-end mt-2">
+                <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
+              </View>
+
+              <View className="flex-1 justify-end mt-4">
+                {chartLoading ? (
+                  <View className="h-[160px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <BarChart data={ingresosDiarios} height={160} />
+                  </ScrollView>
+                )}
+              </View>
             </View>
           </Card>
         </View>
 
         <View className="flex-row flex-wrap gap-4">
           <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
-              {ultimoFlujoMensual && !chartLoading ? (
-                <View className="items-end">
-                  <Text className="text-white text-lg font-semibold">
-                    {formatCurrency(ultimoFlujoMensual.balance)}
-                  </Text>
-                  <Text className="text-white/60 text-xs">{ultimoFlujoMensual.label}</Text>
-                </View>
-              ) : null}
-            </View>
-
-            <View className="flex-row flex-wrap gap-3 mt-3">
-              {[{ label: 'Ingresos', color: 'bg-cyan-400' }, { label: 'Gastos', color: 'bg-rose-400' }, { label: 'Balance', color: 'bg-purple-400' }].map(
-                (item) => (
-                  <View key={item.label} className="flex-row items-center gap-2">
-                    <View className={`h-3 w-3 rounded-full ${item.color}`} />
-                    <Text className="text-white/70 text-xs">{item.label}</Text>
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
+                {ultimoFlujoMensual && !chartLoading ? (
+                  <View className="items-end">
+                    <Text className="text-white text-lg font-semibold">
+                      {formatCurrency(ultimoFlujoMensual.balance)}
+                    </Text>
+                    <Text className="text-white/60 text-xs">{ultimoFlujoMensual.label}</Text>
                   </View>
-                )
-              )}
-            </View>
+                ) : null}
+              </View>
 
-            <View className="mt-4">
-              {chartLoading ? (
-                <View className="h-[200px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <MultiAreaLineChart data={economiaMensual} />
-                </ScrollView>
-              )}
+              <View className="flex-row flex-wrap gap-3 mt-3">
+                {[{ label: 'Ingresos', color: 'bg-cyan-400' }, { label: 'Gastos', color: 'bg-rose-400' }, { label: 'Balance', color: 'bg-purple-400' }].map(
+                  (item) => (
+                    <View key={item.label} className="flex-row items-center gap-2">
+                      <View className={`h-3 w-3 rounded-full ${item.color}`} />
+                      <Text className="text-white/70 text-xs">{item.label}</Text>
+                    </View>
+                  )
+                )}
+              </View>
+
+              <View className="flex-1 justify-end mt-4">
+                {chartLoading ? (
+                  <View className="h-[200px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <MultiAreaLineChart data={economiaMensual} />
+                  </ScrollView>
+                )}
+              </View>
             </View>
           </Card>
 
