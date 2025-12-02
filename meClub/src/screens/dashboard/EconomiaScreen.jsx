@@ -158,7 +158,7 @@ const formatWeekRangeLabel = (weekStart) => {
   return `${formatter(startDate)} - ${formatter(endDate)}`;
 };
 
-const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
+const buildDailyIncome = ({ rawItems = [] }) => {
   const items = Array.isArray(rawItems) ? rawItems : [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -175,65 +175,46 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
       const hasBreakdown = ['pagado', 'senado'].some(
         (state) => candidate?.[state] !== undefined && candidate?.[state] !== null
       );
+
       if (hasBreakdown) {
-        const total = ['pagado', 'senado'].reduce(
+        return ['pagado', 'senado'].reduce(
           (acc, state) => acc + toNumberOrZero(candidate?.[state]),
           0
         );
-        return { hasBreakdown: true, total };
       }
     }
 
-    return { hasBreakdown: false, total: 0 };
+    return null;
   };
 
-  const matchByDay = (targetIndex, targetDate) =>
-    items.find((item) => {
-      const rawDate = item.fecha ?? item.date;
-      const parsedDate = parseDateValue(rawDate);
-      if (parsedDate && formatDateOnly(parsedDate) === formatDateOnly(targetDate)) return true;
+  const incomeByDate = items.reduce((acc, item) => {
+    const rawDate = item.fecha ?? item.date ?? item.fecha_inicio ?? item.startDate ?? item.start;
+    const parsedDate = parseDateValue(rawDate);
+    if (!parsedDate) return acc;
 
-      const normalizedDay = normalizeWeekdayValue(item.dia ?? item.label);
-      return normalizedDay === targetIndex;
-    });
+    const key = formatDateOnly(parsedDate);
+    const value = getStateIncome(item);
+    if (value === null) return acc;
+
+    acc[key] = (acc[key] || 0) + value;
+    return acc;
+  }, {});
 
   const chartItems = lastSevenDays.map((currentDate) => {
     const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
-    const match = matchByDay(dayIndex, currentDate) || {};
-    const { hasBreakdown, total: breakdownTotal } = getStateIncome(match);
-    const fallbackValue = toNumberOrZero(
-      match.total ?? match.monto ?? match.value ?? match.ingresos ?? match.cantidad
-    );
-    const value = hasBreakdown ? breakdownTotal : fallbackValue;
+    const dateKey = formatDateOnly(currentDate);
+    const value = incomeByDate?.[dateKey] ?? 0;
 
     return {
       label: WEEKDAY_SHORT_LABELS[dayIndex],
       value,
-      date: formatDateOnly(currentDate),
+      date: dateKey,
     };
   });
 
-  let total = chartItems.reduce((acc, item) => acc + item.value, 0);
+  const total = chartItems.reduce((acc, item) => acc + item.value, 0);
   const rangeStart = formatDateOnly(lastSevenDays[0]);
   const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
-
-  if (total <= 0) {
-    const stubBase = fallbackTotal || 7000;
-    const average = stubBase / WEEKDAY_SHORT_LABELS.length;
-    const multipliers = [0.95, 1.08, 1.02, 1.12, 0.9, 1.18, 0.85];
-    const stubbed = chartItems.map((item, index) => ({
-      ...item,
-      value: Math.max(0, Math.round(average * multipliers[index])),
-    }));
-    total = stubbed.reduce((acc, item) => acc + item.value, 0);
-    return {
-      items: stubbed,
-      total,
-      startDate: rangeStart,
-      endDate: rangeEnd,
-      isStub: true,
-    };
-  }
 
   return {
     items: chartItems,
@@ -244,69 +225,75 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   };
 };
 
-const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
-  const weeksBack = Math.max(1, weeks);
-  const chartItems = Array.isArray(rawItems)
-    ? rawItems
-        .map((item, index) => {
-          const startDate = item.startDate || item.fecha_inicio || item.start || item.desde;
-          const endDate = item.endDate || item.fecha_fin || item.end || item.hasta;
-          const label =
-            item.label ||
-            (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
+const buildWeeklyIncome = ({ rawItems = [], weeks = 7 }) => {
+  const items = Array.isArray(rawItems) ? rawItems : [];
+  const currentWeekStart = startOfWeek(new Date());
 
-          const stateSources = [item, item.estados, item.ingresos, item.ingresos?.estados];
-          const stateSource = stateSources.find((source) =>
-            ['pagado', 'senado'].some((state) => source?.[state] !== undefined && source?.[state] !== null)
-          );
+  const weekRanges = Array.from({ length: weeks }, (_, idx) => {
+    const start = new Date(currentWeekStart);
+    start.setDate(currentWeekStart.getDate() - (weeks - idx - 1) * 7);
 
-          const value = stateSource
-            ? ['pagado', 'senado'].reduce((acc, state) => acc + toNumberOrZero(stateSource?.[state]), 0)
-            : toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
 
-          return label
-            ? {
-                label,
-                value,
-                startDate: formatDateOnly(startDate),
-                endDate: formatDateOnly(endDate),
-              }
-            : null;
-        })
-        .filter(Boolean)
-    : [];
+    return { start, end };
+  });
 
-  let total = chartItems.reduce((acc, item) => acc + item.value, 0);
+  const extractDateRange = (item = {}) => {
+    const start =
+      parseDateValue(item.startDate || item.fecha_inicio || item.start || item.desde || item.fecha || item.date) ||
+      null;
+    const end =
+      parseDateValue(item.endDate || item.fecha_fin || item.end || item.hasta || item.fecha || item.date) || start;
 
-  if (!chartItems.length || total <= 0) {
-    const baseTotal = fallbackTotal || 42000;
-    const average = baseTotal / weeksBack;
-    const multipliers = [0.9, 1, 1.08, 0.95, 1.15, 1.02];
-    const currentWeek = startOfWeek(new Date());
+    if (!start || !end) return null;
 
-    const stubbed = (chartItems.length
-      ? chartItems
-      : Array.from({ length: weeksBack }, (_, idx) => {
-          const start = new Date(currentWeek);
-          start.setDate(currentWeek.getDate() - (weeksBack - idx - 1) * 7);
-          const end = new Date(start);
-          end.setDate(start.getDate() + 6);
+    const normalizedStart = new Date(start);
+    const normalizedEnd = new Date(end);
+    normalizedStart.setHours(0, 0, 0, 0);
+    normalizedEnd.setHours(23, 59, 59, 999);
 
-          return {
-            label: formatWeekRangeLabel(start),
-            startDate: formatDateOnly(start),
-            endDate: formatDateOnly(end),
-            value: 0,
-          };
-        })
-    ).map((item, idx) => ({
-      ...item,
-      value: Math.max(0, Math.round(average * multipliers[idx % multipliers.length])),
-    }));
+    return { start: normalizedStart, end: normalizedEnd };
+  };
 
-    total = stubbed.reduce((acc, item) => acc + item.value, 0);
-    return { items: stubbed, total, isStub: true };
-  }
+  const getStateIncome = (source = {}) => {
+    const candidates = [source, source?.estados, source?.ingresos, source?.ingresos?.estados];
+    for (const candidate of candidates) {
+      const hasBreakdown = ['pagado', 'senado'].some(
+        (state) => candidate?.[state] !== undefined && candidate?.[state] !== null
+      );
+
+      if (hasBreakdown) {
+        return ['pagado', 'senado'].reduce(
+          (acc, state) => acc + toNumberOrZero(candidate?.[state]),
+          0
+        );
+      }
+    }
+
+    return null;
+  };
+
+  const chartItems = weekRanges.map(({ start, end }) => {
+    const rangeTotal = items.reduce((acc, item) => {
+      const itemRange = extractDateRange(item);
+      const income = getStateIncome(item);
+
+      if (!itemRange || income === null) return acc;
+
+      const overlaps = itemRange.start <= end && itemRange.end >= start;
+      return overlaps ? acc + income : acc;
+    }, 0);
+
+    return {
+      label: formatWeekRangeLabel(start),
+      startDate: formatDateOnly(start),
+      endDate: formatDateOnly(end),
+      value: rangeTotal,
+    };
+  });
+
+  const total = chartItems.reduce((acc, item) => acc + item.value, 0);
 
   return { items: chartItems, total, isStub: false };
 };
@@ -352,15 +339,13 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
       const ingresosSemanalesReales = sumByStates(ingresosSemana, estadosReales);
       const ingresosSemanalesProyectados = sumByStates(ingresosSemana, estadosProyectados);
 
-      const dailyIncome = buildDailyIncome({
-        rawItems: economy?.ingresosDiarios,
-        fallbackTotal: ingresosSemanalesProyectados || ingresosSemanalesReales,
-      });
+        const dailyIncome = buildDailyIncome({
+          rawItems: economy?.ingresosDiarios,
+        });
 
-      const weeklyIncome = buildWeeklyIncome({
-        rawItems: economy?.ingresosSemanalesSerie,
-        fallbackTotal: ingresosSemanalesProyectados || ingresosSemanalesReales,
-      });
+        const weeklyIncome = buildWeeklyIncome({
+          rawItems: economy?.ingresosSemanalesSerie,
+        });
 
       const normalizeMonthlyHistory = () => {
         const history = Array.isArray(economy?.ingresosMensualesHistoricos)
