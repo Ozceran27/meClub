@@ -213,17 +213,6 @@ const buildDailyIncome = ({ rawItems = [] }) => {
     };
   });
 
-  if (chartItems.every((item) => item.value === 0) && items.length) {
-    chartItems = items
-      .slice(-7)
-      .map((item, index) => ({
-        label: item.label || WEEKDAY_SHORT_LABELS[index % 7],
-        value: computeValue(item),
-        date: formatDateOnly(item.fecha || item.date || item.dia_fecha || today),
-      }))
-      .map((item, idx) => ({ ...item, label: item.label || WEEKDAY_SHORT_LABELS[idx % 7] }));
-  }
-
   const total = chartItems.reduce((acc, item) => acc + item.value, 0);
   const rangeStart = formatDateOnly(lastSevenDays[0]);
   const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
@@ -1441,11 +1430,7 @@ export default function EconomiaScreen() {
                 {chartLoading ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <BarChart
                       data={ingresosSemanalesSerie.map((item) => ({
                         ...item,
@@ -1478,11 +1463,7 @@ export default function EconomiaScreen() {
                 {showLoader ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <AreaChart data={ingresosMensualesHistoricos} />
                   </ScrollView>
                 )}
@@ -1505,11 +1486,7 @@ export default function EconomiaScreen() {
                 {chartLoading ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <BarChart data={ingresosDiarios} height={180} />
                   </ScrollView>
                 )}
@@ -1548,11 +1525,7 @@ export default function EconomiaScreen() {
                 {chartLoading ? (
                   <View className="h-[200px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <MultiAreaLineChart data={economiaMensual} />
                   </ScrollView>
                 )}
