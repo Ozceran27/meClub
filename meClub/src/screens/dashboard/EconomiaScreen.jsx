@@ -158,7 +158,7 @@ const formatWeekRangeLabel = (weekStart) => {
   return `${formatter(startDate)} - ${formatter(endDate)}`;
 };
 
-const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
+const buildDailyIncome = ({ rawItems = [] }) => {
   const items = Array.isArray(rawItems) ? rawItems : [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -166,45 +166,38 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   const lastSevenDays = Array.from({ length: 7 }, (_, idx) => {
     const date = new Date(today);
     date.setDate(today.getDate() - (6 - idx));
+    date.setHours(0, 0, 0, 0);
     return date;
   });
 
-  const getStateIncome = (source = {}) => {
-    const candidates = [source, source?.estados, source?.ingresos, source?.ingresos?.estados];
-    for (const candidate of candidates) {
-      const hasBreakdown = ['pagado', 'senado'].some(
-        (state) => candidate?.[state] !== undefined && candidate?.[state] !== null
-      );
-      if (hasBreakdown) {
-        const total = ['pagado', 'senado'].reduce(
-          (acc, state) => acc + toNumberOrZero(candidate?.[state]),
-          0
-        );
-        return { hasBreakdown: true, total };
-      }
-    }
+  const computeValue = (source = {}) => {
+    const breakdown = ['pagado', 'senado'].reduce(
+      (acc, key) => acc + toNumberOrZero(source?.[key] ?? source?.ingresos?.[key] ?? source?.estados?.[key]),
+      0
+    );
 
-    return { hasBreakdown: false, total: 0 };
+    if (breakdown > 0) return breakdown;
+
+    return toNumberOrZero(source.total ?? source.monto ?? source.value ?? source.ingresos ?? source.cantidad);
   };
 
-  const matchByDay = (targetIndex, targetDate) =>
-    items.find((item) => {
-      const rawDate = item.fecha ?? item.date;
-      const parsedDate = parseDateValue(rawDate);
-      if (parsedDate && formatDateOnly(parsedDate) === formatDateOnly(targetDate)) return true;
+  const findMatchesByDate = (targetDate) => {
+    const targetKey = formatDateOnly(targetDate);
+    return items.filter((item) => {
+      const parsedDate = parseDateValue(item.fecha ?? item.date ?? item.dia_fecha);
+      if (parsedDate) {
+        return formatDateOnly(parsedDate) === targetKey;
+      }
 
       const normalizedDay = normalizeWeekdayValue(item.dia ?? item.label);
-      return normalizedDay === targetIndex;
+      return normalizedDay === (targetDate.getDay() === 0 ? 6 : targetDate.getDay() - 1);
     });
+  };
 
   const chartItems = lastSevenDays.map((currentDate) => {
     const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
-    const match = matchByDay(dayIndex, currentDate) || {};
-    const { hasBreakdown, total: breakdownTotal } = getStateIncome(match);
-    const fallbackValue = toNumberOrZero(
-      match.total ?? match.monto ?? match.value ?? match.ingresos ?? match.cantidad
-    );
-    const value = hasBreakdown ? breakdownTotal : fallbackValue;
+    const matches = findMatchesByDate(currentDate);
+    const value = matches.reduce((acc, match) => acc + computeValue(match), 0);
 
     return {
       label: WEEKDAY_SHORT_LABELS[dayIndex],
@@ -213,27 +206,9 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
     };
   });
 
-  let total = chartItems.reduce((acc, item) => acc + item.value, 0);
+  const total = chartItems.reduce((acc, item) => acc + item.value, 0);
   const rangeStart = formatDateOnly(lastSevenDays[0]);
   const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
-
-  if (total <= 0) {
-    const stubBase = fallbackTotal || 7000;
-    const average = stubBase / WEEKDAY_SHORT_LABELS.length;
-    const multipliers = [0.95, 1.08, 1.02, 1.12, 0.9, 1.18, 0.85];
-    const stubbed = chartItems.map((item, index) => ({
-      ...item,
-      value: Math.max(0, Math.round(average * multipliers[index])),
-    }));
-    total = stubbed.reduce((acc, item) => acc + item.value, 0);
-    return {
-      items: stubbed,
-      total,
-      startDate: rangeStart,
-      endDate: rangeEnd,
-      isStub: true,
-    };
-  }
 
   return {
     items: chartItems,
@@ -244,8 +219,50 @@ const buildDailyIncome = ({ rawItems = [], fallbackTotal = 0 }) => {
   };
 };
 
-const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
+const buildWeeklyIncome = ({ rawItems = [], dailyItems = [], weeks = 7 }) => {
   const weeksBack = Math.max(1, weeks);
+  const parsedDaily = (Array.isArray(dailyItems) ? dailyItems : [])
+    .map((item) => {
+      const parsedDate = parseDateValue(item.fecha ?? item.date ?? item.dia_fecha ?? item.startDate);
+      if (!parsedDate) return null;
+
+      const value = ['pagado', 'senado'].reduce(
+        (acc, key) => acc + toNumberOrZero(item?.[key] ?? item?.ingresos?.[key] ?? item?.estados?.[key]),
+        0
+      );
+
+      const fallback = toNumberOrZero(item.total ?? item.monto ?? item.value ?? item.ingresos);
+
+      parsedDate.setHours(0, 0, 0, 0);
+      return { date: parsedDate, value: value || fallback };
+    })
+    .filter(Boolean);
+
+  if (parsedDaily.length) {
+    const currentWeekStart = startOfWeek(new Date());
+    const series = Array.from({ length: weeksBack }, (_, idx) => {
+      const weekStart = new Date(currentWeekStart);
+      weekStart.setDate(currentWeekStart.getDate() - (weeksBack - idx - 1) * 7);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+
+      const value = parsedDaily
+        .filter(({ date }) => date >= weekStart && date <= weekEnd)
+        .reduce((acc, entry) => acc + entry.value, 0);
+
+      return {
+        label: formatWeekRangeLabel(weekStart),
+        value,
+        startDate: formatDateOnly(weekStart),
+        endDate: formatDateOnly(weekEnd),
+      };
+    });
+
+    const total = series.reduce((acc, item) => acc + item.value, 0);
+    return { items: series, total, isStub: false };
+  }
+
   const chartItems = Array.isArray(rawItems)
     ? rawItems
         .map((item, index) => {
@@ -255,58 +272,27 @@ const buildWeeklyIncome = ({ rawItems = [], fallbackTotal = 0, weeks = 6 }) => {
             item.label ||
             (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
 
-          const stateSources = [item, item.estados, item.ingresos, item.ingresos?.estados];
-          const stateSource = stateSources.find((source) =>
-            ['pagado', 'senado'].some((state) => source?.[state] !== undefined && source?.[state] !== null)
+          const value = ['pagado', 'senado'].reduce(
+            (acc, state) => acc + toNumberOrZero(item?.[state] ?? item?.ingresos?.[state] ?? item?.estados?.[state]),
+            0
           );
 
-          const value = stateSource
-            ? ['pagado', 'senado'].reduce((acc, state) => acc + toNumberOrZero(stateSource?.[state]), 0)
-            : toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
+          const fallback = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
 
           return label
             ? {
                 label,
-                value,
+                value: value || fallback,
                 startDate: formatDateOnly(startDate),
                 endDate: formatDateOnly(endDate),
               }
             : null;
         })
         .filter(Boolean)
+        .slice(-weeksBack)
     : [];
 
-  let total = chartItems.reduce((acc, item) => acc + item.value, 0);
-
-  if (!chartItems.length || total <= 0) {
-    const baseTotal = fallbackTotal || 42000;
-    const average = baseTotal / weeksBack;
-    const multipliers = [0.9, 1, 1.08, 0.95, 1.15, 1.02];
-    const currentWeek = startOfWeek(new Date());
-
-    const stubbed = (chartItems.length
-      ? chartItems
-      : Array.from({ length: weeksBack }, (_, idx) => {
-          const start = new Date(currentWeek);
-          start.setDate(currentWeek.getDate() - (weeksBack - idx - 1) * 7);
-          const end = new Date(start);
-          end.setDate(start.getDate() + 6);
-
-          return {
-            label: formatWeekRangeLabel(start),
-            startDate: formatDateOnly(start),
-            endDate: formatDateOnly(end),
-            value: 0,
-          };
-        })
-    ).map((item, idx) => ({
-      ...item,
-      value: Math.max(0, Math.round(average * multipliers[idx % multipliers.length])),
-    }));
-
-    total = stubbed.reduce((acc, item) => acc + item.value, 0);
-    return { items: stubbed, total, isStub: true };
-  }
+  const total = chartItems.reduce((acc, item) => acc + item.value, 0);
 
   return { items: chartItems, total, isStub: false };
 };
@@ -354,12 +340,11 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
 
       const dailyIncome = buildDailyIncome({
         rawItems: economy?.ingresosDiarios,
-        fallbackTotal: ingresosSemanalesProyectados || ingresosSemanalesReales,
       });
 
       const weeklyIncome = buildWeeklyIncome({
         rawItems: economy?.ingresosSemanalesSerie,
-        fallbackTotal: ingresosSemanalesProyectados || ingresosSemanalesReales,
+        dailyItems: economy?.ingresosDiarios,
       });
 
       const normalizeMonthlyHistory = () => {
@@ -665,6 +650,7 @@ function BarChart({ data = [], height = 140 }) {
 
 function AreaChart({ data = [], height = 160 }) {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [layoutWidth, setLayoutWidth] = useState(null);
 
   if (!data.length) {
     return (
@@ -714,81 +700,79 @@ function AreaChart({ data = [], height = 160 }) {
   const tooltipY = activePoint ? Math.max(padding.top + 6, activePoint.y - 10) : 0;
 
   return (
-    <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
-      <Path d={areaPath} fill="rgba(34,211,238,0.15)" stroke="#22d3ee" strokeWidth={2} />
-      <Path
-        d={`M${pointPath}`}
-        fill="none"
-        stroke="#22d3ee"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path d={`M${pointPath}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
-      <Path
-        d={`M${padding.left},${baselineY} L${padding.left + innerWidth},${baselineY}`}
-        stroke="#94a3b8"
-        strokeWidth={1}
-        opacity={0.35}
-      />
-      {points.map((point, index) => (
-        <React.Fragment key={`${point.label || index}-point`}>
-          <Circle
-            cx={point.x}
-            cy={point.y}
-            r={5}
-            fill="#22d3ee"
-            opacity={0.8}
-            onMouseEnter={() => setActiveIndex(index)}
-            onMouseLeave={() => setActiveIndex(null)}
-            onTouchStart={() => setActiveIndex(index)}
-            onTouchEnd={() => setActiveIndex(null)}
-          />
-          <SvgText
-            x={point.x}
-            y={height - padding.bottom / 2}
-            fill="white"
-            fontSize="12"
-            textAnchor="middle"
-          >
-            {point.label}
-          </SvgText>
-        </React.Fragment>
-      ))}
+    <View
+      className="relative"
+      style={{ width: chartWidth, height }}
+      onLayout={(event) => setLayoutWidth(event.nativeEvent.layout.width)}
+    >
+      <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
+        <Path d={areaPath} fill="rgba(34,211,238,0.15)" stroke="#22d3ee" strokeWidth={2} />
+        <Path
+          d={`M${pointPath}`}
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path d={`M${pointPath}`} fill="none" stroke="#67e8f9" strokeWidth={5} opacity={0.12} />
+        <Path
+          d={`M${padding.left},${baselineY} L${padding.left + innerWidth},${baselineY}`}
+          stroke="#94a3b8"
+          strokeWidth={1}
+          opacity={0.35}
+        />
+        {points.map((point, index) => (
+          <React.Fragment key={`${point.label || index}-point`}>
+            <Circle
+              cx={point.x}
+              cy={point.y}
+              r={5}
+              fill="#22d3ee"
+              opacity={0.8}
+              onMouseEnter={() => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(null)}
+              onTouchStart={() => setActiveIndex(index)}
+              onTouchEnd={() => setActiveIndex(null)}
+            />
+            <SvgText
+              x={point.x}
+              y={height - padding.bottom / 2}
+              fill="white"
+              fontSize="12"
+              textAnchor="middle"
+            >
+              {point.label}
+            </SvgText>
+          </React.Fragment>
+        ))}
+      </Svg>
 
       {activePoint ? (
-        <React.Fragment>
-          <Rect
-            x={tooltipX - tooltipWidth / 2}
-            y={tooltipY - 40}
-            width={tooltipWidth}
-            height={34}
-            rx={8}
-            fill="rgba(15, 23, 42, 0.92)"
-            stroke="#22d3ee"
-            strokeWidth={1}
-          />
-          <SvgText
-            x={tooltipX}
-            y={tooltipY - 26}
-            fill="white"
-            fontSize="12"
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            {tooltipLabel}
-          </SvgText>
-          <SvgText x={tooltipX} y={tooltipY - 12} fill="#bae6fd" fontSize="12" textAnchor="middle">
-            {tooltipValue}
-          </SvgText>
-        </React.Fragment>
+        <View
+          pointerEvents="none"
+          className="absolute z-20 rounded-lg border border-cyan-400 bg-slate-900/95 px-3 py-2"
+          style={{
+            left: Math.min(
+              (layoutWidth ?? chartWidth) - tooltipWidth / 2 - 8,
+              Math.max(tooltipWidth / 2 + 8, tooltipX)
+            ),
+            top: Math.max(8, tooltipY - 46),
+            transform: [{ translateX: -tooltipWidth / 2 }],
+            width: tooltipWidth,
+          }}
+        >
+          <Text className="text-white text-xs font-bold text-center">{tooltipLabel}</Text>
+          <Text className="text-sky-100 text-xs text-center">{tooltipValue}</Text>
+        </View>
       ) : null}
-    </Svg>
+    </View>
   );
 }
 
 function MultiAreaLineChart({ data = [], height = 200 }) {
   const [activeIndex, setActiveIndex] = useState(null);
+  const [layoutWidth, setLayoutWidth] = useState(null);
 
   if (!data.length) {
     return (
@@ -868,102 +852,94 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
     : 0;
 
   return (
-    <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
-      <Line
-        x1={padding.left}
-        y1={baselineY}
-        x2={padding.left + innerWidth}
-        y2={baselineY}
-        stroke="#94a3b8"
-        strokeWidth={1}
-        opacity={0.35}
-      />
+    <View
+      className="relative"
+      style={{ width: chartWidth, height }}
+      onLayout={(event) => setLayoutWidth(event.nativeEvent.layout.width)}
+    >
+      <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`}>
+        <Line
+          x1={padding.left}
+          y1={baselineY}
+          x2={padding.left + innerWidth}
+          y2={baselineY}
+          stroke="#94a3b8"
+          strokeWidth={1}
+          opacity={0.35}
+        />
 
-      {seriesWithPoints.map((serie) => {
-        const path = buildPath(serie.points);
-        const areaPath = `M${padding.left},${baselineY} ${path.replace('M', 'L')} L${padding.left + innerWidth},${baselineY} Z`;
+        {seriesWithPoints.map((serie) => {
+          const path = buildPath(serie.points);
+          const areaPath = `M${padding.left},${baselineY} ${path.replace('M', 'L')} L${padding.left + innerWidth},${baselineY} Z`;
 
-        return (
-          <React.Fragment key={serie.key}>
-            <Path d={areaPath} fill={serie.fill} stroke="none" />
-            <Path
-              d={path}
-              fill="none"
-              stroke={serie.color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {serie.points.map((point, index) => (
-              <Circle
-                key={`${serie.key}-${index}`}
-                cx={point.x}
-                cy={point.y}
-                r={3.6}
-                fill={serie.color}
-                onMouseEnter={() => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-                onTouchStart={() => setActiveIndex(index)}
-                onTouchEnd={() => setActiveIndex(null)}
+          return (
+            <React.Fragment key={serie.key}>
+              <Path d={areaPath} fill={serie.fill} stroke="none" />
+              <Path
+                d={path}
+                fill="none"
+                stroke={serie.color}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            ))}
-          </React.Fragment>
-        );
-      })}
+              {serie.points.map((point, index) => (
+                <Circle
+                  key={`${serie.key}-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={3.6}
+                  fill={serie.color}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                  onTouchStart={() => setActiveIndex(index)}
+                  onTouchEnd={() => setActiveIndex(null)}
+                />
+              ))}
+            </React.Fragment>
+          );
+        })}
 
-      {data.map((item, index) => {
-        const x = padding.left + index * step;
-        return (
-          <SvgText
-            key={`${item.label || index}-label`}
-            x={x}
-            y={height - padding.bottom / 2}
-            fill="white"
-            fontSize="12"
-            textAnchor="middle"
-          >
-            {item.label}
-          </SvgText>
-        );
-      })}
-
-      {tooltipItem ? (
-        <React.Fragment>
-          <Rect
-            x={clampedTooltipX - tooltipWidth / 2}
-            y={clampedTooltipY - tooltipHeight}
-            width={tooltipWidth}
-            height={tooltipHeight}
-            rx={10}
-            fill="rgba(15, 23, 42, 0.94)"
-            stroke="#38bdf8"
-            strokeWidth={1}
-          />
-          <SvgText
-            x={clampedTooltipX}
-            y={clampedTooltipY - tooltipHeight + 16}
-            fill="white"
-            fontSize="12"
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            {tooltipLabel}
-          </SvgText>
-          {tooltipEntries.map((entry, idx) => (
+        {data.map((item, index) => {
+          const x = padding.left + index * step;
+          return (
             <SvgText
-              key={`${entry.key}-tooltip`}
-              x={clampedTooltipX}
-              y={clampedTooltipY - tooltipHeight + 32 + idx * 16}
-              fill={entry.color}
+              key={`${item.label || index}-label`}
+              x={x}
+              y={height - padding.bottom / 2}
+              fill="white"
               fontSize="12"
               textAnchor="middle"
             >
-              {`${entry.label}: ${entry.formatted}`}
+              {item.label}
             </SvgText>
+          );
+        })}
+      </Svg>
+
+      {tooltipItem ? (
+        <View
+          pointerEvents="none"
+          className="absolute z-20 rounded-xl border border-cyan-400 bg-slate-900/95 px-3 py-2"
+          style={{
+            left: Math.min(
+              (layoutWidth ?? chartWidth) - tooltipWidth / 2 - 8,
+              Math.max(tooltipWidth / 2 + 8, clampedTooltipX)
+            ),
+            top: Math.max(8, clampedTooltipY - tooltipHeight / 2),
+            transform: [{ translateX: -tooltipWidth / 2 }],
+            width: tooltipWidth,
+          }}
+        >
+          <Text className="text-white text-xs font-bold text-center">{tooltipLabel}</Text>
+          {tooltipEntries.map((entry) => (
+            <Text key={entry.key} className="text-[11px] text-center" style={{ color: entry.color }}>
+              {`${entry.label}: ${entry.formatted}`}
+            </Text>
           ))}
-        </React.Fragment>
+        </View>
       ) : null}
-    </Svg>
+    </View>
   );
 }
 
@@ -1418,108 +1394,115 @@ export default function EconomiaScreen() {
 
         <View className="flex-row flex-wrap gap-4">
           <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
-              <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
-            </View>
-            <View className="mt-4">
-              {chartLoading ? (
-                <View className="h-[140px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <BarChart
-                    data={ingresosSemanalesSerie.map((item) => ({
-                      ...item,
-                      label:
-                        item.label ||
-                        (item.startDate || item.endDate
-                          ? formatWeekRangeLabel(item.startDate || item.endDate)
-                          : ''),
-                      value:
-                        ['pagado', 'senado'].reduce(
-                          (acc, key) => acc + toNumberOrZero(item?.[key] ?? item?.ingresos?.[key]),
-                          0
-                        ) || toNumberOrZero(item.value ?? item.total ?? item.monto),
-                    }))}
-                  />
-                </ScrollView>
-              )}
-            </View>
-          </Card>
-
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
-              <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
-            </View>
-            <View className="mt-4">
-              {showLoader ? (
-                <View className="h-[160px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <AreaChart
-                    data={ingresosMensualesHistoricos}
-                  />
-                </ScrollView>
-              )}
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
+                <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
+              </View>
+              <View className="mt-4 flex-1 min-h-[200px] justify-end">
+                {chartLoading ? (
+                  <View className="h-[180px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <BarChart
+                      data={ingresosSemanalesSerie.map((item) => ({
+                        ...item,
+                        label:
+                          item.label ||
+                          (item.startDate || item.endDate
+                            ? formatWeekRangeLabel(item.startDate || item.endDate)
+                            : ''),
+                        value:
+                          ['pagado', 'senado'].reduce(
+                            (acc, key) => acc + toNumberOrZero(item?.[key] ?? item?.ingresos?.[key]),
+                            0
+                          ) || toNumberOrZero(item.value ?? item.total ?? item.monto),
+                      }))}
+                      height={180}
+                    />
+                  </ScrollView>
+                )}
+              </View>
             </View>
           </Card>
 
           <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
-              <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
+                <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
+              </View>
+              <View className="mt-4 flex-1 min-h-[200px] justify-end">
+                {showLoader ? (
+                  <View className="h-[180px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <AreaChart data={ingresosMensualesHistoricos} />
+                  </ScrollView>
+                )}
+              </View>
             </View>
+          </Card>
 
-            <View className="items-end mt-2">
-              <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
-            </View>
+          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
+                <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+              </View>
 
-            <View className="mt-4">
-              {chartLoading ? (
-                <View className="h-[160px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <BarChart data={ingresosDiarios} height={160} />
-                </ScrollView>
-              )}
+              <View className="items-end mt-2">
+                <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
+              </View>
+
+              <View className="mt-4 flex-1 min-h-[220px] justify-end">
+                {chartLoading ? (
+                  <View className="h-[180px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <BarChart data={ingresosDiarios} height={180} />
+                  </ScrollView>
+                )}
+              </View>
             </View>
           </Card>
         </View>
 
         <View className="flex-row flex-wrap gap-4">
           <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-row items-center justify-between">
-              <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
-              {ultimoFlujoMensual && !chartLoading ? (
-                <View className="items-end">
-                  <Text className="text-white text-lg font-semibold">
-                    {formatCurrency(ultimoFlujoMensual.balance)}
-                  </Text>
-                  <Text className="text-white/60 text-xs">{ultimoFlujoMensual.label}</Text>
-                </View>
-              ) : null}
-            </View>
-
-            <View className="flex-row flex-wrap gap-3 mt-3">
-              {[{ label: 'Ingresos', color: 'bg-cyan-400' }, { label: 'Gastos', color: 'bg-rose-400' }, { label: 'Balance', color: 'bg-purple-400' }].map(
-                (item) => (
-                  <View key={item.label} className="flex-row items-center gap-2">
-                    <View className={`h-3 w-3 rounded-full ${item.color}`} />
-                    <Text className="text-white/70 text-xs">{item.label}</Text>
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between">
+                <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
+                {ultimoFlujoMensual && !chartLoading ? (
+                  <View className="items-end">
+                    <Text className="text-white text-lg font-semibold">
+                      {formatCurrency(ultimoFlujoMensual.balance)}
+                    </Text>
+                    <Text className="text-white/60 text-xs">{ultimoFlujoMensual.label}</Text>
                   </View>
-                )
-              )}
-            </View>
+                ) : null}
+              </View>
 
-            <View className="mt-4">
-              {chartLoading ? (
-                <View className="h-[200px] rounded-2xl bg-white/10" />
-              ) : (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <MultiAreaLineChart data={economiaMensual} />
-                </ScrollView>
-              )}
+              <View className="flex-row flex-wrap gap-3 mt-3">
+                {[{ label: 'Ingresos', color: 'bg-cyan-400' }, { label: 'Gastos', color: 'bg-rose-400' }, { label: 'Balance', color: 'bg-purple-400' }].map(
+                  (item) => (
+                    <View key={item.label} className="flex-row items-center gap-2">
+                      <View className={`h-3 w-3 rounded-full ${item.color}`} />
+                      <Text className="text-white/70 text-xs">{item.label}</Text>
+                    </View>
+                  )
+                )}
+              </View>
+
+              <View className="mt-4 flex-1 min-h-[240px] justify-end">
+                {chartLoading ? (
+                  <View className="h-[200px] rounded-2xl bg-white/10" />
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <MultiAreaLineChart data={economiaMensual} />
+                  </ScrollView>
+                )}
+              </View>
             </View>
           </Card>
 
