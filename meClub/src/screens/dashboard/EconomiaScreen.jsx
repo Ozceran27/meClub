@@ -111,22 +111,10 @@ const normalizeWeekdayValue = (value) => {
 const parseDateValue = (value) => {
   if (!value) return null;
 
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      const [year, month, day] = trimmed.split('-').map(Number);
-      const localDate = new Date(year, month - 1, day, 12, 0, 0, 0);
-      return Number.isNaN(localDate.getTime()) ? null : localDate;
-    }
-
-    if (/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(trimmed)) {
-      const separator = trimmed.includes('/') ? '/' : '-';
-      const [dayRaw, monthRaw, yearRaw] = trimmed.split(separator).map(Number);
-      const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
-      const localDate = new Date(year, monthRaw - 1, dayRaw, 12, 0, 0, 0);
-      return Number.isNaN(localDate.getTime()) ? null : localDate;
-    }
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    const [year, month, day] = value.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
   }
 
   const date = value instanceof Date ? value : new Date(value);
@@ -206,18 +194,23 @@ const buildDailyIncome = ({ rawItems = [] }) => {
     return toNumberOrZero(source.total ?? source.monto ?? source.value ?? source.ingresos ?? source.cantidad);
   };
 
-  const normalizedByDate = items.reduce((acc, item) => {
-    const parsedDate = parseDateValue(item.fecha ?? item.date ?? item.dia_fecha);
-    if (!parsedDate) return acc;
+  const findMatchesByDate = (targetDate) => {
+    const targetKey = formatDateOnly(targetDate);
+    return items.filter((item) => {
+      const parsedDate = parseDateValue(item.fecha ?? item.date ?? item.dia_fecha);
+      if (parsedDate) {
+        return formatDateOnly(parsedDate) === targetKey;
+      }
 
-    const key = formatDateOnly(parsedDate);
-    acc[key] = (acc[key] || 0) + computeValue(item);
-    return acc;
-  }, {});
+      const normalizedDay = normalizeWeekdayValue(item.dia ?? item.label);
+      return normalizedDay === (targetDate.getDay() === 0 ? 6 : targetDate.getDay() - 1);
+    });
+  };
 
   let chartItems = lastSevenDays.map((currentDate) => {
     const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
-    const key = formatDateOnly(currentDate);
+    const matches = findMatchesByDate(currentDate);
+    const value = matches.reduce((acc, match) => acc + computeValue(match), 0);
 
     return {
       label: WEEKDAY_SHORT_LABELS[dayIndex],
@@ -225,17 +218,6 @@ const buildDailyIncome = ({ rawItems = [] }) => {
       date: key,
     };
   });
-
-  if (chartItems.every((item) => item.value === 0) && items.length) {
-    chartItems = items
-      .slice(-7)
-      .map((item, index) => ({
-        label: item.label || WEEKDAY_SHORT_LABELS[index % 7],
-        value: computeValue(item),
-        date: formatDateOnly(item.fecha || item.date || item.dia_fecha || today),
-      }))
-      .map((item, idx) => ({ ...item, label: item.label || WEEKDAY_SHORT_LABELS[idx % 7] }));
-  }
 
   const total = chartItems.reduce((acc, item) => acc + item.value, 0);
   const rangeStart = formatDateOnly(lastSevenDays[0]);
@@ -1454,11 +1436,7 @@ export default function EconomiaScreen() {
                 {chartLoading ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <BarChart
                       data={ingresosSemanalesSerie.map((item) => ({
                         ...item,
@@ -1491,11 +1469,7 @@ export default function EconomiaScreen() {
                 {showLoader ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <AreaChart data={ingresosMensualesHistoricos} />
                   </ScrollView>
                 )}
@@ -1518,11 +1492,7 @@ export default function EconomiaScreen() {
                 {chartLoading ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <BarChart data={ingresosDiarios} height={180} />
                   </ScrollView>
                 )}
@@ -1561,11 +1531,7 @@ export default function EconomiaScreen() {
                 {chartLoading ? (
                   <View className="h-[200px] rounded-2xl bg-white/10" />
                 ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                  >
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <MultiAreaLineChart data={economiaMensual} />
                   </ScrollView>
                 )}
