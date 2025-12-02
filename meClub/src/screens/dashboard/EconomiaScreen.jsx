@@ -110,6 +110,13 @@ const normalizeWeekdayValue = (value) => {
 
 const parseDateValue = (value) => {
   if (!value) return null;
+
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    const [year, month, day] = value.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day, 12, 0, 0, 0);
+    return Number.isNaN(localDate.getTime()) ? null : localDate;
+  }
+
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 };
@@ -194,7 +201,7 @@ const buildDailyIncome = ({ rawItems = [] }) => {
     });
   };
 
-  const chartItems = lastSevenDays.map((currentDate) => {
+  let chartItems = lastSevenDays.map((currentDate) => {
     const dayIndex = currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1;
     const matches = findMatchesByDate(currentDate);
     const value = matches.reduce((acc, match) => acc + computeValue(match), 0);
@@ -491,6 +498,7 @@ function MetricCard({ title, value, subtitle, children, loading }) {
 function BarChart({ data = [], height = 140 }) {
   const [layoutWidth, setLayoutWidth] = React.useState(null);
   const [activeIndex, setActiveIndex] = React.useState(null);
+  const [tooltipPosition, setTooltipPosition] = React.useState({ x: 0, y: 0 });
 
   if (!data.length) return (
     <View className="h-[140px] justify-center items-center">
@@ -577,8 +585,9 @@ function BarChart({ data = [], height = 140 }) {
 
   return (
     <View
-      className="w-full"
+      className="w-full relative"
       onLayout={(event) => setLayoutWidth(event?.nativeEvent?.layout?.width || null)}
+      pointerEvents="box-none"
     >
       <Svg height={height} width={chartWidth} viewBox={`0 0 ${chartWidth} ${height}`} aria-label="Gráfico de barras">
         {data.map((item, index) => {
@@ -596,9 +605,35 @@ function BarChart({ data = [], height = 140 }) {
                 height={barHeight}
                 rx={8}
                 fill="#38bdf8"
-                onMouseEnter={() => setActiveIndex(index)}
+                onMouseEnter={(event) => {
+                  setActiveIndex(index);
+                  setTooltipPosition({
+                    x: event?.nativeEvent?.locationX ?? x + barWidth / 2,
+                    y: event?.nativeEvent?.locationY ?? y,
+                  });
+                }}
+                onMouseMove={(event) => {
+                  setActiveIndex(index);
+                  setTooltipPosition({
+                    x: event?.nativeEvent?.locationX ?? x + barWidth / 2,
+                    y: event?.nativeEvent?.locationY ?? y,
+                  });
+                }}
                 onMouseLeave={() => setActiveIndex(null)}
-                onTouchStart={() => setActiveIndex(index)}
+                onTouchStart={(event) => {
+                  setActiveIndex(index);
+                  setTooltipPosition({
+                    x: event?.nativeEvent?.locationX ?? x + barWidth / 2,
+                    y: event?.nativeEvent?.locationY ?? y,
+                  });
+                }}
+                onTouchMove={(event) => {
+                  setActiveIndex(index);
+                  setTooltipPosition({
+                    x: event?.nativeEvent?.locationX ?? x + barWidth / 2,
+                    y: event?.nativeEvent?.locationY ?? y,
+                  });
+                }}
                 onTouchEnd={() => setActiveIndex(null)}
               />
               {label ? (
@@ -616,34 +651,26 @@ function BarChart({ data = [], height = 140 }) {
           );
         })}
 
-        {activeItem ? (
-          <React.Fragment>
-            <Rect
-              x={tooltipX - tooltipWidth / 2}
-              y={tooltipY - 34}
-              width={tooltipWidth}
-              height={32}
-              rx={8}
-              fill="rgba(15, 23, 42, 0.92)"
-              stroke="#38bdf8"
-              strokeWidth={1}
-            />
-            <SvgText
-              x={tooltipX}
-              y={tooltipY - 22}
-              fill="white"
-              fontSize="12"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {tooltipLabel}
-            </SvgText>
-            <SvgText x={tooltipX} y={tooltipY - 10} fill="#bae6fd" fontSize="12" textAnchor="middle">
-              {tooltipValue}
-            </SvgText>
-          </React.Fragment>
-        ) : null}
       </Svg>
+
+      {activeItem ? (
+        <View
+          pointerEvents="none"
+          className="absolute z-30 rounded-lg border border-cyan-400 bg-slate-900/95 px-3 py-2"
+          style={{
+            left: Math.min(
+              (layoutWidth ?? chartWidth) - tooltipWidth / 2 - 8,
+              Math.max(tooltipWidth / 2 + 8, tooltipPosition.x || tooltipX)
+            ),
+            top: Math.max(8, (tooltipPosition.y || tooltipY) - 46),
+            transform: [{ translateX: -tooltipWidth / 2 }],
+            width: tooltipWidth,
+          }}
+        >
+          <Text className="text-white text-xs font-bold text-center">{tooltipLabel}</Text>
+          <Text className="text-sky-100 text-xs text-center">{tooltipValue}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
