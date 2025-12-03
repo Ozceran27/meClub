@@ -199,14 +199,15 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
               ) : (
                 <>
                   <Text className="text-white text-[24px] font-extrabold leading-tight">
-                    <Text className="text-emerald-200">Proyectado </Text>
-                    {formatCurrency(ingresosProyectadosMes)}{' '}
-                    <Text className="text-white/70 font-semibold">· Gastos {formatCurrency(gastosMes)}</Text>
-                  </Text>
-                  <Text className="text-white/70 text-[15px] leading-tight">
-                    Real (pagado + señado):{' '}
-                    <Text className="text-sky-200 font-semibold">{formatCurrency(ingresosRealesMes)}</Text>
-                  </Text>
+                    <Text className="text-sky-200">Ingresos del mes: </Text>
+                    {formatCurrency(ingresosRealesMes)}{' '}
+                      <View className="mt-3 gap-1">
+                        <Text className="text-emerald-200 text-[15px] leading-tight font-semibold">Proyectado: 
+                        {formatCurrency(ingresosProyectadosMes)}{' '} </Text>
+                        <Text className="text-rose-200 text-[15px] leading-tight font-semibold">Gastos: 
+                      {formatCurrency(gastosMes)} </Text>
+                      </View>
+                  </Text>                  
                   <View className="flex-row flex-wrap gap-2 mt-1">
                     {[
                       { label: 'Proyectado', color: 'bg-emerald-400' },
@@ -225,12 +226,12 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
                 </>
               )}
             </View>
-            <View className="mt-4 min-h-[220px]">
+            <View className="mt-4 min-h-[120px]">
               <MonthlyFlowChart
                 data={economiaMensual}
                 loading={summaryLoading}
                 error={economyErrorMessage}
-                height={200}
+                height={160}
               />
             </View>
           </Card>
