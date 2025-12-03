@@ -214,12 +214,14 @@ const buildDailyIncome = ({ rawItems = [] }) => {
   });
 
   const total = chartItems.reduce((acc, item) => acc + item.value, 0);
+  const todayValue = chartItems.find((item) => item.date === formatDateOnly(today))?.value ?? 0;
   const rangeStart = formatDateOnly(lastSevenDays[0]);
   const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
 
   return {
     items: chartItems,
     total,
+    todayValue,
     startDate: rangeStart,
     endDate: rangeEnd,
     isStub: false,
@@ -228,6 +230,41 @@ const buildDailyIncome = ({ rawItems = [] }) => {
 
 const buildWeeklyIncome = ({ rawItems = [], dailyItems = [], weeks = 7 }) => {
   const weeksBack = Math.max(1, weeks);
+
+  const chartItems = Array.isArray(rawItems)
+    ? rawItems
+        .map((item, index) => {
+          const startDate = item.startDate || item.fecha_inicio || item.start || item.desde;
+          const endDate = item.endDate || item.fecha_fin || item.end || item.hasta;
+          const label =
+            item.label ||
+            (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
+
+          const value = ['pagado', 'senado'].reduce(
+            (acc, state) => acc + toNumberOrZero(item?.[state] ?? item?.ingresos?.[state] ?? item?.estados?.[state]),
+            0
+          );
+
+          const fallback = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
+
+          return label
+            ? {
+                label,
+                value: value || fallback,
+                startDate: formatDateOnly(startDate),
+                endDate: formatDateOnly(endDate),
+              }
+            : null;
+        })
+        .filter(Boolean)
+        .slice(-weeksBack)
+    : [];
+
+  if (chartItems.length) {
+    const total = chartItems.reduce((acc, item) => acc + item.value, 0);
+    return { items: chartItems, total, isStub: false };
+  }
+
   const parsedDaily = (Array.isArray(dailyItems) ? dailyItems : [])
     .map((item) => {
       const parsedDate = parseDateValue(item.fecha ?? item.date ?? item.dia_fecha ?? item.startDate);
@@ -270,38 +307,7 @@ const buildWeeklyIncome = ({ rawItems = [], dailyItems = [], weeks = 7 }) => {
     return { items: series, total, isStub: false };
   }
 
-  const chartItems = Array.isArray(rawItems)
-    ? rawItems
-        .map((item, index) => {
-          const startDate = item.startDate || item.fecha_inicio || item.start || item.desde;
-          const endDate = item.endDate || item.fecha_fin || item.end || item.hasta;
-          const label =
-            item.label ||
-            (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
-
-          const value = ['pagado', 'senado'].reduce(
-            (acc, state) => acc + toNumberOrZero(item?.[state] ?? item?.ingresos?.[state] ?? item?.estados?.[state]),
-            0
-          );
-
-          const fallback = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
-
-          return label
-            ? {
-                label,
-                value: value || fallback,
-                startDate: formatDateOnly(startDate),
-                endDate: formatDateOnly(endDate),
-              }
-            : null;
-        })
-        .filter(Boolean)
-        .slice(-weeksBack)
-    : [];
-
-  const total = chartItems.reduce((acc, item) => acc + item.value, 0);
-
-  return { items: chartItems, total, isStub: false };
+  return { items: [], total: 0, isStub: true };
 };
 
 const getEconomyQueryOptions = ({ clubId, enabled }) =>
@@ -436,9 +442,19 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
         reservas: economy?.reservas ?? { mes: 0, semana: 0 },
         ingresosMensualesHistoricos: normalizeMonthlyHistory(),
         ingresosDiarios: dailyIncome.items,
-        ingresosDiariosTotal: dailyIncome.total,
+        ingresosDiariosTotal:
+          Number.isFinite(dailyIncome.todayValue) && dailyIncome.todayValue !== null
+            ? dailyIncome.todayValue
+            : economy?.ingresosDiariosTotal ?? 0,
+        ingresosDiariosUltimos7Dias:
+          Number.isFinite(dailyIncome.total) && dailyIncome.total !== null
+            ? dailyIncome.total
+            : economy?.ingresosDiariosUltimos7Dias ?? 0,
         ingresosSemanalesSerie: weeklyIncome.items,
-        selectedWeek: { start: dailyIncome.startDate, end: dailyIncome.endDate },
+        selectedWeek: {
+          start: dailyIncome.startDate || economy?.semanaSeleccionada?.start,
+          end: dailyIncome.endDate || economy?.semanaSeleccionada?.end,
+        },
         economiaMensual: normalizeMonthlyEconomy(),
       };
     },
@@ -554,9 +570,7 @@ function BarChart({ data = [], height = 140 }) {
   };
 
   const formatValue = (value) =>
-    new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
-      Number.isFinite(Number(value)) ? Number(value) : 0
-    );
+    formatCurrency(Number.isFinite(Number(value)) ? Number(value) : 0);
 
   const activeItem = activeIndex !== null ? data[activeIndex] : null;
   const activeValue = getBarValue(activeItem || {});
@@ -688,9 +702,7 @@ function AreaChart({ data = [], height = 160 }) {
   }
 
   const formatValue = (value) =>
-    new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
-      Number.isFinite(Number(value)) ? Number(value) : 0
-    );
+    formatCurrency(Number.isFinite(Number(value)) ? Number(value) : 0);
 
   const maxValue = Math.max(...data.map((d) => d.value || 0), 1);
   const padding = { top: 20, right: 20, bottom: 36, left: 20 };
@@ -1420,8 +1432,8 @@ export default function EconomiaScreen() {
         </View>
 
         <View className="flex-row flex-wrap gap-4">
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-1">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
+            <View className="flex-1 justify-between">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
@@ -1453,8 +1465,8 @@ export default function EconomiaScreen() {
             </View>
           </Card>
 
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-1">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
+            <View className="flex-1 justify-between">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
@@ -1471,8 +1483,8 @@ export default function EconomiaScreen() {
             </View>
           </Card>
 
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
-            <View className="flex-1">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
+            <View className="flex-1 justify-between">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
@@ -1496,7 +1508,7 @@ export default function EconomiaScreen() {
         </View>
 
         <View className="flex-row flex-wrap gap-4">
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
