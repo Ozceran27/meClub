@@ -526,15 +526,16 @@ const ClubesModel = {
 
     const ingresosSemanalesSeriePromise = db.query(
       `SELECT YEARWEEK(r.fecha, 1) AS semana,
-              MIN(r.fecha) AS fecha_inicio,
-              MAX(r.fecha) AS fecha_fin,
+              DATE_SUB(DATE(r.fecha), INTERVAL WEEKDAY(r.fecha) DAY) AS fecha_inicio,
+              DATE_ADD(DATE_SUB(DATE(r.fecha), INTERVAL WEEKDAY(r.fecha) DAY), INTERVAL 6 DAY) AS fecha_fin,
+              r.estado_pago,
               COALESCE(SUM(r.monto), 0) AS total
        FROM reservas r
        JOIN canchas c ON c.cancha_id = r.cancha_id
        WHERE c.club_id = ?
-       GROUP BY YEARWEEK(r.fecha, 1)
-       ORDER BY semana DESC
-       LIMIT 12`,
+         AND r.fecha >= DATE_SUB(CURDATE(), INTERVAL 12 WEEK)
+       GROUP BY semana, fecha_inicio, fecha_fin, r.estado_pago
+       ORDER BY fecha_inicio DESC`,
       [club_id]
     );
 
@@ -637,27 +638,58 @@ const ClubesModel = {
 
     const balanceMensual = proyeccionMes - gastosMensuales;
 
-    const ingresosSemanalesSerie = (ingresosSemanalesSerieRows || [])
-      .map((row, index) => {
-        const semana = row?.semana;
-        const total = row?.total === null || row?.total === undefined ? 0 : Number(row.total);
-        const inicio = row?.fecha_inicio ? new Date(row.fecha_inicio) : null;
-        const fin = row?.fecha_fin ? new Date(row.fecha_fin) : null;
+    const ingresosSemanalesSerie = (() => {
+      const acumuladoPorSemana = (ingresosSemanalesSerieRows || []).reduce((acc, row) => {
+        const semanaKey = row?.fecha_inicio
+          ? new Date(row.fecha_inicio).toISOString().slice(0, 10)
+          : row?.semana;
 
-        const labelBase =
-          semana && String(semana).length >= 4
-            ? `S${String(semana).slice(-2)}`
-            : `S${ingresosSemanalesSerieRows.length - index}`;
+        if (!semanaKey) return acc;
+
+        const estado = normalizarEstadoPago(row?.estado_pago) || 'pendiente_pago';
+        const total = row?.total === null || row?.total === undefined ? 0 : Number(row.total);
+        const fechaInicio = row?.fecha_inicio ? new Date(row.fecha_inicio) : null;
+        const fechaFin = row?.fecha_fin ? new Date(row.fecha_fin) : null;
+        const numeroSemana = row?.semana ? Number(String(row.semana).slice(-2)) : null;
+
+        if (!acc[semanaKey]) {
+          acc[semanaKey] = {
+            semana: numeroSemana,
+            fecha_inicio: fechaInicio ? fechaInicio.toISOString().slice(0, 10) : null,
+            fecha_fin: fechaFin ? fechaFin.toISOString().slice(0, 10) : null,
+            ...estadosBase,
+          };
+        }
+
+        acc[semanaKey][estado] = (acc[semanaKey][estado] || 0) + total;
+        return acc;
+      }, {});
+
+      const semanasOrdenadas = Object.values(acumuladoPorSemana).sort((a, b) => {
+        const fechaA = a?.fecha_inicio ? new Date(a.fecha_inicio).getTime() : 0;
+        const fechaB = b?.fecha_inicio ? new Date(b.fecha_inicio).getTime() : 0;
+        return fechaA - fechaB;
+      });
+
+      const ultimasSemanas = semanasOrdenadas.slice(-7).map((item, index, arr) => {
+        const labelSemana =
+          Number.isInteger(item?.semana) && item.semana > 0
+            ? `S${String(item.semana).padStart(2, '0')}`
+            : `S${arr.length - index}`;
+
+        const pagado = item?.pagado || 0;
+        const senado = item?.senado || 0;
+        const pendiente_pago = item?.pendiente_pago || 0;
 
         return {
-          semana,
-          total,
-          fecha_inicio: inicio ? inicio.toISOString().slice(0, 10) : null,
-          fecha_fin: fin ? fin.toISOString().slice(0, 10) : null,
-          label: labelBase,
+          ...item,
+          label: labelSemana,
+          total: pagado + senado + pendiente_pago,
         };
-      })
-      .reverse();
+      });
+
+      return ultimasSemanas;
+    })();
 
     const monthTimeline = Array.from({ length: monthsBack }, (_, index) => {
       const current = new Date(monthRangeStart);

@@ -230,6 +230,41 @@ const buildDailyIncome = ({ rawItems = [] }) => {
 
 const buildWeeklyIncome = ({ rawItems = [], dailyItems = [], weeks = 7 }) => {
   const weeksBack = Math.max(1, weeks);
+
+  const chartItems = Array.isArray(rawItems)
+    ? rawItems
+        .map((item, index) => {
+          const startDate = item.startDate || item.fecha_inicio || item.start || item.desde;
+          const endDate = item.endDate || item.fecha_fin || item.end || item.hasta;
+          const label =
+            item.label ||
+            (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
+
+          const value = ['pagado', 'senado'].reduce(
+            (acc, state) => acc + toNumberOrZero(item?.[state] ?? item?.ingresos?.[state] ?? item?.estados?.[state]),
+            0
+          );
+
+          const fallback = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
+
+          return label
+            ? {
+                label,
+                value: value || fallback,
+                startDate: formatDateOnly(startDate),
+                endDate: formatDateOnly(endDate),
+              }
+            : null;
+        })
+        .filter(Boolean)
+        .slice(-weeksBack)
+    : [];
+
+  if (chartItems.length) {
+    const total = chartItems.reduce((acc, item) => acc + item.value, 0);
+    return { items: chartItems, total, isStub: false };
+  }
+
   const parsedDaily = (Array.isArray(dailyItems) ? dailyItems : [])
     .map((item) => {
       const parsedDate = parseDateValue(item.fecha ?? item.date ?? item.dia_fecha ?? item.startDate);
@@ -272,38 +307,7 @@ const buildWeeklyIncome = ({ rawItems = [], dailyItems = [], weeks = 7 }) => {
     return { items: series, total, isStub: false };
   }
 
-  const chartItems = Array.isArray(rawItems)
-    ? rawItems
-        .map((item, index) => {
-          const startDate = item.startDate || item.fecha_inicio || item.start || item.desde;
-          const endDate = item.endDate || item.fecha_fin || item.end || item.hasta;
-          const label =
-            item.label ||
-            (startDate ? formatWeekRangeLabel(startDate) : endDate ? formatWeekRangeLabel(endDate) : `S${index + 1}`);
-
-          const value = ['pagado', 'senado'].reduce(
-            (acc, state) => acc + toNumberOrZero(item?.[state] ?? item?.ingresos?.[state] ?? item?.estados?.[state]),
-            0
-          );
-
-          const fallback = toNumberOrZero(item.value ?? item.total ?? item.monto ?? item.ingresos);
-
-          return label
-            ? {
-                label,
-                value: value || fallback,
-                startDate: formatDateOnly(startDate),
-                endDate: formatDateOnly(endDate),
-              }
-            : null;
-        })
-        .filter(Boolean)
-        .slice(-weeksBack)
-    : [];
-
-  const total = chartItems.reduce((acc, item) => acc + item.value, 0);
-
-  return { items: chartItems, total, isStub: false };
+  return { items: [], total: 0, isStub: true };
 };
 
 const getEconomyQueryOptions = ({ clubId, enabled }) =>
