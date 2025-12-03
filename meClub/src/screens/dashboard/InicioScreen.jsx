@@ -21,6 +21,30 @@ const normalizeAmount = (value, fallback = 0) => {
   return parsed;
 };
 
+const normalizeMonthlyEconomyForChart = (source = []) => {
+  if (!Array.isArray(source)) return [];
+
+  const getIngresos = (rawIngresos) => {
+    if (rawIngresos && typeof rawIngresos === 'object' && !Array.isArray(rawIngresos)) {
+      const paid = normalizeAmount(rawIngresos.pagado ?? rawIngresos.pago, 0);
+      const deposit = normalizeAmount(
+        rawIngresos.senado ?? rawIngresos.señado ?? rawIngresos.senadoPago ?? rawIngresos.deposito,
+        0
+      );
+      return paid + deposit;
+    }
+
+    return normalizeAmount(rawIngresos, 0);
+  };
+
+  return source.map((item) => ({
+    ...item,
+    ingresos: getIngresos(item?.ingresos ?? item?.income ?? item?.ingresosMes),
+    gastos: normalizeAmount(item?.gastos ?? item?.expenses ?? item?.gastosMes, 0),
+    balance: normalizeAmount(item?.balance ?? item?.resultado ?? item?.neto, 0),
+  }));
+};
+
 export default function InicioScreen({ summary = {}, summaryLoading = false, summaryError = '', firstName, today, go }) {
   const courtTypesText = Array.isArray(summary.courtTypes) && summary.courtTypes.length > 0
     ? summary.courtTypes
@@ -62,7 +86,8 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
     ingresosRealesMes
   );
   const gastosMes = normalizeAmount(summary.gastosMes, 0);
-  const economiaMensual = Array.isArray(summary.economiaMensual) ? summary.economiaMensual : [];
+  const economiaMensualRaw = Array.isArray(summary.economiaMensual) ? summary.economiaMensual : [];
+  const economiaMensual = normalizeMonthlyEconomyForChart(economiaMensualRaw);
   const economyErrorMessage = summaryError ? 'No pudimos cargar tu economía. Intentalo nuevamente.' : '';
   const showEconomyFallback = !!summaryError && !summaryLoading;
 
@@ -212,27 +237,12 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
                     {formatCurrency(ingresosRealesMes)}
                   </Text>
                   <View className="mt-3 gap-1">
-                    <Text className="text-emerald-200 text-[15px] leading-tight font-semibold">
+                  <Text className="text-emerald-200 text-[15px] leading-tight font-semibold">
                       Proyectado: {formatCurrency(ingresosProyectadosMes)}
                     </Text>
                     <Text className="text-rose-200 text-[15px] leading-tight font-semibold">
                       Gastos: {formatCurrency(gastosMes)}
                     </Text>
-                  </View>
-                  <View className="flex-row flex-wrap gap-2 mt-1">
-                    {[
-                      { label: 'Proyectado', color: 'bg-emerald-400' },
-                      { label: 'Real', color: 'bg-sky-400' },
-                      { label: 'Gastos', color: 'bg-rose-400' },
-                    ].map((item) => (
-                      <View
-                        key={item.label}
-                        className="flex-row items-center gap-2 rounded-full bg-white/5 px-3 py-1.5"
-                      >
-                        <View className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
-                        <Text className="text-white/70 text-xs">{item.label}</Text>
-                      </View>
-                    ))}
                   </View>
                 </>
               )}
