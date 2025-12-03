@@ -1432,13 +1432,13 @@ export default function EconomiaScreen() {
         </View>
 
         <View className="flex-row flex-wrap gap-4">
-          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
-            <View className="flex-1">
+          <Card className="flex-1 min-w-[320px] min-h-[320px] flex" accessibilityRole="summary">
+            <View className="flex-1 justify-between gap-4">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
               </View>
-              <View className="mt-4 flex-1 min-h-[200px] justify-end">
+              <View className="flex-1 justify-end pb-1 min-h-[200px]">
                 {chartLoading ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
@@ -1465,13 +1465,13 @@ export default function EconomiaScreen() {
             </View>
           </Card>
 
-          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
-            <View className="flex-1">
+          <Card className="flex-1 min-w-[320px] min-h-[320px] flex" accessibilityRole="summary">
+            <View className="flex-1 justify-between gap-4">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
               </View>
-              <View className="mt-4 flex-1 min-h-[200px] justify-end">
+              <View className="flex-1 justify-end pb-1 min-h-[200px]">
                 {showLoader ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
@@ -1483,18 +1483,20 @@ export default function EconomiaScreen() {
             </View>
           </Card>
 
-          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between">
-                <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
-                <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+          <Card className="flex-1 min-w-[320px] min-h-[320px] flex" accessibilityRole="summary">
+            <View className="flex-1 justify-between gap-4">
+              <View className="gap-3">
+                <View className="flex-row items-center justify-between">
+                  <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
+                  <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+                </View>
+
+                <View className="items-end">
+                  <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
+                </View>
               </View>
 
-              <View className="items-end mt-2">
-                <Text className="text-white/70 text-sm">{selectedWeekRangeLabel}</Text>
-              </View>
-
-              <View className="mt-4 flex-1 min-h-[220px] justify-end">
+              <View className="flex-1 justify-end pb-1 min-h-[220px]">
                 {chartLoading ? (
                   <View className="h-[180px] rounded-2xl bg-white/10" />
                 ) : (
