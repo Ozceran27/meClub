@@ -10,9 +10,9 @@ const formatCurrency = (value) =>
   }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 
 const LEGEND_ITEMS = [
-  { label: 'Ingresos', color: 'bg-cyan-400' },
+  { label: 'Ingresos reales (pagado + señado)', color: 'bg-cyan-400' },
   { label: 'Gastos', color: 'bg-rose-400' },
-  { label: 'Balance', color: 'bg-purple-400' },
+  { label: 'Balance real', color: 'bg-purple-400' },
 ];
 
 function MultiAreaLineChart({ data = [], height = 200 }) {
@@ -40,9 +40,14 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
   const step = data.length > 1 ? innerWidth / (data.length - 1) : 0;
 
   const series = [
-    { key: 'ingresos', label: 'Ingresos', color: '#22d3ee', fill: 'rgba(34,211,238,0.12)' },
+    {
+      key: 'ingresos',
+      label: 'Ingresos reales',
+      color: '#22d3ee',
+      fill: 'rgba(34,211,238,0.12)',
+    },
     { key: 'gastos', label: 'Gastos', color: '#f43f5e', fill: 'rgba(244,63,94,0.12)' },
-    { key: 'balance', label: 'Balance', color: '#a855f7', fill: 'rgba(168,85,247,0.12)' },
+    { key: 'balance', label: 'Balance real', color: '#a855f7', fill: 'rgba(168,85,247,0.12)' },
   ];
 
   const buildPoints = (key) =>
@@ -77,7 +82,7 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
     ...serie,
     formatted: formatCurrency(tooltipItem?.[serie.key] ?? 0),
   }));
-  const tooltipLabel = tooltipItem?.label ?? '';
+  const tooltipLabel = tooltipItem?.label ? `${tooltipItem.label} · base real` : 'Base real';
   const tooltipWidth = Math.min(
     220,
     Math.max(

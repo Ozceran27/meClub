@@ -732,11 +732,12 @@ const ClubesModel = {
 
     const economiaMensual = monthTimeline.map((periodo) => {
       const ingresosPeriodo = ingresosPorPeriodo[periodo] || { ...estadosBase };
+      const ingresosNormalizados = { ...estadosBase, ...ingresosPeriodo };
       const gastosPeriodo = gastosPorPeriodo[periodo] || 0;
-      const ingresosReales = (ingresosPeriodo.pagado || 0) + (ingresosPeriodo.senado || 0);
+      const ingresosReales = (ingresosNormalizados.pagado || 0) + (ingresosNormalizados.senado || 0);
       return {
         periodo,
-        ingresos: ingresosPeriodo,
+        ingresos: ingresosNormalizados,
         gastos: gastosPeriodo,
         balance: ingresosReales - gastosPeriodo,
       };

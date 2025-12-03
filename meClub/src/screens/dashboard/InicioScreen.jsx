@@ -31,18 +31,35 @@ const normalizeMonthlyEconomyForChart = (source = []) => {
         rawIngresos.senado ?? rawIngresos.señado ?? rawIngresos.senadoPago ?? rawIngresos.deposito,
         0
       );
-      return paid + deposit;
+      return {
+        pagado: paid,
+        senado: deposit,
+        pendiente: normalizeAmount(rawIngresos.pendiente_pago ?? rawIngresos.pendiente ?? rawIngresos.pending, 0),
+      };
     }
 
-    return normalizeAmount(rawIngresos, 0);
+    const fallback = normalizeAmount(rawIngresos, 0);
+    return { pagado: fallback, senado: 0, pendiente: 0 };
   };
 
-  return source.map((item) => ({
-    ...item,
-    ingresos: getIngresos(item?.ingresos ?? item?.income ?? item?.ingresosMes),
-    gastos: normalizeAmount(item?.gastos ?? item?.expenses ?? item?.gastosMes, 0),
-    balance: normalizeAmount(item?.balance ?? item?.resultado ?? item?.neto, 0),
-  }));
+  return source.map((item) => {
+    const ingresosDetalle = getIngresos(item?.ingresos ?? item?.income ?? item?.ingresosMes);
+    const ingresos = ingresosDetalle.pagado + ingresosDetalle.senado;
+    const gastos = normalizeAmount(item?.gastos ?? item?.expenses ?? item?.gastosMes, 0);
+    const balance = ingresos - gastos;
+
+    return {
+      ...item,
+      ingresos,
+      gastos,
+      balance,
+      proyeccion: {
+        ingresos: ingresos + ingresosDetalle.pendiente,
+        gastos,
+        balance: ingresos + ingresosDetalle.pendiente - gastos,
+      },
+    };
+  });
 };
 
 export default function InicioScreen({ summary = {}, summaryLoading = false, summaryError = '', firstName, today, go }) {
