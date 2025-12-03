@@ -648,9 +648,10 @@ const ClubesModel = {
     const reservasSemana = Number(reservasSemanalesRows?.[0]?.total) || 0;
 
     const proyeccionMes = Object.values(ingresosMes).reduce((acc, val) => acc + val, 0);
+    const ingresosRealesMes = (ingresosMes.pagado || 0) + (ingresosMes.senado || 0);
     const proyeccionSemana = Object.values(ingresosSemana).reduce((acc, val) => acc + val, 0);
 
-    const balanceMensual = proyeccionMes - gastosMensuales;
+    const balanceMensual = ingresosRealesMes - gastosMensuales;
 
     const ingresosSemanalesSerie = (() => {
       const acumuladoPorSemana = (ingresosSemanalesSerieRows || []).reduce((acc, row) => {
@@ -732,12 +733,12 @@ const ClubesModel = {
     const economiaMensual = monthTimeline.map((periodo) => {
       const ingresosPeriodo = ingresosPorPeriodo[periodo] || { ...estadosBase };
       const gastosPeriodo = gastosPorPeriodo[periodo] || 0;
-      const ingresosTotales = Object.values(ingresosPeriodo).reduce((acc, val) => acc + val, 0);
+      const ingresosReales = (ingresosPeriodo.pagado || 0) + (ingresosPeriodo.senado || 0);
       return {
         periodo,
         ingresos: ingresosPeriodo,
         gastos: gastosPeriodo,
-        balance: ingresosTotales - gastosPeriodo,
+        balance: ingresosReales - gastosPeriodo,
       };
     });
 
@@ -805,6 +806,7 @@ const ClubesModel = {
       proyeccion: { mes: proyeccionMes, semana: proyeccionSemana },
       gastos: { mes: gastosMensuales },
       balanceMensual,
+      ingresosRealesMes,
       ingresosMensualesHistoricos: economiaMensual.map((item) => ({
         periodo: item.periodo,
         total: Object.values(item.ingresos).reduce((acc, val) => acc + val, 0),

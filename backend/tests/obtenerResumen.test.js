@@ -17,12 +17,12 @@ describe('ClubesModel.obtenerResumen', () => {
     global.fetch = jest.fn();
 
     obtenerEconomiaSpy = jest.spyOn(ClubesModel, 'obtenerEconomia').mockResolvedValue({
-      ingresos: { mes: { pagado: 800, senado: 200, pendiente_pago: 50 } },
-      proyeccion: { mes: 1200 },
+      ingresos: { mes: { pagado: 800, senado: 200, pendiente_pago: 700 } },
+      proyeccion: { mes: 1700 },
       gastos: { mes: 300 },
       economiaMensual: [
-        { periodo: '2024-04', ingresos: { pagado: 200, senado: 0, pendiente_pago: 0 }, gastos: 100, balance: 100 },
-        { periodo: '2024-05', ingresos: { pagado: 800, senado: 200, pendiente_pago: 50 }, gastos: 300, balance: 700 },
+        { periodo: '2024-04', ingresos: { pagado: 200, senado: 0, pendiente_pago: 150 }, gastos: 100, balance: 100 },
+        { periodo: '2024-05', ingresos: { pagado: 800, senado: 200, pendiente_pago: 700 }, gastos: 300, balance: 700 },
       ],
     });
   });
@@ -74,14 +74,14 @@ describe('ClubesModel.obtenerResumen', () => {
       reservasMesActual: 12,
       weatherStatus: 'Mayormente despejado',
       weatherTemp: 24,
-      ingresosMes: { pagado: 800, senado: 200, pendiente_pago: 50 },
-      ingresosProyectadosMes: 1200,
+      ingresosMes: { pagado: 800, senado: 200, pendiente_pago: 700 },
+      ingresosProyectadosMes: 1700,
       ingresosRealesMes: 1000,
-      proyeccionMes: 1200,
+      proyeccionMes: 1700,
       gastosMes: 300,
       economiaMensual: [
-        { periodo: '2024-04', ingresos: { pagado: 200, senado: 0, pendiente_pago: 0 }, gastos: 100, balance: 100 },
-        { periodo: '2024-05', ingresos: { pagado: 800, senado: 200, pendiente_pago: 50 }, gastos: 300, balance: 700 },
+        { periodo: '2024-04', ingresos: { pagado: 200, senado: 0, pendiente_pago: 150 }, gastos: 100, balance: 100 },
+        { periodo: '2024-05', ingresos: { pagado: 800, senado: 200, pendiente_pago: 700 }, gastos: 300, balance: 700 },
       ],
     });
   });
