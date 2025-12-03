@@ -1182,6 +1182,10 @@ export async function getClubSummary({ clubId }) {
       reservasMesActual: 0,
       weatherStatus: null,
       weatherTemp: null,
+      ingresosProyectadosMes: 0,
+      ingresosRealesMes: 0,
+      gastosMes: 0,
+      economiaMensual: [],
     };
   }
   try {
@@ -1203,6 +1207,10 @@ export async function getClubSummary({ clubId }) {
         reservasMesActual: 0,
         weatherStatus: null,
         weatherTemp: null,
+        ingresosProyectadosMes: 0,
+        ingresosRealesMes: 0,
+        gastosMes: 0,
+        economiaMensual: [],
       };
     }
     // Esperado: { courtsAvailable, courtsMaintenance, courtsInactive, reservasHoy, reservasSemana, economiaMes, courtTypes, reservasPagadasHoy, reservasFinalizadasHoy, reservasMesActual, reservasDiarias, reservasMensuales }
@@ -1212,6 +1220,17 @@ export async function getClubSummary({ clubId }) {
           total: toNumberOrZero(item?.total),
         }))
       : [];
+    const ingresosMes = toPaymentBreakdown(
+      data.ingresosMes ?? data.ingresos_mes ?? data.ingresos?.mes ?? data.ingresosMesActual
+    );
+    const ingresosRealesMes = (ingresosMes.pagado || 0) + (ingresosMes.senado || 0);
+    const ingresosProyectadosMes = toNumberOrZero(
+      data.proyeccionMes ?? data.proyeccion_mes ?? data.proyeccion?.mes ?? data.ingresosProyectados
+    );
+    const gastosMes = toNumberOrZero(data.gastosMes ?? data.gastos_mes ?? data.gastos?.mes);
+    const economiaMensual = normalizeMonthlyEconomy(
+      data.economiaMensual ?? data.flujoMensual ?? data.ingresosGastosMensuales
+    );
     return {
       courtsAvailable: data.courtsAvailable ?? 0,
       courtsMaintenance: data.courtsMaintenance ?? 0,
@@ -1227,6 +1246,10 @@ export async function getClubSummary({ clubId }) {
       reservasMensuales: Array.isArray(data.reservasMensuales) ? data.reservasMensuales : [],
       weatherStatus: data.weatherStatus ?? null,
       weatherTemp: data.weatherTemp ?? null,
+      ingresosProyectadosMes,
+      ingresosRealesMes,
+      gastosMes,
+      economiaMensual,
     };
   } catch (err) {
     console.warn('getClubSummary error', err);

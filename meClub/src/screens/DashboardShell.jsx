@@ -110,7 +110,12 @@ export default function DashboardShell() {
     reservasMensuales: [],
     weatherStatus: null,
     weatherTemp: null,
+    ingresosProyectadosMes: 0,
+    ingresosRealesMes: 0,
+    gastosMes: 0,
+    economiaMensual: [],
   });
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [err, setErr] = useState('');
   const [notice, setNotice] = useState('');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -144,6 +149,7 @@ export default function DashboardShell() {
         return;
       }
       try {
+        setSummaryLoading(true);
         const data = await getClubSummary({ clubId });
         if (alive && data) {
           setSummary(data);
@@ -151,6 +157,8 @@ export default function DashboardShell() {
         }
       } catch (e) {
         if (alive) setErr(e.message);
+      } finally {
+        if (alive) setSummaryLoading(false);
       }
     })();
     return () => { alive = false; };
@@ -289,6 +297,8 @@ export default function DashboardShell() {
   const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
   const screenProps = {
     summary,
+    summaryLoading,
+    summaryError: err,
     firstName,
     today,
     go,

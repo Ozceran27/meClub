@@ -3,11 +3,19 @@ import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
+import MonthlyFlowChart from '../../components/MonthlyFlowChart';
 
 const titleColors = ['text-mc-primary', 'text-mc-info', 'text-mc-warn', 'text-mc-purpleAccent'];
 const getTitleColor = (index) => titleColors[index % titleColors.length];
 
-export default function InicioScreen({ summary = {}, firstName, today, go }) {
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    maximumFractionDigits: 0,
+  }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
+
+export default function InicioScreen({ summary = {}, summaryLoading = false, summaryError = '', firstName, today, go }) {
   const courtTypesText = Array.isArray(summary.courtTypes) && summary.courtTypes.length > 0
     ? summary.courtTypes
         .map((item) => {
@@ -35,6 +43,13 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
   const hasWeatherTemp = Number.isFinite(summary.weatherTemp);
   const weatherTemp = hasWeatherTemp ? `${summary.weatherTemp}°` : '—';
   const weatherStatus = summary.weatherStatus || 'Clima no disponible';
+
+  const ingresosProyectadosMes = summary.ingresosProyectadosMes ?? 0;
+  const ingresosRealesMes = summary.ingresosRealesMes ?? 0;
+  const gastosMes = summary.gastosMes ?? 0;
+  const economiaMensual = Array.isArray(summary.economiaMensual) ? summary.economiaMensual : [];
+  const economyErrorMessage = summaryError ? 'No pudimos cargar tu economía. Intentalo nuevamente.' : '';
+  const showEconomyFallback = !!summaryError && !summaryLoading;
 
   return (
     <>
@@ -173,10 +188,51 @@ export default function InicioScreen({ summary = {}, firstName, today, go }) {
 
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(3)}>ECONOMÍA</CardTitle>
-            <Text className="text-white text-[32px] mt-2 font-bold">
-              {`$${Number(summary.economiaMes ?? 0).toLocaleString('es-AR')} este mes`}
-            </Text>
-            <View className="mt-4 h-24 rounded-xl bg-white/5" />
+            <View className="mt-2 gap-2">
+              {summaryLoading ? (
+                <>
+                  <View className="h-8 w-48 rounded-lg bg-white/10" />
+                  <View className="h-5 w-60 rounded-lg bg-white/5" />
+                </>
+              ) : showEconomyFallback ? (
+                <Text className="text-white/70 text-[15px]">{economyErrorMessage}</Text>
+              ) : (
+                <>
+                  <Text className="text-white text-[24px] font-extrabold leading-tight">
+                    <Text className="text-emerald-200">Proyectado </Text>
+                    {formatCurrency(ingresosProyectadosMes)}{' '}
+                    <Text className="text-white/70 font-semibold">· Gastos {formatCurrency(gastosMes)}</Text>
+                  </Text>
+                  <Text className="text-white/70 text-[15px] leading-tight">
+                    Real (pagado + señado):{' '}
+                    <Text className="text-sky-200 font-semibold">{formatCurrency(ingresosRealesMes)}</Text>
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2 mt-1">
+                    {[
+                      { label: 'Proyectado', color: 'bg-emerald-400' },
+                      { label: 'Real', color: 'bg-sky-400' },
+                      { label: 'Gastos', color: 'bg-rose-400' },
+                    ].map((item) => (
+                      <View
+                        key={item.label}
+                        className="flex-row items-center gap-2 rounded-full bg-white/5 px-3 py-1.5"
+                      >
+                        <View className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
+                        <Text className="text-white/70 text-xs">{item.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
+            <View className="mt-4 min-h-[220px]">
+              <MonthlyFlowChart
+                data={economiaMensual}
+                loading={summaryLoading}
+                error={economyErrorMessage}
+                height={200}
+              />
+            </View>
           </Card>
         </View>
 
