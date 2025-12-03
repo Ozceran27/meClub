@@ -158,15 +158,6 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
           </Card>
 
           <Card className="flex-1">
-            <CardTitle colorClass={getTitleColor(1)}>PRÓXIMO EVENTO</CardTitle>
-            <Text className="text-white text-[28px] mt-2 font-semibold">Torneo de Primavera</Text>
-            <Text className="text-white/60 mt-2">martes, 30 de abril de 2024</Text>
-          </Card>
-        </View>
-
-        {/* fila 2 */}
-        <View className="flex-row gap-6">
-          <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(2)}>RESERVAS</CardTitle>
             <View className="mt-2 flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
               <Text className="text-white text-[32px] font-bold leading-tight">
@@ -200,7 +191,10 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
               <Text className="text-sky-200 font-medium">VER RESERVAS</Text>
             </Pressable>
           </Card>
+        </View>
 
+        {/* fila 2 */}
+        <View className="flex-row gap-6">
           <Card className="flex-1">
             <CardTitle colorClass={getTitleColor(3)}>ECONOMÍA</CardTitle>
             <View className="mt-2 gap-2">
@@ -251,6 +245,12 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
                 height={160}
               />
             </View>
+          </Card>
+
+          <Card className="flex-1">
+            <CardTitle colorClass={getTitleColor(1)}>PRÓXIMO EVENTO</CardTitle>
+            <Text className="text-white text-[28px] mt-2 font-semibold">Torneo de Primavera</Text>
+            <Text className="text-white/60 mt-2">martes, 30 de abril de 2024</Text>
           </Card>
         </View>
 
