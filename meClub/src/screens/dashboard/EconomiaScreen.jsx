@@ -1433,7 +1433,7 @@ export default function EconomiaScreen() {
 
         <View className="flex-row flex-wrap gap-4">
           <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
-            <View className="flex-1 justify-between">
+            <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
@@ -1466,7 +1466,7 @@ export default function EconomiaScreen() {
           </Card>
 
           <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
-            <View className="flex-1 justify-between">
+            <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
@@ -1484,7 +1484,7 @@ export default function EconomiaScreen() {
           </Card>
 
           <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
-            <View className="flex-1 justify-between">
+            <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
                 <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
