@@ -579,6 +579,17 @@ const ClubesModel = {
       [club_id, monthRangeStart]
     );
 
+    const ingresosDiariosPromise = db.query(
+      `SELECT DATE(r.fecha) AS fecha, r.estado_pago, COALESCE(SUM(r.monto), 0) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND r.fecha >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       GROUP BY DATE(r.fecha), r.estado_pago
+       ORDER BY fecha ASC`,
+      [club_id]
+    );
+
     const [
       [ingresosMensualesRows],
       [ingresosSemanalesRows],
@@ -588,6 +599,7 @@ const ClubesModel = {
       gastosMensuales,
       [ingresosHistoricosRows],
       [gastosHistoricosRows],
+      [ingresosDiariosRows],
     ] = await Promise.all([
       ingresosMensualesPromise,
       ingresosSemanalesPromise,
@@ -597,6 +609,7 @@ const ClubesModel = {
       gastosMensualesPromise,
       ingresosHistoricosPromise,
       gastosHistoricosPromise,
+      ingresosDiariosPromise,
     ]);
 
     const estadosBase = { pagado: 0, senado: 0, pendiente_pago: 0 };
@@ -682,6 +695,60 @@ const ClubesModel = {
       };
     });
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lastSevenDays = Array.from({ length: 7 }, (_, idx) => {
+      const current = new Date(today);
+      current.setDate(today.getDate() - (6 - idx));
+      current.setHours(0, 0, 0, 0);
+      return current;
+    });
+
+    const ingresosDiariosAcumulados = (ingresosDiariosRows || []).reduce((acc, row) => {
+      const fecha =
+        row?.fecha instanceof Date
+          ? row.fecha.toISOString().slice(0, 10)
+          : row?.fecha?.toString?.().slice(0, 10);
+      if (!fecha) return acc;
+
+      const estado = normalizarEstadoPago(row?.estado_pago) || 'pendiente_pago';
+      const total = row?.total === null || row?.total === undefined ? 0 : Number(row.total);
+
+      if (!acc[fecha]) acc[fecha] = { ...estadosBase, fecha };
+      acc[fecha][estado] = (acc[fecha][estado] || 0) + total;
+      return acc;
+    }, {});
+
+    const ingresosDiarios = lastSevenDays.map((date) => {
+      const key = date.toISOString().slice(0, 10);
+      const breakdown = ingresosDiariosAcumulados[key] || { ...estadosBase, fecha: key };
+      const pagado = breakdown.pagado || 0;
+      const senado = breakdown.senado || 0;
+      const pendiente_pago = breakdown.pendiente_pago || 0;
+
+      return {
+        fecha: key,
+        pagado,
+        senado,
+        pendiente_pago,
+        total: pagado + senado + pendiente_pago,
+      };
+    });
+
+    const ingresosDiariosTotal =
+      (ingresosDiariosAcumulados[today.toISOString().slice(0, 10)]?.pagado || 0) +
+      (ingresosDiariosAcumulados[today.toISOString().slice(0, 10)]?.senado || 0);
+
+    const ingresosDiariosUltimos7Dias = ingresosDiarios.reduce(
+      (acc, item) => acc + (item.pagado || 0) + (item.senado || 0),
+      0
+    );
+
+    const semanaSeleccionada = {
+      start: lastSevenDays[0].toISOString().slice(0, 10),
+      end: lastSevenDays[lastSevenDays.length - 1].toISOString().slice(0, 10),
+    };
+
     return {
       ingresos: {
         mes: ingresosMes,
@@ -697,6 +764,10 @@ const ClubesModel = {
         total: Object.values(item.ingresos).reduce((acc, val) => acc + val, 0),
       })),
       economiaMensual,
+      ingresosDiarios,
+      ingresosDiariosTotal,
+      ingresosDiariosUltimos7Dias,
+      semanaSeleccionada,
     };
   },
 };

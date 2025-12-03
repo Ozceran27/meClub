@@ -214,12 +214,14 @@ const buildDailyIncome = ({ rawItems = [] }) => {
   });
 
   const total = chartItems.reduce((acc, item) => acc + item.value, 0);
+  const todayValue = chartItems.find((item) => item.date === formatDateOnly(today))?.value ?? 0;
   const rangeStart = formatDateOnly(lastSevenDays[0]);
   const rangeEnd = formatDateOnly(lastSevenDays[lastSevenDays.length - 1]);
 
   return {
     items: chartItems,
     total,
+    todayValue,
     startDate: rangeStart,
     endDate: rangeEnd,
     isStub: false,
@@ -436,9 +438,19 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
         reservas: economy?.reservas ?? { mes: 0, semana: 0 },
         ingresosMensualesHistoricos: normalizeMonthlyHistory(),
         ingresosDiarios: dailyIncome.items,
-        ingresosDiariosTotal: dailyIncome.total,
+        ingresosDiariosTotal:
+          Number.isFinite(dailyIncome.todayValue) && dailyIncome.todayValue !== null
+            ? dailyIncome.todayValue
+            : economy?.ingresosDiariosTotal ?? 0,
+        ingresosDiariosUltimos7Dias:
+          Number.isFinite(dailyIncome.total) && dailyIncome.total !== null
+            ? dailyIncome.total
+            : economy?.ingresosDiariosUltimos7Dias ?? 0,
         ingresosSemanalesSerie: weeklyIncome.items,
-        selectedWeek: { start: dailyIncome.startDate, end: dailyIncome.endDate },
+        selectedWeek: {
+          start: dailyIncome.startDate || economy?.semanaSeleccionada?.start,
+          end: dailyIncome.endDate || economy?.semanaSeleccionada?.end,
+        },
         economiaMensual: normalizeMonthlyEconomy(),
       };
     },
@@ -554,9 +566,7 @@ function BarChart({ data = [], height = 140 }) {
   };
 
   const formatValue = (value) =>
-    new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
-      Number.isFinite(Number(value)) ? Number(value) : 0
-    );
+    formatCurrency(Number.isFinite(Number(value)) ? Number(value) : 0);
 
   const activeItem = activeIndex !== null ? data[activeIndex] : null;
   const activeValue = getBarValue(activeItem || {});
@@ -688,9 +698,7 @@ function AreaChart({ data = [], height = 160 }) {
   }
 
   const formatValue = (value) =>
-    new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(
-      Number.isFinite(Number(value)) ? Number(value) : 0
-    );
+    formatCurrency(Number.isFinite(Number(value)) ? Number(value) : 0);
 
   const maxValue = Math.max(...data.map((d) => d.value || 0), 1);
   const padding = { top: 20, right: 20, bottom: 36, left: 20 };
@@ -1420,7 +1428,7 @@ export default function EconomiaScreen() {
         </View>
 
         <View className="flex-row flex-wrap gap-4">
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
@@ -1453,7 +1461,7 @@ export default function EconomiaScreen() {
             </View>
           </Card>
 
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
@@ -1471,7 +1479,7 @@ export default function EconomiaScreen() {
             </View>
           </Card>
 
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
@@ -1496,7 +1504,7 @@ export default function EconomiaScreen() {
         </View>
 
         <View className="flex-row flex-wrap gap-4">
-          <Card className="flex-1 min-w-[320px]" accessibilityRole="summary">
+          <Card className="flex-1 min-w-[320px] flex" accessibilityRole="summary">
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
                 <CardTitle colorClass="text-white">Flujo mensual</CardTitle>

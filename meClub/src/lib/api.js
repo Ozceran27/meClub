@@ -476,6 +476,16 @@ const extractEconomy = (payload) => {
       data.ingresosDiariosSemana
   );
 
+  const ingresosDiariosTotal = toNumberOrZero(
+    data.ingresosDiariosTotal ?? data.ingresos?.diariosTotal ?? data.ingresos_diarios_total
+  );
+
+  const ingresosDiariosUltimos7Dias = toNumberOrZero(
+    data.ingresosDiariosUltimos7Dias ??
+      data.ingresos?.diariosUltimos7Dias ??
+      data.ingresos_diarios_ultimos_7_dias
+  );
+
   const ingresosSemanalesSerie = normalizeWeeklyIncomeSeries(
     data.ingresosSemanalesSerie ??
       data.ingresos?.semanalesSerie ??
@@ -499,6 +509,8 @@ const extractEconomy = (payload) => {
     balanceMensual: toNumberOrZero(data.balanceMensual ?? data.balance ?? data.balance_mensual),
     ingresosMensualesHistoricos,
     ingresosDiarios,
+    ingresosDiariosTotal,
+    ingresosDiariosUltimos7Dias,
     ingresosSemanalesSerie,
     semanaSeleccionada,
     economiaMensual,
