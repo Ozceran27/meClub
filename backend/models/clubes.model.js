@@ -475,6 +475,14 @@ const ClubesModel = {
     const reservasMesActual =
       reservasMensuales.find((row) => row.periodo === periodoActual)?.total || 0;
 
+    const economia = await ClubesModel.obtenerEconomia(club_id);
+    const ingresosMes =
+      economia?.ingresos?.mes ?? economia?.ingresosMes ?? economia?.ingresos_mes ?? {};
+    const proyeccionMes = economia?.proyeccion?.mes ?? economia?.proyeccionMes ?? 0;
+    const gastosMes = economia?.gastos?.mes ?? economia?.gastosMes ?? 0;
+    const economiaMensual = Array.isArray(economia?.economiaMensual) ? economia.economiaMensual : [];
+    const ingresosRealesMes = (ingresosMes.pagado || 0) + (ingresosMes.senado || 0);
+
     const weatherResponse = await fetchCurrentWeather({
       latitud: clubLat,
       longitud: clubLon,
@@ -495,6 +503,12 @@ const ClubesModel = {
       reservasMesActual,
       weatherStatus: weatherResponse.status,
       weatherTemp: weatherResponse.temperature,
+      ingresosMes,
+      ingresosProyectadosMes: proyeccionMes,
+      ingresosRealesMes,
+      proyeccionMes,
+      gastosMes,
+      economiaMensual,
     };
   },
 

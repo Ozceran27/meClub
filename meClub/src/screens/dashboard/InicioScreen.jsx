@@ -15,6 +15,12 @@ const formatCurrency = (value) =>
     maximumFractionDigits: 0,
   }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 
+const normalizeAmount = (value, fallback = 0) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return parsed;
+};
+
 export default function InicioScreen({ summary = {}, summaryLoading = false, summaryError = '', firstName, today, go }) {
   const courtTypesText = Array.isArray(summary.courtTypes) && summary.courtTypes.length > 0
     ? summary.courtTypes
@@ -44,9 +50,18 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
   const weatherTemp = hasWeatherTemp ? `${summary.weatherTemp}°` : '—';
   const weatherStatus = summary.weatherStatus || 'Clima no disponible';
 
-  const ingresosProyectadosMes = summary.ingresosProyectadosMes ?? 0;
-  const ingresosRealesMes = summary.ingresosRealesMes ?? 0;
-  const gastosMes = summary.gastosMes ?? 0;
+  const ingresosMes = summary.ingresosMes || { pagado: 0, senado: 0, pendiente_pago: 0 };
+  const ingresosRealesMes = normalizeAmount(
+    summary.ingresosRealesMes ?? ingresosMes.pagado + ingresosMes.senado,
+    0
+  );
+  const ingresosProyectadosMes = normalizeAmount(
+    summary.ingresosProyectadosMes ??
+      summary.proyeccionMes ??
+      ingresosMes.pagado + ingresosMes.senado + ingresosMes.pendiente_pago,
+    ingresosRealesMes
+  );
+  const gastosMes = normalizeAmount(summary.gastosMes, 0);
   const economiaMensual = Array.isArray(summary.economiaMensual) ? summary.economiaMensual : [];
   const economyErrorMessage = summaryError ? 'No pudimos cargar tu economía. Intentalo nuevamente.' : '';
   const showEconomyFallback = !!summaryError && !summaryLoading;
@@ -200,14 +215,16 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
                 <>
                   <Text className="text-white text-[24px] font-extrabold leading-tight">
                     <Text className="text-sky-200">Ingresos del mes: </Text>
-                    {formatCurrency(ingresosRealesMes)}{' '}
-                      <View className="mt-3 gap-1">
-                        <Text className="text-emerald-200 text-[15px] leading-tight font-semibold">Proyectado: 
-                        {formatCurrency(ingresosProyectadosMes)}{' '} </Text>
-                        <Text className="text-rose-200 text-[15px] leading-tight font-semibold">Gastos: 
-                      {formatCurrency(gastosMes)} </Text>
-                      </View>
-                  </Text>                  
+                    {formatCurrency(ingresosRealesMes)}
+                  </Text>
+                  <View className="mt-3 gap-1">
+                    <Text className="text-emerald-200 text-[15px] leading-tight font-semibold">
+                      Proyectado: {formatCurrency(ingresosProyectadosMes)}
+                    </Text>
+                    <Text className="text-rose-200 text-[15px] leading-tight font-semibold">
+                      Gastos: {formatCurrency(gastosMes)}
+                    </Text>
+                  </View>
                   <View className="flex-row flex-wrap gap-2 mt-1">
                     {[
                       { label: 'Proyectado', color: 'bg-emerald-400' },

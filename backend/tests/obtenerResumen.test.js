@@ -9,16 +9,28 @@ const ClubesModel = require('../models/clubes.model');
 
 describe('ClubesModel.obtenerResumen', () => {
   const originalFetch = global.fetch;
+  let obtenerEconomiaSpy;
 
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2024-05-15T12:00:00Z'));
     mockQuery.mockReset();
     global.fetch = jest.fn();
+
+    obtenerEconomiaSpy = jest.spyOn(ClubesModel, 'obtenerEconomia').mockResolvedValue({
+      ingresos: { mes: { pagado: 800, senado: 200, pendiente_pago: 50 } },
+      proyeccion: { mes: 1200 },
+      gastos: { mes: 300 },
+      economiaMensual: [
+        { periodo: '2024-04', ingresos: { pagado: 200, senado: 0, pendiente_pago: 0 }, gastos: 100, balance: 100 },
+        { periodo: '2024-05', ingresos: { pagado: 800, senado: 200, pendiente_pago: 50 }, gastos: 300, balance: 700 },
+      ],
+    });
   });
 
   afterEach(() => {
     jest.useRealTimers();
     global.fetch = originalFetch;
+    if (obtenerEconomiaSpy) obtenerEconomiaSpy.mockRestore();
   });
 
   it('should return aggregated club statistics with weather data', async () => {
@@ -62,6 +74,15 @@ describe('ClubesModel.obtenerResumen', () => {
       reservasMesActual: 12,
       weatherStatus: 'Mayormente despejado',
       weatherTemp: 24,
+      ingresosMes: { pagado: 800, senado: 200, pendiente_pago: 50 },
+      ingresosProyectadosMes: 1200,
+      ingresosRealesMes: 1000,
+      proyeccionMes: 1200,
+      gastosMes: 300,
+      economiaMensual: [
+        { periodo: '2024-04', ingresos: { pagado: 200, senado: 0, pendiente_pago: 0 }, gastos: 100, balance: 100 },
+        { periodo: '2024-05', ingresos: { pagado: 800, senado: 200, pendiente_pago: 50 }, gastos: 300, balance: 700 },
+      ],
     });
   });
 });
