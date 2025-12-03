@@ -110,8 +110,11 @@ export default function DashboardShell() {
     reservasMensuales: [],
     weatherStatus: null,
     weatherTemp: null,
+    // Campos económicos alineados con getClubSummary/extractEconomy para evitar divergencias con Economía
+    ingresosMes: { pagado: 0, senado: 0, pendiente_pago: 0 },
     ingresosProyectadosMes: 0,
     ingresosRealesMes: 0,
+    proyeccionMes: 0,
     gastosMes: 0,
     economiaMensual: [],
   });

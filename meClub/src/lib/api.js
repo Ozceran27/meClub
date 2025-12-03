@@ -1165,72 +1165,64 @@ export async function listProvinces() {
   return extractProvinces(response);
 }
 
+const emptySummary = () => ({
+  courtsAvailable: 0,
+  courtsMaintenance: 0,
+  courtsInactive: 0,
+  reservasHoy: 0,
+  reservasSemana: 0,
+  economiaMes: 0,
+  courtTypes: [],
+  reservasPagadasHoy: 0,
+  reservasFinalizadasHoy: 0,
+  reservasDiarias: [],
+  reservasMensuales: [],
+  reservasMesActual: 0,
+  weatherStatus: null,
+  weatherTemp: null,
+  ingresosMes: { pagado: 0, senado: 0, pendiente_pago: 0 },
+  ingresosProyectadosMes: 0,
+  ingresosRealesMes: 0,
+  proyeccionMes: 0,
+  gastosMes: 0,
+  economiaMensual: [],
+});
+
 export async function getClubSummary({ clubId }) {
   if (clubId === undefined) {
-    return {
-      courtsAvailable: 0,
-      courtsMaintenance: 0,
-      courtsInactive: 0,
-      reservasHoy: 0,
-      reservasSemana: 0,
-      economiaMes: 0,
-      courtTypes: [],
-      reservasPagadasHoy: 0,
-      reservasFinalizadasHoy: 0,
-      reservasDiarias: [],
-      reservasMensuales: [],
-      reservasMesActual: 0,
-      weatherStatus: null,
-      weatherTemp: null,
-      ingresosProyectadosMes: 0,
-      ingresosRealesMes: 0,
-      gastosMes: 0,
-      economiaMensual: [],
-    };
+    return emptySummary();
   }
+
   try {
     const { data } = await api.get(`/clubes/${clubId}/resumen`);
     if (!data) {
       // Backend no respondió correctamente
-      return {
-        courtsAvailable: 0,
-        courtsMaintenance: 0,
-        courtsInactive: 0,
-        reservasHoy: 0,
-        reservasSemana: 0,
-        economiaMes: 0,
-        courtTypes: [],
-        reservasPagadasHoy: 0,
-        reservasFinalizadasHoy: 0,
-        reservasDiarias: [],
-        reservasMensuales: [],
-        reservasMesActual: 0,
-        weatherStatus: null,
-        weatherTemp: null,
-        ingresosProyectadosMes: 0,
-        ingresosRealesMes: 0,
-        gastosMes: 0,
-        economiaMensual: [],
-      };
+      return emptySummary();
     }
-    // Esperado: { courtsAvailable, courtsMaintenance, courtsInactive, reservasHoy, reservasSemana, economiaMes, courtTypes, reservasPagadasHoy, reservasFinalizadasHoy, reservasMesActual, reservasDiarias, reservasMensuales }
+
+    const defaults = emptySummary();
+
     const normalizedCourtTypes = Array.isArray(data.courtTypes)
       ? data.courtTypes.map((item) => ({
           etiqueta: (item?.etiqueta || item?.label || 'Otro').toString(),
           total: toNumberOrZero(item?.total),
         }))
       : [];
-    const ingresosMes = toPaymentBreakdown(
-      data.ingresosMes ?? data.ingresos_mes ?? data.ingresos?.mes ?? data.ingresosMesActual
-    );
+
+    const economy = extractEconomy({ data });
+    const ingresosMes = economy.ingresos?.mes ?? defaults.ingresosMes;
+    const proyeccionMes = economy.proyeccion?.mes ?? 0;
     const ingresosRealesMes = (ingresosMes.pagado || 0) + (ingresosMes.senado || 0);
-    const ingresosProyectadosMes = toNumberOrZero(
-      data.proyeccionMes ?? data.proyeccion_mes ?? data.proyeccion?.mes ?? data.ingresosProyectados
-    );
-    const gastosMes = toNumberOrZero(data.gastosMes ?? data.gastos_mes ?? data.gastos?.mes);
-    const economiaMensual = normalizeMonthlyEconomy(
-      data.economiaMensual ?? data.flujoMensual ?? data.ingresosGastosMensuales
-    );
+    const ingresosProyectadosMes =
+      proyeccionMes ||
+      toNumberOrZero(
+        data.proyeccionMes ?? data.proyeccion_mes ?? data.proyeccion?.mes ?? data.ingresosProyectados
+      );
+    const gastosMes = economy.gastos?.mes ?? toNumberOrZero(data.gastosMes ?? data.gastos_mes);
+    const economiaMensual = Array.isArray(economy.economiaMensual)
+      ? economy.economiaMensual
+      : normalizeMonthlyEconomy(data.economiaMensual ?? data.flujoMensual ?? data.ingresosGastosMensuales);
+
     return {
       courtsAvailable: data.courtsAvailable ?? 0,
       courtsMaintenance: data.courtsMaintenance ?? 0,
@@ -1246,8 +1238,10 @@ export async function getClubSummary({ clubId }) {
       reservasMensuales: Array.isArray(data.reservasMensuales) ? data.reservasMensuales : [],
       weatherStatus: data.weatherStatus ?? null,
       weatherTemp: data.weatherTemp ?? null,
+      ingresosMes,
       ingresosProyectadosMes,
       ingresosRealesMes,
+      proyeccionMes: proyeccionMes || ingresosProyectadosMes,
       gastosMes,
       economiaMensual,
     };
