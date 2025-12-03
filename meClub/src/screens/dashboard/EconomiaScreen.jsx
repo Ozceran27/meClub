@@ -400,19 +400,25 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
       const normalizeMonthlyEconomy = () => {
         const monthly = Array.isArray(economy?.economiaMensual) ? economy.economiaMensual : [];
         return monthly.map((item, index) => {
-          const ingresosTotal = ['pagado', 'senado', 'pendiente_pago'].reduce(
+          const ingresosReales = ['pagado', 'senado'].reduce(
             (acc, key) => acc + (Number(item?.ingresos?.[key]) || 0),
             0
           );
+          const ingresosProyectados = ingresosReales + (Number(item?.ingresos?.pendiente_pago) || 0);
+          const gastos = Number(item?.gastos) || 0;
+          const providedBalance = Number.isFinite(Number(item?.balance)) ? Number(item.balance) : null;
 
           return {
             label: item?.label || formatMonthLabel(item?.periodo) || `M${index + 1}`,
             periodo: item?.periodo,
-            ingresos: ingresosTotal,
-            gastos: Number(item?.gastos) || 0,
-            balance: Number.isFinite(Number(item?.balance))
-              ? Number(item.balance)
-              : ingresosTotal - (Number(item?.gastos) || 0),
+            ingresos: ingresosReales,
+            gastos,
+            balance: providedBalance ?? ingresosReales - gastos,
+            proyeccion: {
+              ingresos: ingresosProyectados,
+              gastos,
+              balance: providedBalance ?? ingresosProyectados - gastos,
+            },
           };
         });
       };
