@@ -34,8 +34,8 @@ const EXPENSES_PAGE_SIZE = 10;
 
 const statusColorMap = {
   pagado: 'text-emerald-300',
-  senado: 'text-amber-200',
-  pendiente_pago: 'text-slate-100',
+  senado: 'text-sky-300',
+  pendiente_pago: 'text-amber-200',
 };
 
 const EXPENSE_ICON_OPTIONS = [
@@ -1167,10 +1167,16 @@ export default function EconomiaScreen() {
           <MetricCard
             title="Ingresos"
             value={
-              showLoader ? 'Cargando…' : `${formatCurrency(ingresosMensuales?.total)} este mes`
+              showLoader ? 'Cargando…' 
+              : <Text className="text-mc-warn">
+                  {formatCurrency(ingresosMensuales?.total)}
+                  <Text className="text-white">
+                  {' '}este mes
+                  </Text>
+                </Text>
             }
             subtitle={
-              showLoader ? '' : `${formatCurrency(ingresosSemanales?.total)} esta semana`
+              showLoader ? '' : `+ ${formatCurrency(ingresosSemanales?.total)} esta semana`
             }
             loading={showLoader}
           >
@@ -1255,7 +1261,7 @@ export default function EconomiaScreen() {
             {!showLoader ? (
               <View className="gap-2">
                 <Text className="text-white/60">
-                  Total proyectado mes de {currentMonthLabel}
+                  Total real mes de {currentMonthLabel}
                 </Text>
                 <View className="flex-row items-center gap-2">
                   <View className={`h-2.5 w-2.5 rounded-full ${balanceStatus.iconColor}`} />
@@ -1272,8 +1278,8 @@ export default function EconomiaScreen() {
           <Card className="flex-1 min-w-[320px] max-h-72 flex" accessibilityRole="summary">
             <View className="flex-1 gap-12">
               <View className="flex-row items-center justify-between">
-                <CardTitle colorClass="text-sky-200">Ingresos semanales</CardTitle>
-                <Text className="text-white font-bold">{formatCurrency(economy?.ingresosSemana?.total)}</Text>
+                <CardTitle colorClass="text-white">Ingresos semanales</CardTitle>
+                <Text className="text-mc-warn font-bold">{'+'}{formatCurrency(economy?.ingresosSemana?.total)}</Text>
               </View>
               <View className="mt-4 flex-1 min-h-[200px] justify-end">
                 {chartLoading ? (
@@ -1305,8 +1311,8 @@ export default function EconomiaScreen() {
           <Card className="flex-1 min-w-[320px] max-h-72 flex" accessibilityRole="summary">
             <View className="flex-1 gap-14">
               <View className="flex-row items-center justify-between">
-                <CardTitle colorClass="text-emerald-200">Ingresos mensuales</CardTitle>
-                <Text className="text-white font-bold">{formatCurrency(economy?.ingresosMes?.total)}</Text>
+                <CardTitle colorClass="text-white">Ingresos mensuales</CardTitle>
+                <Text className="text-mc-warn font-bold">{'+'}{formatCurrency(economy?.ingresosMes?.total)}</Text>
               </View>
               <View className="mt-4 flex-1 min-h-[200px] justify-end">
                 {showLoader ? (
@@ -1323,8 +1329,8 @@ export default function EconomiaScreen() {
           <Card className="flex-1 min-w-[320px] max-h-72 flex" accessibilityRole="summary">
             <View className="flex-1 gap-2">
               <View className="flex-row items-center justify-between">
-                <CardTitle colorClass="text-sky-200">Ingresos diarios</CardTitle>
-                <Text className="text-white font-bold">{formatCurrency(ingresosDiariosTotal)}</Text>
+                <CardTitle colorClass="text-white">Ingresos diarios</CardTitle>
+                <Text className="text-mc-warn font-bold">{'+'}{formatCurrency(ingresosDiariosTotal)}</Text>
               </View>
 
               <View className="items-end mt-2">
@@ -1351,7 +1357,7 @@ export default function EconomiaScreen() {
                 <CardTitle colorClass="text-white">Flujo mensual</CardTitle>
                 {ultimoFlujoMensual && !chartLoading ? (
                   <View className="items-end">
-                    <Text className="text-white text-lg font-semibold">
+                    <Text className="text-mc-warn text-lg font-semibold">
                       {formatCurrency(ultimoFlujoMensual.balance)}
                     </Text>
                     <Text className="text-white/60 text-xs">{ultimoFlujoMensual.label}</Text>

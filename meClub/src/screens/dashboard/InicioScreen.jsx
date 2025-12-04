@@ -5,7 +5,7 @@ import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
 import MonthlyFlowChart from '../../components/MonthlyFlowChart';
 
-const titleColors = ['text-mc-primary', 'text-mc-info', 'text-mc-warn', 'text-mc-purpleAccent'];
+const titleColors = ['text-emerald-300', 'text-mc-info', 'text-mc-warn', 'text-mc-purpleAccent'];
 const getTitleColor = (index) => titleColors[index % titleColors.length];
 
 const formatCurrency = (value) =>
@@ -154,10 +154,10 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
         {/* fila 1 */}
         <View className="flex-row gap-6">
           <Card className="flex-1">
-            <CardTitle colorClass={getTitleColor(0)}>MIS CANCHAS</CardTitle>
+            <CardTitle colorClass={getTitleColor(1)}>MIS CANCHAS</CardTitle>
             <View className="mt-2">
               <Text className="text-[32px] font-extrabold leading-tight tracking-tight">
-                <Text className="text-emerald-200">{courtsTotal}</Text>
+                <Text className="text-mc-warn">{courtsTotal}</Text>
                 <Text className="text-white"> Canchas Total</Text>
               </Text>
             </View>
@@ -193,25 +193,25 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
             </View>
             <Pressable
               onPress={() => go('mis-canchas')}
-              className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-teal-300/30 bg-teal-400/20 hover:bg-teal-400/30"
+              className="self-center mt-4 items-center justify-center rounded-xl px-4 py-2 border border-sky-300/30 bg-sky-400/15 hover:bg-sky-400/25"
             >
-              <Text className="text-teal-200 font-medium">VER CANCHAS</Text>
+              <Text className="text-sky-200 font-medium">VER CANCHAS</Text>
             </Pressable>
           </Card>
 
           <Card className="flex-1">
-            <CardTitle colorClass={getTitleColor(2)}>RESERVAS</CardTitle>
+            <CardTitle colorClass={getTitleColor(0)}>RESERVAS</CardTitle>
             <View className="mt-2 flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
-              <Text className="text-white text-[32px] font-bold leading-tight">
+              <Text className="text-mc-warn text-[32px] font-bold leading-tight">
                 {summary.reservasHoy ?? 0} <Text className="text-white">hoy</Text>
               </Text>
-              <Text className="text-white/50 text-[24px] font-bold leading-tight">|</Text>
-              <Text className="text-white text-[32px] font-bold leading-tight">
+              <Text className="text-white/50 text-[20px] font-bold leading-tight">|</Text>
+              <Text className="text-white text-[20px] font-bold leading-tight">
                 <Text className="text-sky-300">{summary.reservasFinalizadasHoy ?? 0}</Text>{' '}
                 <Text className="text-white">finalizada</Text>
               </Text>
-              <Text className="text-white/50 text-[24px] font-bold leading-tight">|</Text>
-              <Text className="text-white text-[32px] font-bold leading-tight">
+              <Text className="text-white/50 text-[20px] font-bold leading-tight">|</Text>
+              <Text className="text-white text-[20px] font-bold leading-tight">
                 <Text className="text-emerald-300">{summary.reservasPagadasHoy ?? 0}</Text>{' '}
                 <Text className="text-white">pagada</Text>
               </Text>
@@ -250,15 +250,21 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
               ) : (
                 <>
                   <Text className="text-white text-[24px] font-extrabold leading-tight">
-                    <Text className="text-sky-200">Ingresos del mes: </Text>
-                    {formatCurrency(ingresosRealesMes)}
+                    <Text className="text-white">Ingresos del mes: </Text>
+                      <Text className="text-mc-warn">{'+'}{formatCurrency(ingresosRealesMes)}</Text>
                   </Text>
                   <View className="mt-3 gap-1">
-                  <Text className="text-emerald-200 text-[15px] leading-tight font-semibold">
-                      Proyectado: {formatCurrency(ingresosProyectadosMes)}
+                    <Text className="text-white text-[15px] leading-tight font-semibold">
+                      Proyectado:{' '}
+                      <Text className="text-emerald-300 text-[15px] leading-tight font-semibold"> 
+                        {formatCurrency(ingresosProyectadosMes)}
+                      </Text>
                     </Text>
-                    <Text className="text-rose-200 text-[15px] leading-tight font-semibold">
-                      Gastos: {formatCurrency(gastosMes)}
+                    <Text className="text-white text-[15px] leading-tight font-semibold">
+                      Gastos:{' '}
+                      <Text className="text-rose-300 text-[15px] leading-tight font-semibold">
+                       {'-'}{formatCurrency(gastosMes)}
+                      </Text>
                     </Text>
                   </View>
                 </>
@@ -284,7 +290,7 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
         {/* fila 3 */}
         <View className="flex-row gap-6">
           <Card className="flex-1">
-            <CardTitle colorClass={getTitleColor(4)}>EVENTOS</CardTitle>
+            <CardTitle colorClass={getTitleColor(0)}>EVENTOS</CardTitle>
             <View className="mt-3 flex-row items-center justify-between">
               <Text className="text-white text-[24px] font-semibold">meEquipo</Text>
               <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
@@ -292,7 +298,7 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
           </Card>
 
           <Card className="flex-1">
-            <CardTitle colorClass={getTitleColor(5)}>EVENTOS</CardTitle>
+            <CardTitle colorClass={getTitleColor(3)}>EVENTOS</CardTitle>
             <View className="mt-3 flex-row items-center justify-between">
               <Text className="text-white text-[24px] font-semibold">Ranking</Text>
               <Ionicons name="chevron-forward" size={20} color="#9FB3C8" />
