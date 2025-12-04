@@ -10,7 +10,7 @@ const formatCurrency = (value) =>
   }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 
 const LEGEND_ITEMS = [
-  { label: 'Ingresos reales (pagado + señado)', color: 'bg-cyan-400' },
+  { label: 'Ingresos', color: 'bg-cyan-400' },
   { label: 'Gastos', color: 'bg-rose-400' },
   { label: 'Balance real', color: 'bg-purple-400' },
 ];
@@ -42,7 +42,7 @@ function MultiAreaLineChart({ data = [], height = 200 }) {
   const series = [
     {
       key: 'ingresos',
-      label: 'Ingresos reales',
+      label: 'Ingresos',
       color: '#22d3ee',
       fill: 'rgba(34,211,238,0.12)',
     },
