@@ -4,3 +4,4 @@ export { default as ReservasScreen } from './ReservasScreen';
 export { default as ConfiguracionScreen } from './ConfiguracionScreen';
 export { default as EconomiaScreen } from './EconomiaScreen';
 export { default as BuzonScreen } from './BuzonScreen';
+export { default as ServiciosScreen } from './ServiciosScreen';
