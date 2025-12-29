@@ -242,6 +242,27 @@ CREATE TABLE `eventos` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `gastos`
+--
+
+DROP TABLE IF EXISTS `gastos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `gastos` (
+  `gasto_id` int NOT NULL AUTO_INCREMENT,
+  `club_id` int NOT NULL,
+  `categoria` varchar(150) NOT NULL,
+  `descripcion` varchar(150) DEFAULT NULL,
+  `icono` varchar(64) DEFAULT NULL,
+  `monto` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `fecha` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`gasto_id`),
+  KEY `idx_gastos_club_fecha` (`club_id`,`fecha`),
+  CONSTRAINT `fk_gastos_clubes` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `grabaciones`
 --
 
@@ -281,28 +302,6 @@ CREATE TABLE `localidades` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `mensajes`
---
-
-DROP TABLE IF EXISTS `mensajes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `mensajes` (
-  `mensaje_id` int NOT NULL AUTO_INCREMENT,
-  `emisor_id` int NOT NULL,
-  `receptor_id` int NOT NULL,
-  `contenido` text,
-  `fecha` datetime DEFAULT CURRENT_TIMESTAMP,
-  `leido` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`mensaje_id`),
-  KEY `emisor_id` (`emisor_id`),
-  KEY `receptor_id` (`receptor_id`),
-  CONSTRAINT `mensajes_ibfk_1` FOREIGN KEY (`emisor_id`) REFERENCES `usuarios` (`usuario_id`),
-  CONSTRAINT `mensajes_ibfk_2` FOREIGN KEY (`receptor_id`) REFERENCES `usuarios` (`usuario_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Table structure for table `messages`
 --
 
@@ -320,7 +319,7 @@ CREATE TABLE `messages` (
   PRIMARY KEY (`id`),
   KEY `idx_messages_club_date` (`club_id`,`created_at` DESC),
   CONSTRAINT `fk_messages_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -412,7 +411,7 @@ CREATE TABLE `reservas` (
   CONSTRAINT `fk_reservas_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `reservas_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `reservas_ibfk_2` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=42 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -475,7 +474,7 @@ CREATE TABLE `user_inbox` (
   CONSTRAINT `fk_inbox_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inbox_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inbox_user` FOREIGN KEY (`user_id`) REFERENCES `usuarios` (`usuario_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -518,4 +517,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-26  2:21:07
+-- Dump completed on 2025-12-29 18:06:07
