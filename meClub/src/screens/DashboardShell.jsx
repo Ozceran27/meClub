@@ -12,6 +12,7 @@ import {
   ConfiguracionScreen,
   EconomiaScreen,
   BuzonScreen,
+  ServiciosScreen,
 } from './dashboard';
 import WorkInProgressScreen from './WorkInProgressScreen';
 
@@ -225,7 +226,7 @@ export default function DashboardShell() {
     { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline', minLevel: 1 },
     { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline', minLevel: 1 },
     { key: 'economia', label: 'Economía', iconName: 'cash-outline', minLevel: 1 },
-    { key: 'tarifas', label: 'Tarifas', iconName: 'pricetags-outline', minLevel: 1 },
+    { key: 'servicios', label: 'Servicios', iconName: 'pricetags-outline', minLevel: 1 },
     { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline', minLevel: 2 },
     { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 1, badge: 'PRO' },
     { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', minLevel: 2 },
@@ -296,6 +297,7 @@ export default function DashboardShell() {
     configuracion: ConfiguracionScreen,
     economia: EconomiaScreen,
     buzon: BuzonScreen,
+    servicios: ServiciosScreen,
   };
   const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
   const screenProps = {
