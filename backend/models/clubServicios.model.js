@@ -121,6 +121,32 @@ const ClubServiciosModel = {
 
     return result.affectedRows > 0;
   },
+
+  reemplazarSeleccion: async (clubId, servicioIds = []) => {
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      await connection.query('UPDATE club_servicios SET activo = 0 WHERE club_id = ?', [clubId]);
+
+      if (servicioIds.length) {
+        await connection.query(
+          'UPDATE club_servicios SET activo = 1 WHERE club_id = ? AND servicio_id IN (?)',
+          [clubId, servicioIds]
+        );
+      }
+
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+
+    return ClubServiciosModel.listarPorClub(clubId);
+  },
 };
 
 module.exports = ClubServiciosModel;

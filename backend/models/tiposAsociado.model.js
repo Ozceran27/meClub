@@ -16,9 +16,8 @@ const mapServicios = (rows = []) => {
     grouped.get(row.tipo_asociado_id).push({
       servicio_id: row.servicio_id,
       nombre: row.nombre,
-      slug: row.slug,
-      descripcion: row.descripcion,
-      icono: row.icono,
+      modo_acceso: row.modo_acceso,
+      activo: row.activo,
     });
   });
   return grouped;
@@ -39,12 +38,13 @@ const TipoAsociadoModel = {
 
     const ids = rows.map((row) => row.tipo_asociado_id);
     const [serviciosRows] = await db.query(
-      `SELECT tas.tipo_asociado_id, s.servicio_id, s.slug, s.nombre, s.descripcion, s.icono
+      `SELECT tas.tipo_asociado_id, cs.servicio_id, cs.nombre, cs.modo_acceso, cs.activo
        FROM tipo_asociado_servicios tas
-       JOIN servicios s ON tas.servicio_id = s.servicio_id
-       WHERE tas.tipo_asociado_id IN (?)
-       ORDER BY s.nombre ASC`,
-      [ids]
+       JOIN tipos_asociado ta ON ta.tipo_asociado_id = tas.tipo_asociado_id
+       JOIN club_servicios cs ON cs.servicio_id = tas.servicio_id AND cs.club_id = ta.club_id
+       WHERE tas.tipo_asociado_id IN (?) AND ta.club_id = ?
+       ORDER BY cs.nombre ASC`,
+      [ids, clubId]
     );
 
     const serviciosMap = mapServicios(serviciosRows);
@@ -68,12 +68,13 @@ const TipoAsociadoModel = {
     if (!row) return null;
 
     const [serviciosRows] = await db.query(
-      `SELECT tas.tipo_asociado_id, s.servicio_id, s.slug, s.nombre, s.descripcion, s.icono
+      `SELECT tas.tipo_asociado_id, cs.servicio_id, cs.nombre, cs.modo_acceso, cs.activo
        FROM tipo_asociado_servicios tas
-       JOIN servicios s ON tas.servicio_id = s.servicio_id
-       WHERE tas.tipo_asociado_id = ?
-       ORDER BY s.nombre ASC`,
-      [tipoId]
+       JOIN tipos_asociado ta ON ta.tipo_asociado_id = tas.tipo_asociado_id
+       JOIN club_servicios cs ON cs.servicio_id = tas.servicio_id AND cs.club_id = ta.club_id
+       WHERE tas.tipo_asociado_id = ? AND ta.club_id = ?
+       ORDER BY cs.nombre ASC`,
+      [tipoId, clubId]
     );
 
     return {

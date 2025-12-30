@@ -23,12 +23,8 @@ jest.mock('../models/localidades.model', () => ({
   perteneceAProvincia: jest.fn(),
 }));
 
-jest.mock('../models/servicios.model', () => ({
-  listarDisponibles: jest.fn(),
-}));
-
-jest.mock('../models/clubesServicios.model', () => ({
-  listarSeleccionados: jest.fn(),
+jest.mock('../models/clubServicios.model', () => ({
+  listarPorClub: jest.fn(),
   reemplazarSeleccion: jest.fn(),
 }));
 

@@ -10,7 +10,6 @@ import {
   listClubServiceEntries,
   updateClubServiceEntry,
   getClubSchedule,
-  listAvailableServices,
   listMemberTypes,
   createMemberType,
   updateMemberType,
@@ -637,14 +636,12 @@ export default function ServiciosScreen() {
           scheduleResponse,
           typesResponse,
           membersResponse,
-          catalogResponse,
           courtsResponse,
         ] = await Promise.all([
           listClubServiceEntries(),
           getClubSchedule(),
           listMemberTypes(),
           listMembers(),
-          listAvailableServices(),
           getClubCourts(),
         ]);
         if (!mounted) return;
@@ -663,7 +660,7 @@ export default function ServiciosScreen() {
             ? membersResponse.map((member) => normalizeMember(member)).filter(Boolean)
             : []
         );
-        setCatalogServices(Array.isArray(catalogResponse) ? catalogResponse : []);
+        setCatalogServices(normalized);
         setCourts(Array.isArray(courtsResponse) ? courtsResponse : []);
       } catch (err) {
         if (!mounted) return;
@@ -1512,7 +1509,7 @@ export default function ServiciosScreen() {
               })
             ) : (
               <Text className="text-white/50 text-xs">
-                Cargá servicios en el catálogo para poder incluirlos en el plan.
+                Cargá servicios en tu club para poder incluirlos en el plan.
               </Text>
             )}
           </View>

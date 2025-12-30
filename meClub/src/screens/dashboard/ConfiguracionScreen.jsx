@@ -21,7 +21,7 @@ import {
   listLocalities,
   getClubServices,
   updateClubServices,
-  listAvailableServices,
+  listClubServiceEntries,
   getClubTaxes,
   updateClubTaxes,
   getClubSchedule,
@@ -90,7 +90,7 @@ export default function ConfiguracionScreen({ go }) {
           getClubServices(),
           getClubTaxes(),
           getClubSchedule(),
-          listAvailableServices(),
+          listClubServiceEntries(),
         ]);
         if (!alive) return;
         if (Array.isArray(provincesRes)) {
@@ -1071,7 +1071,7 @@ export default function ConfiguracionScreen({ go }) {
               {(!availableServices || availableServices.length === 0) && (
                 <View className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6">
                   <Text className="text-white/60 text-sm">
-                    Todavía no hay servicios cargados en el catálogo. Contactá a soporte si necesitás sumar uno nuevo.
+                    Todavía no hay servicios cargados en tu club. Creá uno nuevo para poder seleccionarlo.
                   </Text>
                 </View>
               )}
