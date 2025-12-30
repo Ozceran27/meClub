@@ -10,6 +10,15 @@ import {
   listClubServiceEntries,
   updateClubServiceEntry,
   getClubSchedule,
+  listAvailableServices,
+  listMemberTypes,
+  createMemberType,
+  updateMemberType,
+  deleteMemberType,
+  listMembers,
+  createMember,
+  deleteMember,
+  searchPlayers,
 } from '../../lib/api';
 import { DAYS, normalizeSchedule, normalizeTimeToHHMM } from './configurationState';
 
@@ -42,55 +51,10 @@ const ICON_OPTIONS = [
   { key: 'eco_friendly', label: 'Eco', icon: 'leaf-outline' },
 ];
 
-const MEMBER_TYPES = [
-  {
-    id: 'type-1',
-    name: 'Pleno',
-    price: '35000',
-    access: 'Acceso total + canchas preferenciales',
-    active: true,
-  },
-  {
-    id: 'type-2',
-    name: 'Familiar',
-    price: '52000',
-    access: 'Hasta 4 miembros + beneficios compartidos',
-    active: true,
-  },
-  {
-    id: 'type-3',
-    name: 'Social',
-    price: '18000',
-    access: 'Acceso limitado + eventos',
-    active: false,
-  },
-];
-
-const MEMBERS = [
-  {
-    id: 'mem-1',
-    name: 'Lucía Fernández',
-    type: 'Pleno',
-    status: 'Pagado',
-  },
-  {
-    id: 'mem-2',
-    name: 'Carlos Méndez',
-    type: 'Familiar',
-    status: 'Pendiente',
-  },
-  {
-    id: 'mem-3',
-    name: 'Paula Ríos',
-    type: 'Social',
-    status: 'Vencido',
-  },
-];
-
 const statusStyles = {
-  Pagado: 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30',
-  Pendiente: 'bg-amber-500/15 text-amber-200 border border-amber-500/30',
-  Vencido: 'bg-rose-500/15 text-rose-200 border border-rose-500/30',
+  pagado: 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30',
+  pendiente: 'bg-amber-500/15 text-amber-200 border border-amber-500/30',
+  vencido: 'bg-rose-500/15 text-rose-200 border border-rose-500/30',
 };
 
 const buildPanelState = () => ({
@@ -98,6 +62,27 @@ const buildPanelState = () => ({
   description: '',
   discount: '',
   validity: '',
+});
+
+const buildMemberTypeForm = () => ({
+  nombre: '',
+  cuota_mensual: '',
+  fecha_pago: '',
+  dias_gracia: '',
+  color: '#F97316',
+  servicios_incluidos: [],
+});
+
+const buildMemberForm = () => ({
+  usuario_id: null,
+  nombre: '',
+  apellido: '',
+  dni: '',
+  telefono: '',
+  direccion: '',
+  correo: '',
+  tipo_asociado_id: null,
+  fecha_inscripcion: '',
 });
 
 function ActionPanel({ visible, title, subtitle, onClose, children }) {
@@ -205,6 +190,35 @@ const normalizeServiceEntry = (service) => {
   };
 };
 
+const normalizeMemberType = (type) => {
+  if (!type || typeof type !== 'object') return null;
+  return {
+    tipo_asociado_id: type.tipo_asociado_id ?? type.id ?? null,
+    nombre: type.nombre ?? '',
+    cuota_mensual: type.cuota_mensual ?? null,
+    fecha_pago: type.fecha_pago ?? null,
+    dias_gracia: type.dias_gracia ?? null,
+    color: type.color ?? '#F97316',
+    servicios_incluidos: Array.isArray(type.servicios_incluidos) ? type.servicios_incluidos : [],
+  };
+};
+
+const normalizeMember = (member) => {
+  if (!member || typeof member !== 'object') return null;
+  const nombre = member.nombre ?? '';
+  const apellido = member.apellido ?? '';
+  return {
+    asociado_id: member.asociado_id ?? member.id ?? null,
+    nombre,
+    apellido,
+    telefono: member.telefono ?? '',
+    tipo_nombre: member.tipo_nombre ?? member.tipo?.nombre ?? '',
+    estado_pago: member.estado_pago ?? 'pendiente',
+    fecha_inscripcion: member.fecha_inscripcion ?? '',
+    nombre_completo: `${nombre} ${apellido}`.trim(),
+  };
+};
+
 function ServiceCard({
   service,
   onToggleEdit,
@@ -264,7 +278,13 @@ function ServiceCard({
             <Text className="text-white/60 text-xs">Modo de acceso</Text>
             <Pressable
               onPress={() =>
-                onOpenPicker(service.servicio_id, 'modo_acceso', MODE_ACCESS_OPTIONS, 'Modo de acceso')
+                onOpenPicker({
+                  context: 'service',
+                  id: service.servicio_id,
+                  field: 'modo_acceso',
+                  options: MODE_ACCESS_OPTIONS,
+                  title: 'Modo de acceso',
+                })
               }
               className={`${FIELD_STYLES} flex-row items-center justify-between`}
             >
@@ -303,8 +323,14 @@ function ServiceCard({
             <View className="flex-1">
               <Text className="text-white/60 text-xs mb-2">Hora inicio</Text>
               <Pressable
-                onPress={() =>
-                  onOpenPicker(service.servicio_id, 'hora_inicio', timeOptions, 'Hora inicio')
+              onPress={() =>
+                  onOpenPicker({
+                    context: 'service',
+                    id: service.servicio_id,
+                    field: 'hora_inicio',
+                    options: timeOptions,
+                    title: 'Hora inicio',
+                  })
                 }
                 className={`${FIELD_STYLES} flex-row items-center justify-between`}
               >
@@ -315,8 +341,14 @@ function ServiceCard({
             <View className="flex-1">
               <Text className="text-white/60 text-xs mb-2">Hora fin</Text>
               <Pressable
-                onPress={() =>
-                  onOpenPicker(service.servicio_id, 'hora_fin', timeOptions, 'Hora fin')
+              onPress={() =>
+                  onOpenPicker({
+                    context: 'service',
+                    id: service.servicio_id,
+                    field: 'hora_fin',
+                    options: timeOptions,
+                    title: 'Hora fin',
+                  })
                 }
                 className={`${FIELD_STYLES} flex-row items-center justify-between`}
               >
@@ -330,8 +362,14 @@ function ServiceCard({
             <View className="flex-1">
               <Text className="text-white/60 text-xs mb-2">Ambiente</Text>
               <Pressable
-                onPress={() =>
-                  onOpenPicker(service.servicio_id, 'ambiente', AMBIENTE_OPTIONS, 'Ambiente')
+              onPress={() =>
+                  onOpenPicker({
+                    context: 'service',
+                    id: service.servicio_id,
+                    field: 'ambiente',
+                    options: AMBIENTE_OPTIONS,
+                    title: 'Ambiente',
+                  })
                 }
                 className={`${FIELD_STYLES} flex-row items-center justify-between`}
               >
@@ -346,8 +384,14 @@ function ServiceCard({
               <Text className="text-white/60 text-xs mb-2">Precio</Text>
               <Pressable
                 disabled={!priceEnabled}
-                onPress={() =>
-                  onOpenPicker(service.servicio_id, 'precio_tipo', PRECIO_TIPO_OPTIONS, 'Tipo de precio')
+              onPress={() =>
+                  onOpenPicker({
+                    context: 'service',
+                    id: service.servicio_id,
+                    field: 'precio_tipo',
+                    options: PRECIO_TIPO_OPTIONS,
+                    title: 'Tipo de precio',
+                  })
                 }
                 className={`${FIELD_STYLES} flex-row items-center justify-between ${
                   priceEnabled ? '' : 'opacity-50'
@@ -464,30 +508,45 @@ export default function ServiciosScreen() {
   const [loadingServices, setLoadingServices] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [showTypePanel, setShowTypePanel] = useState(false);
+  const [showMemberPanel, setShowMemberPanel] = useState(false);
   const [showPromoPanel, setShowPromoPanel] = useState(false);
   const [showCouponPanel, setShowCouponPanel] = useState(false);
-  const [typeForm, setTypeForm] = useState(buildPanelState());
+  const [typeForm, setTypeForm] = useState(buildMemberTypeForm());
+  const [editingTypeId, setEditingTypeId] = useState(null);
+  const [memberTypes, setMemberTypes] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [catalogServices, setCatalogServices] = useState([]);
+  const [memberForm, setMemberForm] = useState(buildMemberForm());
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [memberSearchResults, setMemberSearchResults] = useState([]);
+  const [memberSearchLoading, setMemberSearchLoading] = useState(false);
+  const [memberSearchError, setMemberSearchError] = useState('');
   const [promoForm, setPromoForm] = useState(buildPanelState());
   const [couponForm, setCouponForm] = useState(buildPanelState());
 
   const memberTotals = useMemo(() => {
-    return MEMBERS.reduce(
+    return members.reduce(
       (acc, member) => {
         acc.total += 1;
-        acc[member.status] = (acc[member.status] ?? 0) + 1;
+        const statusKey = member.estado_pago ?? 'pendiente';
+        acc[statusKey] = (acc[statusKey] ?? 0) + 1;
         return acc;
       },
-      { total: 0, Pagado: 0, Pendiente: 0, Vencido: 0 },
+      { total: 0, pagado: 0, pendiente: 0, vencido: 0 },
     );
-  }, []);
+  }, [members]);
 
   useEffect(() => {
     let mounted = true;
     const loadData = async () => {
       try {
-        const [servicesResponse, scheduleResponse] = await Promise.all([
+        const [servicesResponse, scheduleResponse, typesResponse, membersResponse, catalogResponse] =
+          await Promise.all([
           listClubServiceEntries(),
           getClubSchedule(),
+          listMemberTypes(),
+          listMembers(),
+          listAvailableServices(),
         ]);
         if (!mounted) return;
         const normalized = Array.isArray(servicesResponse)
@@ -495,6 +554,17 @@ export default function ServiciosScreen() {
           : [];
         setServices(normalized);
         setTimeOptions(buildTimeOptions(scheduleResponse));
+        setMemberTypes(
+          Array.isArray(typesResponse)
+            ? typesResponse.map((type) => normalizeMemberType(type)).filter(Boolean)
+            : []
+        );
+        setMembers(
+          Array.isArray(membersResponse)
+            ? membersResponse.map((member) => normalizeMember(member)).filter(Boolean)
+            : []
+        );
+        setCatalogServices(Array.isArray(catalogResponse) ? catalogResponse : []);
       } catch (err) {
         if (!mounted) return;
         setErrorMessage(err?.message || 'No pudimos cargar los servicios');
@@ -600,13 +670,19 @@ export default function ServiciosScreen() {
     );
   };
 
-  const handleOpenPicker = (serviceId, field, options, title) => {
-    setPickerState({ serviceId, field, options, title });
+  const handleOpenPicker = ({ context = 'service', id, field, options, title }) => {
+    setPickerState({ context, id, field, options, title });
   };
 
   const handleSelectPickerOption = (value) => {
     if (!pickerState) return;
-    handleServiceUpdate(pickerState.serviceId, pickerState.field, value);
+    if (pickerState.context === 'service') {
+      handleServiceUpdate(pickerState.id, pickerState.field, value);
+    } else if (pickerState.context === 'member') {
+      setMemberForm((prev) => ({ ...prev, [pickerState.field]: value }));
+    } else if (pickerState.context === 'type') {
+      setTypeForm((prev) => ({ ...prev, [pickerState.field]: value }));
+    }
     setPickerState(null);
   };
 
@@ -632,10 +708,182 @@ export default function ServiciosScreen() {
     }
   };
 
+  const handleToggleServiceIncluded = (serviceId) => {
+    setTypeForm((prev) => {
+      const current = Array.isArray(prev.servicios_incluidos) ? prev.servicios_incluidos : [];
+      if (current.includes(serviceId)) {
+        return { ...prev, servicios_incluidos: current.filter((id) => id !== serviceId) };
+      }
+      return { ...prev, servicios_incluidos: [...current, serviceId] };
+    });
+  };
+
+  const handleEditMemberType = (type) => {
+    if (!type) return;
+    setTypeForm({
+      nombre: type.nombre || '',
+      cuota_mensual: type.cuota_mensual !== null && type.cuota_mensual !== undefined
+        ? String(type.cuota_mensual)
+        : '',
+      fecha_pago: type.fecha_pago !== null && type.fecha_pago !== undefined ? String(type.fecha_pago) : '',
+      dias_gracia:
+        type.dias_gracia !== null && type.dias_gracia !== undefined ? String(type.dias_gracia) : '',
+      color: type.color || '#F97316',
+      servicios_incluidos: Array.isArray(type.servicios_incluidos)
+        ? type.servicios_incluidos.map((service) => service.servicio_id)
+        : [],
+    });
+    setEditingTypeId(type.tipo_asociado_id);
+    setShowTypePanel(true);
+  };
+
+  const handleSaveMemberType = async () => {
+    try {
+      setErrorMessage('');
+      const nombre = typeForm.nombre.trim();
+      if (!nombre) {
+        setErrorMessage('El nombre del tipo de asociado es obligatorio.');
+        return;
+      }
+      const cuota = Number(typeForm.cuota_mensual);
+      const fechaPago = Number(typeForm.fecha_pago);
+      const diasGracia = Number(typeForm.dias_gracia);
+      if (!Number.isFinite(cuota) || cuota < 0) {
+        setErrorMessage('Indicá una cuota mensual válida.');
+        return;
+      }
+      if (!Number.isFinite(fechaPago) || fechaPago < 1 || fechaPago > 31) {
+        setErrorMessage('Indicá un día de pago válido (1-31).');
+        return;
+      }
+      if (!Number.isFinite(diasGracia) || diasGracia < 0) {
+        setErrorMessage('Indicá días de gracia válidos.');
+        return;
+      }
+
+      const payload = {
+        nombre,
+        cuota_mensual: cuota,
+        fecha_pago: fechaPago,
+        dias_gracia: diasGracia,
+        color: typeForm.color || '#F97316',
+        servicios_incluidos: typeForm.servicios_incluidos,
+      };
+
+      const saved = editingTypeId
+        ? await updateMemberType(editingTypeId, payload)
+        : await createMemberType(payload);
+      const normalized = normalizeMemberType(saved);
+      if (!normalized) return;
+      setMemberTypes((prev) => {
+        if (editingTypeId) {
+          return prev.map((item) =>
+            item.tipo_asociado_id === editingTypeId ? normalized : item
+          );
+        }
+        return [normalized, ...prev];
+      });
+      setShowTypePanel(false);
+      resetPanels();
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos guardar el tipo de asociado');
+    }
+  };
+
+  const handleDeleteMemberType = async (tipoId) => {
+    try {
+      setErrorMessage('');
+      await deleteMemberType(tipoId);
+      setMemberTypes((prev) => prev.filter((item) => item.tipo_asociado_id !== tipoId));
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos eliminar el tipo de asociado');
+    }
+  };
+
+  const handleSearchMembers = async () => {
+    const term = memberSearchQuery.trim();
+    if (term.length < 3) {
+      setMemberSearchError('Ingresá al menos 3 caracteres para buscar.');
+      return;
+    }
+    try {
+      setMemberSearchLoading(true);
+      setMemberSearchError('');
+      const results = await searchPlayers(term, { limit: 8 });
+      setMemberSearchResults(results);
+    } catch (err) {
+      setMemberSearchError(err?.message || 'No pudimos buscar usuarios');
+    } finally {
+      setMemberSearchLoading(false);
+    }
+  };
+
+  const handleSelectExistingUser = (user) => {
+    if (!user) return;
+    setMemberForm((prev) => ({
+      ...prev,
+      usuario_id: user.id,
+      nombre: user.nombre || '',
+      apellido: user.apellido || '',
+      telefono: user.telefono || prev.telefono,
+    }));
+  };
+
+  const handleSaveMember = async () => {
+    try {
+      setErrorMessage('');
+      if (!memberForm.tipo_asociado_id) {
+        setErrorMessage('Seleccioná un tipo de asociado.');
+        return;
+      }
+      const telefono = memberForm.telefono.trim();
+      if (!telefono) {
+        setErrorMessage('El teléfono es obligatorio.');
+        return;
+      }
+
+      const payload = {
+        tipo_asociado_id: memberForm.tipo_asociado_id,
+        usuario_id: memberForm.usuario_id || undefined,
+        nombre: memberForm.nombre || undefined,
+        apellido: memberForm.apellido || undefined,
+        dni: memberForm.dni || undefined,
+        telefono,
+        direccion: memberForm.direccion || undefined,
+        correo: memberForm.correo || undefined,
+        fecha_inscripcion: memberForm.fecha_inscripcion || undefined,
+      };
+
+      const saved = await createMember(payload);
+      const normalized = normalizeMember(saved);
+      if (!normalized) return;
+      setMembers((prev) => [normalized, ...prev]);
+      setShowMemberPanel(false);
+      resetPanels();
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos crear el asociado');
+    }
+  };
+
+  const handleDeleteMember = async (asociadoId) => {
+    try {
+      setErrorMessage('');
+      await deleteMember(asociadoId);
+      setMembers((prev) => prev.filter((item) => item.asociado_id !== asociadoId));
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos eliminar el asociado');
+    }
+  };
+
   const resetPanels = () => {
-    setTypeForm(buildPanelState());
+    setTypeForm(buildMemberTypeForm());
+    setEditingTypeId(null);
     setPromoForm(buildPanelState());
     setCouponForm(buildPanelState());
+    setMemberForm(buildMemberForm());
+    setMemberSearchQuery('');
+    setMemberSearchResults([]);
+    setMemberSearchError('');
   };
 
   return (
@@ -652,11 +900,22 @@ export default function ServiciosScreen() {
                 <Text className="text-white text-sm font-semibold">Nuevo servicio</Text>
               </Pressable>
               <Pressable
-                onPress={() => setShowTypePanel(true)}
+                onPress={() => {
+                  setTypeForm(buildMemberTypeForm());
+                  setEditingTypeId(null);
+                  setShowTypePanel(true);
+                }}
                 className={ACTION_BUTTON_STYLES}
               >
                 <Ionicons name="people-outline" size={16} color="#F8FAFC" />
                 <Text className="text-white text-sm font-semibold">Crear tipo de asociado</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowMemberPanel(true)}
+                className={ACTION_BUTTON_STYLES}
+              >
+                <Ionicons name="person-add-outline" size={16} color="#F8FAFC" />
+                <Text className="text-white text-sm font-semibold">Alta de asociado</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowPromoPanel(true)}
@@ -747,34 +1006,62 @@ export default function ServiciosScreen() {
                 Definí planes para socios, cuotas mensuales y beneficios incluidos.
               </Text>
               <View className="gap-4">
-                {MEMBER_TYPES.map((type) => (
-                  <View
-                    key={type.id}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                  >
-                    <View className="flex-row items-start justify-between gap-3">
-                      <View className="flex-1">
-                        <Text className="text-white font-semibold text-base">{type.name}</Text>
-                        <Text className="text-white/60 mt-1">{type.access}</Text>
-                      </View>
+                {memberTypes.length ? (
+                  memberTypes.map((type) => {
+                    const servicesLabel = type.servicios_incluidos.length
+                      ? type.servicios_incluidos.map((service) => service.nombre).join(', ')
+                      : 'Sin servicios incluidos';
+                    return (
                       <View
-                        className={`rounded-full px-3 py-1 ${
-                          type.active ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/10 text-white/50'
-                        }`}
+                        key={type.tipo_asociado_id}
+                        className="rounded-2xl border border-white/10 bg-white/5 p-4"
                       >
-                        <Text className="text-xs font-semibold">
-                          {type.active ? 'Activo' : 'Inactivo'}
-                        </Text>
+                        <View className="flex-row items-start justify-between gap-3">
+                          <View className="flex-1 gap-1">
+                            <View className="flex-row items-center gap-2">
+                              <View
+                                className="h-3 w-3 rounded-full"
+                                style={{ backgroundColor: type.color || '#F97316' }}
+                              />
+                              <Text className="text-white font-semibold text-base">{type.nombre}</Text>
+                            </View>
+                            <Text className="text-white/60 text-xs">
+                              {servicesLabel}
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center gap-2">
+                            <Pressable
+                              onPress={() => handleEditMemberType(type)}
+                              className="rounded-full border border-white/10 px-3 py-1"
+                            >
+                              <Text className="text-white text-xs font-semibold">Editar</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => handleDeleteMemberType(type.tipo_asociado_id)}
+                              className="rounded-full border border-rose-500/40 px-3 py-1"
+                            >
+                              <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                        <View className="flex-row flex-wrap items-center justify-between mt-3 gap-2">
+                          <Text className="text-white text-lg font-semibold">
+                            ${type.cuota_mensual ?? 0} / mes
+                          </Text>
+                          <Text className="text-white/60 text-xs">
+                            Pago día {type.fecha_pago ?? '--'} · Gracia {type.dias_gracia ?? 0} días
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <View className="flex-row items-center justify-between mt-3">
-                      <Text className="text-white text-lg font-semibold">${type.price} / mes</Text>
-                      <Pressable className="rounded-full border border-white/10 px-3 py-1">
-                        <Text className="text-white text-xs font-semibold">Editar</Text>
-                      </Pressable>
-                    </View>
+                    );
+                  })
+                ) : (
+                  <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <Text className="text-white/70 text-sm">
+                      Aún no hay tipos de asociados. Creá el primero para habilitar altas.
+                    </Text>
                   </View>
-                ))}
+                )}
               </View>
             </Card>
 
@@ -790,38 +1077,62 @@ export default function ServiciosScreen() {
                 </View>
                 <View className="flex-1 min-w-[120px]">
                   <Text className="text-white/60 text-xs">Pagados</Text>
-                  <Text className="text-white text-xl font-semibold">{memberTotals.Pagado}</Text>
+                  <Text className="text-white text-xl font-semibold">{memberTotals.pagado}</Text>
                 </View>
                 <View className="flex-1 min-w-[120px]">
                   <Text className="text-white/60 text-xs">Pendientes</Text>
-                  <Text className="text-white text-xl font-semibold">{memberTotals.Pendiente}</Text>
+                  <Text className="text-white text-xl font-semibold">{memberTotals.pendiente}</Text>
                 </View>
               </View>
               <View className="gap-3">
-                {MEMBERS.map((member) => (
-                  <View
-                    key={member.id}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                  >
-                    <View className="flex-row items-start justify-between gap-3">
-                      <View className="flex-1">
-                        <Text className="text-white font-semibold">{member.name}</Text>
-                        <Text className="text-white/60 text-xs mt-1">Plan {member.type}</Text>
+                {members.length ? (
+                  members.map((member) => {
+                    const statusKey = (member.estado_pago || 'pendiente').toLowerCase();
+                    const statusLabel =
+                      statusKey === 'pagado'
+                        ? 'Pagado'
+                        : statusKey === 'vencido'
+                          ? 'Vencido'
+                          : 'Pendiente';
+                    return (
+                      <View
+                        key={member.asociado_id}
+                        className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                      >
+                        <View className="flex-row items-start justify-between gap-3">
+                          <View className="flex-1">
+                            <Text className="text-white font-semibold">
+                              {member.nombre_completo || member.nombre}
+                            </Text>
+                            <Text className="text-white/60 text-xs mt-1">
+                              Plan {member.tipo_nombre || 'Sin asignar'}
+                            </Text>
+                            {member.telefono ? (
+                              <Text className="text-white/40 text-xs mt-1">{member.telefono}</Text>
+                            ) : null}
+                          </View>
+                          <View className={`rounded-full px-3 py-1 ${statusStyles[statusKey]}`}>
+                            <Text className="text-xs font-semibold">{statusLabel}</Text>
+                          </View>
+                        </View>
+                        <View className="flex-row flex-wrap gap-2 mt-3">
+                          <Pressable
+                            onPress={() => handleDeleteMember(member.asociado_id)}
+                            className="rounded-full border border-rose-500/40 px-3 py-1"
+                          >
+                            <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
+                          </Pressable>
+                        </View>
                       </View>
-                      <View className={`rounded-full px-3 py-1 ${statusStyles[member.status]}`}>
-                        <Text className="text-xs font-semibold">{member.status}</Text>
-                      </View>
-                    </View>
-                    <View className="flex-row flex-wrap gap-2 mt-3">
-                      <Pressable className="rounded-full border border-white/10 px-3 py-1">
-                        <Text className="text-white text-xs font-semibold">Marcar pago</Text>
-                      </Pressable>
-                      <Pressable className="rounded-full border border-white/10 px-3 py-1">
-                        <Text className="text-white text-xs font-semibold">Suspender</Text>
-                      </Pressable>
-                    </View>
+                    );
+                  })
+                ) : (
+                  <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <Text className="text-white/70 text-sm">
+                      No hay asociados registrados todavía.
+                    </Text>
                   </View>
-                ))}
+                )}
               </View>
             </Card>
           </View>
@@ -830,7 +1141,7 @@ export default function ServiciosScreen() {
 
       <ActionPanel
         visible={showTypePanel}
-        title="Crear tipo de asociado"
+        title={editingTypeId ? 'Editar tipo de asociado' : 'Crear tipo de asociado'}
         subtitle="Sumá nuevos planes con beneficios específicos."
         onClose={() => {
           setShowTypePanel(false);
@@ -838,30 +1149,225 @@ export default function ServiciosScreen() {
         }}
       >
         <TextInput
-          value={typeForm.name}
-          onChangeText={(value) => setTypeForm((prev) => ({ ...prev, name: value }))}
+          value={typeForm.nombre}
+          onChangeText={(value) => setTypeForm((prev) => ({ ...prev, nombre: value }))}
           placeholder="Nombre del plan"
           placeholderTextColor="#94A3B8"
           className={FIELD_STYLES}
         />
+        <View className="flex-row gap-3">
+          <TextInput
+            value={typeForm.cuota_mensual}
+            onChangeText={(value) => setTypeForm((prev) => ({ ...prev, cuota_mensual: value }))}
+            placeholder="Cuota mensual"
+            placeholderTextColor="#94A3B8"
+            keyboardType="numeric"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+          <TextInput
+            value={typeForm.fecha_pago}
+            onChangeText={(value) => setTypeForm((prev) => ({ ...prev, fecha_pago: value }))}
+            placeholder="Día de pago (1-31)"
+            placeholderTextColor="#94A3B8"
+            keyboardType="numeric"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+        </View>
+        <View className="flex-row gap-3">
+          <TextInput
+            value={typeForm.dias_gracia}
+            onChangeText={(value) => setTypeForm((prev) => ({ ...prev, dias_gracia: value }))}
+            placeholder="Días de gracia"
+            placeholderTextColor="#94A3B8"
+            keyboardType="numeric"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+          <TextInput
+            value={typeForm.color}
+            onChangeText={(value) => setTypeForm((prev) => ({ ...prev, color: value }))}
+            placeholder="Color (hex)"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+        </View>
+        <View className="gap-2">
+          <Text className="text-white/60 text-xs">Servicios incluidos</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {catalogServices.length ? (
+              catalogServices.map((service) => {
+                const active = typeForm.servicios_incluidos.includes(service.servicio_id);
+                return (
+                  <Pressable
+                    key={service.servicio_id}
+                    onPress={() => handleToggleServiceIncluded(service.servicio_id)}
+                    className={`rounded-full border px-3 py-2 ${
+                      active ? 'border-mc-warn bg-mc-warn/20' : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <Text className="text-white text-xs font-semibold">{service.nombre}</Text>
+                  </Pressable>
+                );
+              })
+            ) : (
+              <Text className="text-white/50 text-xs">
+                Cargá servicios en el catálogo para poder incluirlos en el plan.
+              </Text>
+            )}
+          </View>
+        </View>
+        <Pressable
+          onPress={handleSaveMemberType}
+          className="rounded-full bg-mc-primary px-4 py-3 items-center"
+        >
+          <Text className="text-white font-semibold">
+            {editingTypeId ? 'Guardar cambios' : 'Guardar tipo de asociado'}
+          </Text>
+        </Pressable>
+      </ActionPanel>
+
+      <ActionPanel
+        visible={showMemberPanel}
+        title="Alta de asociado"
+        subtitle="Copiá datos desde un usuario existente o creá uno nuevo."
+        onClose={() => {
+          setShowMemberPanel(false);
+          resetPanels();
+        }}
+      >
+        <View className="gap-2">
+          <Text className="text-white/60 text-xs">Copiar desde usuarios existentes</Text>
+          <View className="flex-row gap-2">
+            <TextInput
+              value={memberSearchQuery}
+              onChangeText={(value) => setMemberSearchQuery(value)}
+              placeholder="Buscar por teléfono, nombre o email"
+              placeholderTextColor="#94A3B8"
+              className={`${FIELD_STYLES} flex-1`}
+            />
+            <Pressable
+              onPress={handleSearchMembers}
+              className="rounded-full border border-white/10 px-4 py-3"
+            >
+              <Ionicons name="search-outline" size={16} color="#F8FAFC" />
+            </Pressable>
+          </View>
+          {memberSearchError ? (
+            <Text className="text-rose-200 text-xs">{memberSearchError}</Text>
+          ) : null}
+          {memberSearchLoading ? (
+            <Text className="text-white/60 text-xs">Buscando usuarios...</Text>
+          ) : null}
+          {memberSearchResults.length ? (
+            <View className="gap-2">
+              {memberSearchResults.map((user) => (
+                <Pressable
+                  key={user.id}
+                  onPress={() => handleSelectExistingUser(user)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                >
+                  <Text className="text-white text-sm font-semibold">
+                    {user.nombreCompleto || `${user.nombre} ${user.apellido}`.trim()}
+                  </Text>
+                  {user.telefono ? (
+                    <Text className="text-white/50 text-xs">{user.telefono}</Text>
+                  ) : null}
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          {memberForm.usuario_id ? (
+            <View className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <Text className="text-emerald-100 text-xs">
+                Usuario seleccionado: {memberForm.nombre} {memberForm.apellido}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View className="gap-2">
+          <Text className="text-white/60 text-xs">Tipo de asociado</Text>
+          <Pressable
+            onPress={() =>
+              handleOpenPicker({
+                context: 'member',
+                field: 'tipo_asociado_id',
+                options: memberTypes.map((type) => ({
+                  value: type.tipo_asociado_id,
+                  label: type.nombre,
+                })),
+                title: 'Seleccionar tipo',
+              })
+            }
+            className={`${FIELD_STYLES} flex-row items-center justify-between`}
+          >
+            <Text className="text-white">
+              {memberTypes.find((type) => type.tipo_asociado_id === memberForm.tipo_asociado_id)
+                ?.nombre || 'Seleccionar'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
+          </Pressable>
+        </View>
+
+        <View className="flex-row gap-3">
+          <TextInput
+            value={memberForm.nombre}
+            onChangeText={(value) => setMemberForm((prev) => ({ ...prev, nombre: value }))}
+            placeholder="Nombre"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+          <TextInput
+            value={memberForm.apellido}
+            onChangeText={(value) => setMemberForm((prev) => ({ ...prev, apellido: value }))}
+            placeholder="Apellido"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+        </View>
+        <View className="flex-row gap-3">
+          <TextInput
+            value={memberForm.dni}
+            onChangeText={(value) => setMemberForm((prev) => ({ ...prev, dni: value }))}
+            placeholder="DNI"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+          <TextInput
+            value={memberForm.telefono}
+            onChangeText={(value) => setMemberForm((prev) => ({ ...prev, telefono: value }))}
+            placeholder="Teléfono"
+            placeholderTextColor="#94A3B8"
+            keyboardType="phone-pad"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+        </View>
         <TextInput
-          value={typeForm.description}
-          onChangeText={(value) => setTypeForm((prev) => ({ ...prev, description: value }))}
-          placeholder="Beneficios incluidos"
+          value={memberForm.direccion}
+          onChangeText={(value) => setMemberForm((prev) => ({ ...prev, direccion: value }))}
+          placeholder="Dirección"
           placeholderTextColor="#94A3B8"
-          className={`${FIELD_STYLES} min-h-[96px]`}
-          multiline
-        />
-        <TextInput
-          value={typeForm.discount}
-          onChangeText={(value) => setTypeForm((prev) => ({ ...prev, discount: value }))}
-          placeholder="Cuota mensual"
-          placeholderTextColor="#94A3B8"
-          keyboardType="numeric"
           className={FIELD_STYLES}
         />
-        <Pressable className="rounded-full bg-mc-primary px-4 py-3 items-center">
-          <Text className="text-white font-semibold">Guardar tipo de asociado</Text>
+        <TextInput
+          value={memberForm.correo}
+          onChangeText={(value) => setMemberForm((prev) => ({ ...prev, correo: value }))}
+          placeholder="Correo electrónico"
+          placeholderTextColor="#94A3B8"
+          keyboardType="email-address"
+          className={FIELD_STYLES}
+        />
+        <TextInput
+          value={memberForm.fecha_inscripcion}
+          onChangeText={(value) => setMemberForm((prev) => ({ ...prev, fecha_inscripcion: value }))}
+          placeholder="Fecha de inscripción (YYYY-MM-DD)"
+          placeholderTextColor="#94A3B8"
+          className={FIELD_STYLES}
+        />
+        <Pressable
+          onPress={handleSaveMember}
+          className="rounded-full bg-mc-primary px-4 py-3 items-center"
+        >
+          <Text className="text-white font-semibold">Guardar asociado</Text>
         </Pressable>
       </ActionPanel>
 

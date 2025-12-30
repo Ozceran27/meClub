@@ -126,6 +126,18 @@ function extractTaxes(payload) {
   return Array.isArray(taxes) ? taxes : [];
 }
 
+function extractMemberTypes(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const types = payload.tipos_asociado ?? payload.tipos ?? payload.data ?? payload;
+  return Array.isArray(types) ? types : [];
+}
+
+function extractMembers(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const members = payload.asociados ?? payload.data ?? payload;
+  return Array.isArray(members) ? members : [];
+}
+
 function extractSchedule(payload) {
   if (!payload || typeof payload !== 'object') return [];
   const schedule = payload.horarios ?? payload.data ?? payload;
@@ -847,6 +859,41 @@ export async function updateClubSchedule(items) {
   const payload = { items: Array.isArray(items) ? items : [] };
   const response = await api.patch('/clubes/mis-horarios', payload);
   return extractSchedule(response);
+}
+
+export async function listMemberTypes() {
+  const response = await api.get('/asociados/tipos');
+  return extractMemberTypes(response);
+}
+
+export async function createMemberType(payload) {
+  const response = await api.post('/asociados/tipos', payload);
+  return response?.tipo_asociado ?? response?.data ?? response;
+}
+
+export async function updateMemberType(tipoId, payload) {
+  const response = await api.put(`/asociados/tipos/${tipoId}`, payload);
+  return response?.tipo_asociado ?? response?.data ?? response;
+}
+
+export async function deleteMemberType(tipoId) {
+  const response = await api.del(`/asociados/tipos/${tipoId}`);
+  return response?.mensaje ?? response;
+}
+
+export async function listMembers() {
+  const response = await api.get('/asociados');
+  return extractMembers(response);
+}
+
+export async function createMember(payload) {
+  const response = await api.post('/asociados', payload);
+  return response?.asociado ?? response?.data ?? response;
+}
+
+export async function deleteMember(asociadoId) {
+  const response = await api.del(`/asociados/${asociadoId}`);
+  return response?.mensaje ?? response;
 }
 
 export async function uploadClubLogo(file) {

@@ -21,6 +21,7 @@ const provinciasRoutes = require('./routes/provincias.routes');
 const catalogoRoutes = require('./routes/catalogo.routes');
 const serviciosRoutes = require('./routes/servicios.routes');
 const messagesRoutes = require('./routes/messages.routes');
+const asociadosRoutes = require('./routes/asociados.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/clubes', clubesRoutes);
@@ -31,6 +32,7 @@ app.use('/api/provincias', provinciasRoutes);
 app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/servicios', serviciosRoutes);
 app.use('/api/mensajes', messagesRoutes);
+app.use('/api/asociados', asociadosRoutes);
 
 // INFO API -----------------------------------------------------------------------------------------
 app.get('/', (req, res) => {
