@@ -19,6 +19,7 @@ const nivelesRoutes = require('./routes/niveles.routes');
 const reservasRoutes = require('./routes/reservas.routes');
 const provinciasRoutes = require('./routes/provincias.routes');
 const catalogoRoutes = require('./routes/catalogo.routes');
+const serviciosRoutes = require('./routes/servicios.routes');
 const messagesRoutes = require('./routes/messages.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
@@ -28,6 +29,7 @@ app.use('/api/niveles', nivelesRoutes);
 app.use('/api/reservas', reservasRoutes);
 app.use('/api/provincias', provinciasRoutes);
 app.use('/api/catalogo', catalogoRoutes);
+app.use('/api/servicios', serviciosRoutes);
 app.use('/api/mensajes', messagesRoutes);
 
 // INFO API -----------------------------------------------------------------------------------------
@@ -49,4 +51,3 @@ setInterval(async () => {
 app.listen(PORT, () => {
   logger.info(`Servidor backend escuchando en http://localhost:${PORT}`);
 });
-
