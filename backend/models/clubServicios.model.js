@@ -57,31 +57,40 @@ const ClubServiciosModel = {
   },
 
   crear: async (clubId, payload) => {
-    const [result] = await db.query(
-      `INSERT INTO club_servicios (
-        club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-        imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly, activo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        clubId,
-        payload.nombre,
-        payload.modo_acceso,
-        payload.dias_disponibles,
-        payload.hora_inicio,
-        payload.hora_fin,
-        payload.imagen_url,
-        payload.ambiente,
-        payload.precio_tipo,
-        payload.precio_valor,
-        payload.no_fumar ? 1 : 0,
-        payload.mas_18 ? 1 : 0,
-        payload.comida ? 1 : 0,
-        payload.eco_friendly ? 1 : 0,
-        payload.activo ? 1 : 0,
-      ]
-    );
+    try {
+      const [result] = await db.query(
+        `INSERT INTO club_servicios (
+          club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
+          imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly, activo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          clubId,
+          payload.nombre,
+          payload.modo_acceso,
+          payload.dias_disponibles,
+          payload.hora_inicio,
+          payload.hora_fin,
+          payload.imagen_url,
+          payload.ambiente,
+          payload.precio_tipo,
+          payload.precio_valor,
+          payload.no_fumar ? 1 : 0,
+          payload.mas_18 ? 1 : 0,
+          payload.comida ? 1 : 0,
+          payload.eco_friendly ? 1 : 0,
+          payload.activo ? 1 : 0,
+        ]
+      );
 
-    return ClubServiciosModel.obtenerPorId(result.insertId, clubId);
+      return ClubServiciosModel.obtenerPorId(result.insertId, clubId);
+    } catch (err) {
+      if (err && err.code === 'ER_DUP_ENTRY') {
+        const error = new Error('Ya existe un servicio con ese nombre para este club');
+        error.statusCode = 400;
+        throw error;
+      }
+      throw err;
+    }
   },
 
   actualizar: async (servicioId, clubId, updates) => {

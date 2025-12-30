@@ -109,6 +109,7 @@ CREATE TABLE `club_servicios` (
   `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`servicio_id`),
   KEY `idx_club_servicios_club` (`club_id`),
+  UNIQUE KEY `uniq_club_servicios_club_nombre` (`club_id`,`nombre`),
   CONSTRAINT `fk_club_servicios_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;

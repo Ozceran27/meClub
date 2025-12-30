@@ -82,3 +82,26 @@ El dump `dump-meclub-202511211351.txt` refleja esta enumeración actualizada.
 El backend normaliza los valores históricos y usa `pendiente_pago` como estado por defecto, aceptando alias comunes como
 `pendiente` o `sin_abonar` siempre que se mapeen a los valores de la enumeración anterior.
 
+## Índice único para `club_servicios` (`club_id`, `nombre`)
+
+Antes de crear el índice único, detectá si existen servicios duplicados por club para poder decidir una estrategia (merge, renombrar o eliminar). Podés ejecutar las siguientes consultas:
+
+```sql
+SELECT club_id, nombre, COUNT(*) AS cantidad
+FROM club_servicios
+GROUP BY club_id, nombre
+HAVING COUNT(*) > 1;
+```
+
+Una vez identificados, aplicá la estrategia elegida. Por ejemplo:
+
+- **Merge:** unificá atributos en un único registro y eliminá los duplicados.
+- **Renombrar:** ajustá el campo `nombre` para conservar todos los registros.
+- **Eliminar:** remové los duplicados y conservá el registro correcto.
+
+Luego de limpiar los datos, creá el índice único:
+
+```sql
+ALTER TABLE club_servicios
+  ADD UNIQUE KEY uniq_club_servicios_club_nombre (club_id, nombre);
+```
