@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, Modal } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, Modal, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
@@ -18,6 +18,8 @@ import {
   listMembers,
   createMember,
   deleteMember,
+  searchMembers,
+  registerMemberPayment,
   searchPlayers,
 } from '../../lib/api';
 import { DAYS, normalizeSchedule, normalizeTimeToHHMM } from './configurationState';
@@ -207,6 +209,11 @@ const normalizeMember = (member) => {
   if (!member || typeof member !== 'object') return null;
   const nombre = member.nombre ?? '';
   const apellido = member.apellido ?? '';
+  const cuota_mensual = member.cuota_mensual ?? member.tipo?.cuota_mensual ?? null;
+  const pagos_realizados =
+    member.pagos_realizados !== null && member.pagos_realizados !== undefined
+      ? Number(member.pagos_realizados) || 0
+      : 0;
   return {
     asociado_id: member.asociado_id ?? member.id ?? null,
     nombre,
@@ -215,8 +222,34 @@ const normalizeMember = (member) => {
     tipo_nombre: member.tipo_nombre ?? member.tipo?.nombre ?? '',
     estado_pago: member.estado_pago ?? 'pendiente',
     fecha_inscripcion: member.fecha_inscripcion ?? '',
+    cuota_mensual,
+    pagos_realizados,
+    deuda: member.deuda ?? null,
+    meses_transcurridos: member.meses_transcurridos ?? null,
     nombre_completo: `${nombre} ${apellido}`.trim(),
   };
+};
+
+const calculateMonthsElapsed = (fechaInscripcion) => {
+  if (!fechaInscripcion) return 0;
+  const startDate = new Date(fechaInscripcion);
+  if (Number.isNaN(startDate.getTime())) return 0;
+  const today = new Date();
+  let months =
+    (today.getFullYear() - startDate.getFullYear()) * 12 +
+    (today.getMonth() - startDate.getMonth());
+  if (today.getDate() >= startDate.getDate()) {
+    months += 1;
+  }
+  return Math.max(months, 0);
+};
+
+const calculateDebt = (member) => {
+  if (!member) return 0;
+  const cuota = Number(member.cuota_mensual) || 0;
+  const pagos = Number(member.pagos_realizados) || 0;
+  const months = calculateMonthsElapsed(member.fecha_inscripcion);
+  return Math.round((cuota * months - pagos) * 100) / 100;
 };
 
 function ServiceCard({
@@ -509,6 +542,7 @@ export default function ServiciosScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showTypePanel, setShowTypePanel] = useState(false);
   const [showMemberPanel, setShowMemberPanel] = useState(false);
+  const [showPaymentPanel, setShowPaymentPanel] = useState(false);
   const [showPromoPanel, setShowPromoPanel] = useState(false);
   const [showCouponPanel, setShowCouponPanel] = useState(false);
   const [typeForm, setTypeForm] = useState(buildMemberTypeForm());
@@ -521,6 +555,13 @@ export default function ServiciosScreen() {
   const [memberSearchResults, setMemberSearchResults] = useState([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   const [memberSearchError, setMemberSearchError] = useState('');
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
+  const [paymentSearchResults, setPaymentSearchResults] = useState([]);
+  const [paymentSearchLoading, setPaymentSearchLoading] = useState(false);
+  const [paymentSearchError, setPaymentSearchError] = useState('');
+  const [selectedPaymentMember, setSelectedPaymentMember] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [promoForm, setPromoForm] = useState(buildPanelState());
   const [couponForm, setCouponForm] = useState(buildPanelState());
 
@@ -829,6 +870,85 @@ export default function ServiciosScreen() {
     }));
   };
 
+  const handleSearchPaymentMembers = async () => {
+    const term = paymentSearchQuery.trim();
+    if (term.length < 2) {
+      setPaymentSearchError('Ingresá al menos 2 caracteres para buscar.');
+      return;
+    }
+    try {
+      setPaymentSearchLoading(true);
+      setPaymentSearchError('');
+      const results = await searchMembers(term, { limit: 8 });
+      const normalized = Array.isArray(results)
+        ? results.map((member) => normalizeMember(member)).filter(Boolean)
+        : [];
+      setPaymentSearchResults(normalized);
+    } catch (err) {
+      setPaymentSearchError(err?.message || 'No pudimos buscar asociados');
+    } finally {
+      setPaymentSearchLoading(false);
+    }
+  };
+
+  const handleSelectPaymentMember = (member) => {
+    if (!member) return;
+    setSelectedPaymentMember(member);
+    setPaymentAmount('');
+  };
+
+  const handleProcessPayment = () => {
+    if (!selectedPaymentMember) {
+      setPaymentSearchError('Seleccioná un asociado primero.');
+      return;
+    }
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentSearchError('Ingresá un monto válido.');
+      return;
+    }
+
+    Alert.alert(
+      'Confirmar pago',
+      `¿Querés registrar un pago de $${amount.toFixed(2)} para ${selectedPaymentMember.nombre_completo}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
+          onPress: async () => {
+            try {
+              setPaymentProcessing(true);
+              setPaymentSearchError('');
+              const updated = await registerMemberPayment(
+                selectedPaymentMember.asociado_id,
+                { monto: amount }
+              );
+              const normalized = normalizeMember(updated);
+              if (normalized) {
+                setMembers((prev) => {
+                  const exists = prev.some(
+                    (item) => item.asociado_id === normalized.asociado_id
+                  );
+                  if (!exists) return [normalized, ...prev];
+                  return prev.map((item) =>
+                    item.asociado_id === normalized.asociado_id ? normalized : item
+                  );
+                });
+                setSelectedPaymentMember(normalized);
+              }
+              setPaymentAmount('');
+            } catch (err) {
+              setPaymentSearchError(err?.message || 'No pudimos procesar el pago');
+            } finally {
+              setPaymentProcessing(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleSaveMember = async () => {
     try {
       setErrorMessage('');
@@ -884,6 +1004,13 @@ export default function ServiciosScreen() {
     setMemberSearchQuery('');
     setMemberSearchResults([]);
     setMemberSearchError('');
+    setPaymentSearchQuery('');
+    setPaymentSearchResults([]);
+    setPaymentSearchError('');
+    setSelectedPaymentMember(null);
+    setPaymentAmount('');
+    setPaymentSearchLoading(false);
+    setPaymentProcessing(false);
   };
 
   return (
@@ -916,6 +1043,13 @@ export default function ServiciosScreen() {
               >
                 <Ionicons name="person-add-outline" size={16} color="#F8FAFC" />
                 <Text className="text-white text-sm font-semibold">Alta de asociado</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowPaymentPanel(true)}
+                className={ACTION_BUTTON_STYLES}
+              >
+                <Ionicons name="cash-outline" size={16} color="#F8FAFC" />
+                <Text className="text-white text-sm font-semibold">Cargar pago</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowPromoPanel(true)}
@@ -1368,6 +1502,115 @@ export default function ServiciosScreen() {
           className="rounded-full bg-mc-primary px-4 py-3 items-center"
         >
           <Text className="text-white font-semibold">Guardar asociado</Text>
+        </Pressable>
+      </ActionPanel>
+
+      <ActionPanel
+        visible={showPaymentPanel}
+        title="Cargar pago"
+        subtitle="Buscá un asociado y registrá el monto abonado."
+        onClose={() => {
+          setShowPaymentPanel(false);
+          resetPanels();
+        }}
+      >
+        <View className="gap-2">
+          <Text className="text-white/60 text-xs">Buscar asociado</Text>
+          <View className="flex-row gap-2">
+            <TextInput
+              value={paymentSearchQuery}
+              onChangeText={(value) => setPaymentSearchQuery(value)}
+              placeholder="Buscar por nombre, apellido o teléfono"
+              placeholderTextColor="#94A3B8"
+              className={`${FIELD_STYLES} flex-1`}
+            />
+            <Pressable
+              onPress={handleSearchPaymentMembers}
+              className="rounded-full border border-white/10 px-4 py-3"
+            >
+              <Ionicons name="search-outline" size={16} color="#F8FAFC" />
+            </Pressable>
+          </View>
+          {paymentSearchError ? (
+            <Text className="text-rose-200 text-xs">{paymentSearchError}</Text>
+          ) : null}
+          {paymentSearchLoading ? (
+            <Text className="text-white/60 text-xs">Buscando asociados...</Text>
+          ) : null}
+          {paymentSearchResults.length ? (
+            <View className="gap-2">
+              {paymentSearchResults.map((member) => {
+                const isSelected =
+                  selectedPaymentMember?.asociado_id === member.asociado_id;
+                return (
+                  <Pressable
+                    key={member.asociado_id}
+                    onPress={() => handleSelectPaymentMember(member)}
+                    className={`rounded-xl border px-3 py-2 ${
+                      isSelected
+                        ? 'border-emerald-400 bg-emerald-500/10'
+                        : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <Text className="text-white text-sm font-semibold">
+                      {member.nombre_completo || member.nombre}
+                    </Text>
+                    <Text className="text-white/50 text-xs">
+                      {member.tipo_nombre || 'Sin tipo asignado'}
+                    </Text>
+                    {member.telefono ? (
+                      <Text className="text-white/50 text-xs">{member.telefono}</Text>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+
+        {selectedPaymentMember ? (
+          <View className="rounded-2xl border border-white/10 bg-white/5 p-4 gap-2">
+            <Text className="text-white font-semibold">
+              {selectedPaymentMember.nombre_completo || selectedPaymentMember.nombre}
+            </Text>
+            <Text className="text-white/60 text-xs">
+              Tipo: {selectedPaymentMember.tipo_nombre || 'Sin asignar'}
+            </Text>
+            <View className="flex-row flex-wrap justify-between gap-2">
+              <Text className="text-white/70 text-xs">
+                Cuota mensual: ${selectedPaymentMember.cuota_mensual ?? 0}
+              </Text>
+              <Text className="text-white/70 text-xs">
+                Deuda actual: $
+                {(
+                  selectedPaymentMember.deuda ?? calculateDebt(selectedPaymentMember)
+                ).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        <View className="gap-2">
+          <Text className="text-white/60 text-xs">Monto a pagar</Text>
+          <TextInput
+            value={paymentAmount}
+            onChangeText={(value) => setPaymentAmount(value)}
+            placeholder="Ingresar monto"
+            placeholderTextColor="#94A3B8"
+            keyboardType="numeric"
+            className={FIELD_STYLES}
+          />
+        </View>
+        <Pressable
+          onPress={handleProcessPayment}
+          disabled={paymentProcessing}
+          className={`rounded-full px-4 py-3 items-center ${
+            paymentProcessing ? 'bg-white/10' : 'bg-mc-primary'
+          }`}
+        >
+          <Text className="text-white font-semibold">
+            {paymentProcessing ? 'Procesando...' : 'Procesar pago'}
+          </Text>
         </Pressable>
       </ActionPanel>
 
