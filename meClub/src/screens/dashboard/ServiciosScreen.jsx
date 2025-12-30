@@ -604,6 +604,7 @@ export default function ServiciosScreen() {
   const [memberSearchResults, setMemberSearchResults] = useState([]);
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   const [memberSearchError, setMemberSearchError] = useState('');
+  const [memberLoadError, setMemberLoadError] = useState('');
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [paymentSearchResults, setPaymentSearchResults] = useState([]);
   const [paymentSearchLoading, setPaymentSearchLoading] = useState(false);
@@ -630,44 +631,70 @@ export default function ServiciosScreen() {
   useEffect(() => {
     let mounted = true;
     const loadData = async () => {
-      try {
-        const [
-          servicesResponse,
-          scheduleResponse,
-          typesResponse,
-          membersResponse,
-          courtsResponse,
-        ] = await Promise.all([
-          listClubServiceEntries(),
-          getClubSchedule(),
-          listMemberTypes(),
-          listMembers(),
-          getClubCourts(),
-        ]);
-        if (!mounted) return;
-        const normalized = Array.isArray(servicesResponse)
-          ? servicesResponse.map((service) => normalizeServiceEntry(service))
+      const results = await Promise.allSettled([
+        listClubServiceEntries(),
+        getClubSchedule(),
+        listMemberTypes(),
+        listMembers(),
+        getClubCourts(),
+      ]);
+      if (!mounted) return;
+
+      const [
+        servicesResult,
+        scheduleResult,
+        typesResult,
+        membersResult,
+        courtsResult,
+      ] = results;
+
+      if (servicesResult.status === 'fulfilled') {
+        const normalized = Array.isArray(servicesResult.value)
+          ? servicesResult.value.map((service) => normalizeServiceEntry(service))
           : [];
         setServices(normalized);
-        setTimeOptions(buildTimeOptions(scheduleResponse));
-        setMemberTypes(
-          Array.isArray(typesResponse)
-            ? typesResponse.map((type) => normalizeMemberType(type)).filter(Boolean)
-            : []
-        );
-        setMembers(
-          Array.isArray(membersResponse)
-            ? membersResponse.map((member) => normalizeMember(member)).filter(Boolean)
-            : []
-        );
         setCatalogServices(normalized);
-        setCourts(Array.isArray(courtsResponse) ? courtsResponse : []);
-      } catch (err) {
-        if (!mounted) return;
-        setErrorMessage(err?.message || 'No pudimos cargar los servicios');
-      } finally {
-        if (mounted) setLoadingServices(false);
+      } else {
+        setServices([]);
+        setCatalogServices([]);
+        setErrorMessage(servicesResult.reason?.message || 'No pudimos cargar los servicios');
       }
+
+      if (scheduleResult.status === 'fulfilled') {
+        setTimeOptions(buildTimeOptions(scheduleResult.value));
+      } else {
+        setTimeOptions(buildTimeOptions([]));
+      }
+
+      if (typesResult.status === 'fulfilled') {
+        setMemberTypes(
+          Array.isArray(typesResult.value)
+            ? typesResult.value.map((type) => normalizeMemberType(type)).filter(Boolean)
+            : [],
+        );
+      } else {
+        setMemberTypes([]);
+      }
+
+      if (membersResult.status === 'fulfilled') {
+        setMembers(
+          Array.isArray(membersResult.value)
+            ? membersResult.value.map((member) => normalizeMember(member)).filter(Boolean)
+            : [],
+        );
+        setMemberLoadError('');
+      } else {
+        setMembers([]);
+        setMemberLoadError('No pudimos cargar asociados. Intentá más tarde.');
+      }
+
+      if (courtsResult.status === 'fulfilled') {
+        setCourts(Array.isArray(courtsResult.value) ? courtsResult.value : []);
+      } else {
+        setCourts([]);
+      }
+
+      setLoadingServices(false);
     };
     loadData();
     return () => {
@@ -1369,6 +1396,11 @@ export default function ServiciosScreen() {
               <Text className="text-white/60">
                 Seguimiento rápido de pagos, altas y bajas de la membresía.
               </Text>
+              {memberLoadError ? (
+                <View className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2">
+                  <Text className="text-rose-100 text-xs">{memberLoadError}</Text>
+                </View>
+              ) : null}
               <View className="flex-row flex-wrap gap-4">
                 <View className="flex-1 min-w-[120px]">
                   <Text className="text-white/60 text-xs">Total</Text>
