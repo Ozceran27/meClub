@@ -21,6 +21,9 @@ import {
   searchMembers,
   registerMemberPayment,
   searchPlayers,
+  getClubCourts,
+  createPromotion,
+  createCoupon,
 } from '../../lib/api';
 import { DAYS, normalizeSchedule, normalizeTimeToHHMM } from './configurationState';
 
@@ -46,6 +49,11 @@ const PRECIO_TIPO_OPTIONS = [
   { value: 'dia', label: 'Por día' },
 ];
 
+const DISCOUNT_TYPE_OPTIONS = [
+  { value: 'porcentaje', label: 'Porcentaje' },
+  { value: 'nominal', label: 'Monto fijo' },
+];
+
 const ICON_OPTIONS = [
   { key: 'no_fumar', label: 'No fumar', icon: 'ban-outline' },
   { key: 'mas_18', label: '+18', icon: 'alert-circle-outline' },
@@ -59,11 +67,22 @@ const statusStyles = {
   vencido: 'bg-rose-500/15 text-rose-200 border border-rose-500/30',
 };
 
-const buildPanelState = () => ({
-  name: '',
-  description: '',
-  discount: '',
-  validity: '',
+const buildPromotionForm = () => ({
+  nombre: '',
+  fecha_inicio: '',
+  hora_inicio: '',
+  fecha_fin: '',
+  hora_fin: '',
+  tipo_descuento: '',
+  valor: '',
+  canchas_aplicadas: [],
+});
+
+const buildCouponForm = () => ({
+  nombre: '',
+  usos_permitidos: '',
+  tipo_descuento: '',
+  valor: '',
 });
 
 const buildMemberTypeForm = () => ({
@@ -86,6 +105,37 @@ const buildMemberForm = () => ({
   tipo_asociado_id: null,
   fecha_inscripcion: '',
 });
+
+const isValidDate = (value) => {
+  if (!value) return false;
+  const [year, month, day] = String(value).split('-').map(Number);
+  if (!year || !month || !day) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+};
+
+const isValidTime = (value) => {
+  if (!value) return false;
+  const parts = String(value).split(':');
+  if (parts.length < 2 || parts.length > 3) return false;
+  const [hours, minutes, seconds = '0'] = parts.map(Number);
+  if ([hours, minutes, seconds].some((item) => Number.isNaN(item))) return false;
+  if (hours < 0 || hours > 23) return false;
+  if (minutes < 0 || minutes > 59) return false;
+  if (seconds < 0 || seconds > 59) return false;
+  return true;
+};
+
+const buildDateTimePayload = (date, time) => {
+  if (!date || !time) return null;
+  const normalizedTime = time.length === 5 ? `${time}:00` : time;
+  return `${date} ${normalizedTime}`;
+};
 
 function ActionPanel({ visible, title, subtitle, onClose, children }) {
   return (
@@ -562,8 +612,9 @@ export default function ServiciosScreen() {
   const [selectedPaymentMember, setSelectedPaymentMember] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [promoForm, setPromoForm] = useState(buildPanelState());
-  const [couponForm, setCouponForm] = useState(buildPanelState());
+  const [promoForm, setPromoForm] = useState(buildPromotionForm());
+  const [couponForm, setCouponForm] = useState(buildCouponForm());
+  const [courts, setCourts] = useState([]);
 
   const memberTotals = useMemo(() => {
     return members.reduce(
@@ -581,13 +632,20 @@ export default function ServiciosScreen() {
     let mounted = true;
     const loadData = async () => {
       try {
-        const [servicesResponse, scheduleResponse, typesResponse, membersResponse, catalogResponse] =
-          await Promise.all([
+        const [
+          servicesResponse,
+          scheduleResponse,
+          typesResponse,
+          membersResponse,
+          catalogResponse,
+          courtsResponse,
+        ] = await Promise.all([
           listClubServiceEntries(),
           getClubSchedule(),
           listMemberTypes(),
           listMembers(),
           listAvailableServices(),
+          getClubCourts(),
         ]);
         if (!mounted) return;
         const normalized = Array.isArray(servicesResponse)
@@ -606,6 +664,7 @@ export default function ServiciosScreen() {
             : []
         );
         setCatalogServices(Array.isArray(catalogResponse) ? catalogResponse : []);
+        setCourts(Array.isArray(courtsResponse) ? courtsResponse : []);
       } catch (err) {
         if (!mounted) return;
         setErrorMessage(err?.message || 'No pudimos cargar los servicios');
@@ -723,6 +782,10 @@ export default function ServiciosScreen() {
       setMemberForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'type') {
       setTypeForm((prev) => ({ ...prev, [pickerState.field]: value }));
+    } else if (pickerState.context === 'promo') {
+      setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
+    } else if (pickerState.context === 'coupon') {
+      setCouponForm((prev) => ({ ...prev, [pickerState.field]: value }));
     }
     setPickerState(null);
   };
@@ -949,6 +1012,111 @@ export default function ServiciosScreen() {
     );
   };
 
+  const handleTogglePromoCourt = (courtId) => {
+    if (!courtId) return;
+    setPromoForm((prev) => {
+      const normalized = String(courtId);
+      const selected = new Set(prev.canchas_aplicadas.map((item) => String(item)));
+      if (selected.has(normalized)) {
+        selected.delete(normalized);
+      } else {
+        selected.add(normalized);
+      }
+      return { ...prev, canchas_aplicadas: Array.from(selected) };
+    });
+  };
+
+  const handleSavePromotion = async () => {
+    try {
+      setErrorMessage('');
+      if (!promoForm.nombre.trim()) {
+        setErrorMessage('Ingresá el nombre de la promoción.');
+        return;
+      }
+      if (!isValidDate(promoForm.fecha_inicio) || !isValidTime(promoForm.hora_inicio)) {
+        setErrorMessage('Ingresá una fecha/hora de inicio válida.');
+        return;
+      }
+      if (!isValidDate(promoForm.fecha_fin) || !isValidTime(promoForm.hora_fin)) {
+        setErrorMessage('Ingresá una fecha/hora de fin válida.');
+        return;
+      }
+      if (!DISCOUNT_TYPE_OPTIONS.some((option) => option.value === promoForm.tipo_descuento)) {
+        setErrorMessage('Seleccioná el tipo de descuento.');
+        return;
+      }
+      const valor = Number(promoForm.valor);
+      if (!Number.isFinite(valor) || valor <= 0) {
+        setErrorMessage('Ingresá un valor de descuento válido.');
+        return;
+      }
+
+      const fechaInicio = buildDateTimePayload(promoForm.fecha_inicio, promoForm.hora_inicio);
+      const fechaFin = buildDateTimePayload(promoForm.fecha_fin, promoForm.hora_fin);
+      const startDate = new Date(fechaInicio?.replace(' ', 'T') || '');
+      const endDate = new Date(fechaFin?.replace(' ', 'T') || '');
+
+      if (!fechaInicio || !fechaFin || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        setErrorMessage('Las fechas ingresadas no son válidas.');
+        return;
+      }
+      if (startDate >= endDate) {
+        setErrorMessage('La fecha de fin debe ser posterior al inicio.');
+        return;
+      }
+
+      await createPromotion({
+        nombre: promoForm.nombre.trim(),
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        tipo_descuento: promoForm.tipo_descuento,
+        valor,
+        canchas_aplicadas: promoForm.canchas_aplicadas.map((id) => Number(id)).filter(Boolean),
+      });
+
+      setPromoForm(buildPromotionForm());
+      setShowPromoPanel(false);
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos crear la promoción');
+    }
+  };
+
+  const handleSaveCoupon = async () => {
+    try {
+      setErrorMessage('');
+      if (!couponForm.nombre.trim()) {
+        setErrorMessage('Ingresá el nombre del cupón.');
+        return;
+      }
+      const usosPermitidos = Number.parseInt(couponForm.usos_permitidos, 10);
+      if (!Number.isInteger(usosPermitidos) || usosPermitidos <= 0) {
+        setErrorMessage('Ingresá un número válido de usos permitidos.');
+        return;
+      }
+      if (!DISCOUNT_TYPE_OPTIONS.some((option) => option.value === couponForm.tipo_descuento)) {
+        setErrorMessage('Seleccioná el tipo de descuento del cupón.');
+        return;
+      }
+      const valor = Number(couponForm.valor);
+      if (!Number.isFinite(valor) || valor <= 0) {
+        setErrorMessage('Ingresá un valor de descuento válido.');
+        return;
+      }
+
+      await createCoupon({
+        nombre: couponForm.nombre.trim(),
+        usos_permitidos: usosPermitidos,
+        tipo_descuento: couponForm.tipo_descuento,
+        valor,
+      });
+
+      setCouponForm(buildCouponForm());
+      setShowCouponPanel(false);
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos crear el cupón');
+    }
+  };
+
   const handleSaveMember = async () => {
     try {
       setErrorMessage('');
@@ -998,8 +1166,8 @@ export default function ServiciosScreen() {
   const resetPanels = () => {
     setTypeForm(buildMemberTypeForm());
     setEditingTypeId(null);
-    setPromoForm(buildPanelState());
-    setCouponForm(buildPanelState());
+    setPromoForm(buildPromotionForm());
+    setCouponForm(buildCouponForm());
     setMemberForm(buildMemberForm());
     setMemberSearchQuery('');
     setMemberSearchResults([]);
@@ -1624,38 +1792,109 @@ export default function ServiciosScreen() {
         }}
       >
         <TextInput
-          value={promoForm.name}
-          onChangeText={(value) => setPromoForm((prev) => ({ ...prev, name: value }))}
+          value={promoForm.nombre}
+          onChangeText={(value) => setPromoForm((prev) => ({ ...prev, nombre: value }))}
           placeholder="Nombre de la promoción"
           placeholderTextColor="#94A3B8"
           className={FIELD_STYLES}
         />
-        <TextInput
-          value={promoForm.description}
-          onChangeText={(value) => setPromoForm((prev) => ({ ...prev, description: value }))}
-          placeholder="Detalle o beneficio"
-          placeholderTextColor="#94A3B8"
-          className={`${FIELD_STYLES} min-h-[96px]`}
-          multiline
-        />
         <View className="flex-row gap-3">
           <TextInput
-            value={promoForm.discount}
-            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, discount: value }))}
-            placeholder="Descuento"
+            value={promoForm.fecha_inicio}
+            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_inicio: value }))}
+            placeholder="Fecha inicio (YYYY-MM-DD)"
             placeholderTextColor="#94A3B8"
-            keyboardType="numeric"
             className={`${FIELD_STYLES} flex-1`}
           />
           <TextInput
-            value={promoForm.validity}
-            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, validity: value }))}
-            placeholder="Vigencia"
+            value={promoForm.hora_inicio}
+            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_inicio: value }))}
+            placeholder="Hora inicio (HH:MM)"
             placeholderTextColor="#94A3B8"
             className={`${FIELD_STYLES} flex-1`}
           />
         </View>
-        <Pressable className="rounded-full bg-mc-primary px-4 py-3 items-center">
+        <View className="flex-row gap-3">
+          <TextInput
+            value={promoForm.fecha_fin}
+            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_fin: value }))}
+            placeholder="Fecha fin (YYYY-MM-DD)"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+          <TextInput
+            value={promoForm.hora_fin}
+            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_fin: value }))}
+            placeholder="Hora fin (HH:MM)"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+        </View>
+        <Pressable
+          onPress={() =>
+            handleOpenPicker({
+              context: 'promo',
+              field: 'tipo_descuento',
+              options: DISCOUNT_TYPE_OPTIONS,
+              title: 'Tipo de descuento',
+            })
+          }
+          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+        >
+          <Text className="text-white text-sm">
+            {DISCOUNT_TYPE_OPTIONS.find((option) => option.value === promoForm.tipo_descuento)
+              ?.label || 'Seleccioná tipo de descuento'}
+          </Text>
+        </Pressable>
+        <TextInput
+          value={promoForm.valor}
+          onChangeText={(value) => setPromoForm((prev) => ({ ...prev, valor: value }))}
+          placeholder="Valor del descuento"
+          placeholderTextColor="#94A3B8"
+          keyboardType="numeric"
+          className={FIELD_STYLES}
+        />
+        <View className="gap-2">
+          <Text className="text-white/60 text-xs">Canchas aplicadas</Text>
+          {courts.length ? (
+            <View className="flex-row flex-wrap gap-2">
+              {courts.map((court) => {
+                const courtId = court.cancha_id ?? court.id;
+                const isSelected = promoForm.canchas_aplicadas.some(
+                  (item) => String(item) === String(courtId)
+                );
+                return (
+                  <Pressable
+                    key={courtId}
+                    onPress={() => handleTogglePromoCourt(courtId)}
+                    className={`rounded-full px-3 py-2 border ${
+                      isSelected
+                        ? 'border-emerald-400 bg-emerald-500/10'
+                        : 'border-white/10 bg-white/5'
+                    }`}
+                  >
+                    <Text className="text-white text-xs">
+                      {court.nombre ?? `Cancha ${courtId}`}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <Text className="text-white/50 text-xs">
+              No encontramos canchas cargadas.
+            </Text>
+          )}
+          {!promoForm.canchas_aplicadas.length ? (
+            <Text className="text-white/50 text-xs">
+              Si no seleccionás canchas, la promoción aplicará a todas.
+            </Text>
+          ) : null}
+        </View>
+        <Pressable
+          onPress={handleSavePromotion}
+          className="rounded-full bg-mc-primary px-4 py-3 items-center"
+        >
           <Text className="text-white font-semibold">Publicar promoción</Text>
         </Pressable>
       </ActionPanel>
@@ -1670,38 +1909,48 @@ export default function ServiciosScreen() {
         }}
       >
         <TextInput
-          value={couponForm.name}
-          onChangeText={(value) => setCouponForm((prev) => ({ ...prev, name: value }))}
-          placeholder="Código del cupón"
+          value={couponForm.nombre}
+          onChangeText={(value) => setCouponForm((prev) => ({ ...prev, nombre: value }))}
+          placeholder="Nombre o código del cupón"
           placeholderTextColor="#94A3B8"
           className={FIELD_STYLES}
         />
         <TextInput
-          value={couponForm.description}
-          onChangeText={(value) => setCouponForm((prev) => ({ ...prev, description: value }))}
-          placeholder="Detalle del beneficio"
+          value={couponForm.usos_permitidos}
+          onChangeText={(value) => setCouponForm((prev) => ({ ...prev, usos_permitidos: value }))}
+          placeholder="Usos permitidos"
           placeholderTextColor="#94A3B8"
-          className={`${FIELD_STYLES} min-h-[96px]`}
-          multiline
+          keyboardType="numeric"
+          className={FIELD_STYLES}
         />
-        <View className="flex-row gap-3">
-          <TextInput
-            value={couponForm.discount}
-            onChangeText={(value) => setCouponForm((prev) => ({ ...prev, discount: value }))}
-            placeholder="Descuento"
-            placeholderTextColor="#94A3B8"
-            keyboardType="numeric"
-            className={`${FIELD_STYLES} flex-1`}
-          />
-          <TextInput
-            value={couponForm.validity}
-            onChangeText={(value) => setCouponForm((prev) => ({ ...prev, validity: value }))}
-            placeholder="Vigencia"
-            placeholderTextColor="#94A3B8"
-            className={`${FIELD_STYLES} flex-1`}
-          />
-        </View>
-        <Pressable className="rounded-full bg-mc-primary px-4 py-3 items-center">
+        <Pressable
+          onPress={() =>
+            handleOpenPicker({
+              context: 'coupon',
+              field: 'tipo_descuento',
+              options: DISCOUNT_TYPE_OPTIONS,
+              title: 'Tipo de descuento',
+            })
+          }
+          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+        >
+          <Text className="text-white text-sm">
+            {DISCOUNT_TYPE_OPTIONS.find((option) => option.value === couponForm.tipo_descuento)
+              ?.label || 'Seleccioná tipo de descuento'}
+          </Text>
+        </Pressable>
+        <TextInput
+          value={couponForm.valor}
+          onChangeText={(value) => setCouponForm((prev) => ({ ...prev, valor: value }))}
+          placeholder="Valor del descuento"
+          placeholderTextColor="#94A3B8"
+          keyboardType="numeric"
+          className={FIELD_STYLES}
+        />
+        <Pressable
+          onPress={handleSaveCoupon}
+          className="rounded-full bg-mc-primary px-4 py-3 items-center"
+        >
           <Text className="text-white font-semibold">Publicar cupón</Text>
         </Pressable>
       </ActionPanel>

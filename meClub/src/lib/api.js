@@ -144,6 +144,18 @@ function extractSchedule(payload) {
   return Array.isArray(schedule) ? schedule : [];
 }
 
+function extractPromotions(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const promotions = payload.promociones ?? payload.data ?? payload;
+  return Array.isArray(promotions) ? promotions : [];
+}
+
+function extractCoupons(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const coupons = payload.cupones ?? payload.data ?? payload;
+  return Array.isArray(coupons) ? coupons : [];
+}
+
 const toNumberOrNull = (value) => {
   if (value === null || value === undefined) return null;
   if (typeof value === 'string' && value.trim() === '') return null;
@@ -1070,6 +1082,66 @@ function extractCourtSummary(payload) {
 export async function getClubCourts() {
   const response = await api.get('/clubes/mis-canchas');
   return extractCourts(response);
+}
+
+export async function listPromotions() {
+  const response = await api.get('/promociones');
+  return extractPromotions(response);
+}
+
+export async function createPromotion(payload) {
+  const response = await api.post('/promociones', payload);
+  return response?.promocion ?? response;
+}
+
+export async function updatePromotion(promotionId, payload) {
+  if (!promotionId) {
+    throw new Error('Identificador de promoción inválido');
+  }
+  const response = await api.put(`/promociones/${encodeURIComponent(promotionId)}`, payload);
+  return response?.promocion ?? response;
+}
+
+export async function deletePromotion(promotionId) {
+  if (!promotionId) {
+    throw new Error('Identificador de promoción inválido');
+  }
+  const response = await api.del(`/promociones/${encodeURIComponent(promotionId)}`);
+  return response;
+}
+
+export async function listCoupons() {
+  const response = await api.get('/cupones');
+  return extractCoupons(response);
+}
+
+export async function createCoupon(payload) {
+  const response = await api.post('/cupones', payload);
+  return response?.cupon ?? response;
+}
+
+export async function updateCoupon(couponId, payload) {
+  if (!couponId) {
+    throw new Error('Identificador de cupón inválido');
+  }
+  const response = await api.put(`/cupones/${encodeURIComponent(couponId)}`, payload);
+  return response?.cupon ?? response;
+}
+
+export async function deleteCoupon(couponId) {
+  if (!couponId) {
+    throw new Error('Identificador de cupón inválido');
+  }
+  const response = await api.del(`/cupones/${encodeURIComponent(couponId)}`);
+  return response;
+}
+
+export async function registerCouponUse(couponId, payload) {
+  if (!couponId) {
+    throw new Error('Identificador de cupón inválido');
+  }
+  const response = await api.post(`/cupones/${encodeURIComponent(couponId)}/usos`, payload);
+  return response?.cupon ?? response;
 }
 
 export async function createClubCourt(payload) {

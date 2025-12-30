@@ -20,6 +20,8 @@ const reservasRoutes = require('./routes/reservas.routes');
 const provinciasRoutes = require('./routes/provincias.routes');
 const catalogoRoutes = require('./routes/catalogo.routes');
 const serviciosRoutes = require('./routes/servicios.routes');
+const promocionesRoutes = require('./routes/promociones.routes');
+const cuponesRoutes = require('./routes/cupones.routes');
 const messagesRoutes = require('./routes/messages.routes');
 const asociadosRoutes = require('./routes/asociados.routes');
 app.use('/api/auth', authRoutes);
@@ -31,6 +33,8 @@ app.use('/api/reservas', reservasRoutes);
 app.use('/api/provincias', provinciasRoutes);
 app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/servicios', serviciosRoutes);
+app.use('/api/promociones', promocionesRoutes);
+app.use('/api/cupones', cuponesRoutes);
 app.use('/api/mensajes', messagesRoutes);
 app.use('/api/asociados', asociadosRoutes);
 

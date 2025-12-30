@@ -122,6 +122,35 @@ function formatCurrency(value) {
   }
 }
 
+const parsePromotionDate = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim();
+  if (!normalized) return null;
+  const candidate = normalized.includes('T') ? normalized : normalized.replace(' ', 'T');
+  const parsed = new Date(candidate);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const buildReservationDateTime = (date, time) => {
+  if (!date || !time) return null;
+  const normalizedTime = String(time).length === 5 ? `${time}:00` : time;
+  const parsed = new Date(`${date}T${normalizedTime}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const calculateDiscountAmount = ({ baseAmount, tipo_descuento, valor }) => {
+  const base = Number(baseAmount) || 0;
+  const discountValue = Number(valor);
+  if (!base || !Number.isFinite(discountValue) || discountValue <= 0) return 0;
+  if (tipo_descuento === 'porcentaje') {
+    return Math.min(base, (base * discountValue) / 100);
+  }
+  if (tipo_descuento === 'nominal') {
+    return Math.min(base, discountValue);
+  }
+  return 0;
+};
+
 export default function ReservationFormModal({
   visible,
   title = 'Crear reserva',
@@ -133,6 +162,7 @@ export default function ReservationFormModal({
   availableDates = [],
   availableStartTimes = [],
   cameraPrice = 0,
+  promotions = [],
   fetchPlayers = searchPlayers,
   nightStart = null,
   nightEnd = null,
@@ -223,11 +253,64 @@ export default function ReservationFormModal({
     selectedCourt,
   ]);
 
+  const appliedPromotion = useMemo(() => {
+    if (!selectedCourt || !form.fecha || !form.hora_inicio) {
+      return null;
+    }
+    const start = buildReservationDateTime(form.fecha, form.hora_inicio);
+    if (!start) return null;
+    const duration = Number(form.duracion_horas) || 1;
+    const end = new Date(start.getTime() + duration * 60 * 60 * 1000);
+
+    const courtId = selectedCourt?.cancha_id ?? selectedCourt?.id;
+    let bestPromotion = null;
+
+    ensureArray(promotions).forEach((promotion) => {
+      if (promotion?.activo === false) return;
+      const promoStart = parsePromotionDate(promotion?.fecha_inicio ?? promotion?.fechaInicio);
+      const promoEnd = parsePromotionDate(promotion?.fecha_fin ?? promotion?.fechaFin);
+      if (!promoStart || !promoEnd) return;
+      if (start < promoStart || end > promoEnd) return;
+
+      const canchas = Array.isArray(promotion?.canchas_aplicadas)
+        ? promotion.canchas_aplicadas
+        : Array.isArray(promotion?.canchasAplicadas)
+          ? promotion.canchasAplicadas
+          : [];
+      if (canchas.length > 0 && !canchas.some((id) => String(id) === String(courtId))) {
+        return;
+      }
+
+      const discountAmount = calculateDiscountAmount({
+        baseAmount,
+        tipo_descuento: promotion?.tipo_descuento ?? promotion?.tipoDescuento,
+        valor: promotion?.valor,
+      });
+
+      if (discountAmount <= 0) return;
+      if (!bestPromotion || discountAmount > bestPromotion.discountAmount) {
+        bestPromotion = { ...promotion, discountAmount };
+      }
+    });
+
+    return bestPromotion;
+  }, [
+    baseAmount,
+    form.duracion_horas,
+    form.fecha,
+    form.hora_inicio,
+    promotions,
+    selectedCourt,
+  ]);
+
+  const promotionDiscount = appliedPromotion?.discountAmount ?? 0;
+
   const totalAmount = useMemo(() => {
     const base = Number(baseAmount) || 0;
     const extra = form.con_grabacion ? Number(cameraFee) || 0 : 0;
-    return base + extra;
-  }, [baseAmount, cameraFee, form.con_grabacion]);
+    const discount = Number(promotionDiscount) || 0;
+    return Math.max(0, base - discount) + extra;
+  }, [baseAmount, cameraFee, form.con_grabacion, promotionDiscount]);
 
   useEffect(() => {
     if (form.tipo_reserva !== 'relacionada') {
@@ -611,6 +694,22 @@ export default function ReservationFormModal({
                   <Text className="text-white/70 text-sm">Monto base</Text>
                   <Text className="text-white text-sm font-medium">{formatCurrency(baseAmount)}</Text>
                 </View>
+                {appliedPromotion ? (
+                  <View className="mb-2">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-white/70 text-sm">Promoción aplicada</Text>
+                      <Text className="text-white text-sm font-medium">
+                        {appliedPromotion.nombre ?? appliedPromotion.name ?? 'Promoción'}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center justify-between mt-1">
+                      <Text className="text-emerald-300 text-sm">Descuento</Text>
+                      <Text className="text-emerald-300 text-sm font-medium">
+                        -{formatCurrency(promotionDiscount)}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
                 <View className="flex-row items-center justify-between mb-2">
                   <Text className="text-white/70 text-sm">Grabación</Text>
                   <Text className="text-white text-sm font-medium">
