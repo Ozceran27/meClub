@@ -44,9 +44,23 @@ const normalizeModoAcceso = (value) => {
   return value;
 };
 
-const parseBoolean = (value) => {
+const parseBoolean = (value, fieldName = 'valor') => {
   if (value === undefined) return undefined;
-  return Boolean(value);
+  if (value === null || value === '') return false;
+
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0' || normalized === '') return false;
+  }
+
+  throwValidationError(`${fieldName} debe ser booleano`);
 };
 
 const parseDiasDisponibles = (value) => {
@@ -140,6 +154,12 @@ const createServicio = async (req, res) => {
       precioValor,
     });
 
+    const noFumar = parseBoolean(req.body?.no_fumar, 'no_fumar');
+    const mas18 = parseBoolean(req.body?.mas_18, 'mas_18');
+    const comida = parseBoolean(req.body?.comida, 'comida');
+    const ecoFriendly = parseBoolean(req.body?.eco_friendly, 'eco_friendly');
+    const activo = parseBoolean(req.body?.activo, 'activo');
+
     const payload = {
       nombre,
       modo_acceso: modoAcceso,
@@ -150,11 +170,11 @@ const createServicio = async (req, res) => {
       ambiente,
       precio_tipo: precioTipoFinal,
       precio_valor: precioValorFinal,
-      no_fumar: Boolean(req.body?.no_fumar),
-      mas_18: Boolean(req.body?.mas_18),
-      comida: Boolean(req.body?.comida),
-      eco_friendly: Boolean(req.body?.eco_friendly),
-      activo: req.body?.activo !== undefined ? Boolean(req.body?.activo) : true,
+      no_fumar: noFumar ?? false,
+      mas_18: mas18 ?? false,
+      comida: comida ?? false,
+      eco_friendly: ecoFriendly ?? false,
+      activo: activo ?? true,
     };
 
     const servicio = await ClubServiciosModel.crear(req.club.club_id, payload);
@@ -226,11 +246,13 @@ const updateServicio = async (req, res) => {
       updates.precio_valor = parsePriceValue(req.body.precio_valor);
     }
 
-    if (req.body?.no_fumar !== undefined) updates.no_fumar = parseBoolean(req.body.no_fumar);
-    if (req.body?.mas_18 !== undefined) updates.mas_18 = parseBoolean(req.body.mas_18);
-    if (req.body?.comida !== undefined) updates.comida = parseBoolean(req.body.comida);
-    if (req.body?.eco_friendly !== undefined) updates.eco_friendly = parseBoolean(req.body.eco_friendly);
-    if (req.body?.activo !== undefined) updates.activo = parseBoolean(req.body.activo);
+    if (req.body?.no_fumar !== undefined) updates.no_fumar = parseBoolean(req.body.no_fumar, 'no_fumar');
+    if (req.body?.mas_18 !== undefined) updates.mas_18 = parseBoolean(req.body.mas_18, 'mas_18');
+    if (req.body?.comida !== undefined) updates.comida = parseBoolean(req.body.comida, 'comida');
+    if (req.body?.eco_friendly !== undefined) {
+      updates.eco_friendly = parseBoolean(req.body.eco_friendly, 'eco_friendly');
+    }
+    if (req.body?.activo !== undefined) updates.activo = parseBoolean(req.body.activo, 'activo');
 
     const modoAccesoFinal = updates.modo_acceso ?? existente.modo_acceso;
     const precioTipoFinal = updates.precio_tipo ?? existente.precio_tipo;
