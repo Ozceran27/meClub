@@ -13,8 +13,7 @@ const ReservasModel = require('../models/reservas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ProvinciasModel = require('../models/provincias.model');
 const LocalidadesModel = require('../models/localidades.model');
-const ServiciosModel = require('../models/servicios.model');
-const ClubesServiciosModel = require('../models/clubesServicios.model');
+const ClubServiciosModel = require('../models/clubServicios.model');
 const ClubesImpuestosModel = require('../models/clubesImpuestos.model');
 const GastosModel = require('../models/gastos.model');
 const { normalizeHour } = require('../utils/datetime');
@@ -524,19 +523,15 @@ router.patch('/mis-datos', async (req, res) => {
 // ---------------- Mis servicios
 router.get('/mis-servicios', async (req, res) => {
   try {
-    const [disponibles, seleccionados] = await Promise.all([
-      ServiciosModel.listarDisponibles(),
-      ClubesServiciosModel.listarSeleccionados(req.club.club_id),
-    ]);
+    const servicios = await ClubServiciosModel.listarPorClub(req.club.club_id);
 
-    const seleccionadosSet = new Set(seleccionados.map((item) => item.servicio_id));
-
-    const servicios = disponibles.map((servicio) => ({
-      ...servicio,
-      seleccionado: seleccionadosSet.has(servicio.servicio_id),
-    }));
-
-    res.json({ club_id: req.club.club_id, servicios });
+    res.json({
+      club_id: req.club.club_id,
+      servicios: servicios.map((servicio) => ({
+        ...servicio,
+        seleccionado: Boolean(servicio.activo),
+      })),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
@@ -663,7 +658,7 @@ router.patch('/mis-servicios', async (req, res) => {
       return res.status(400).json({ mensaje: 'servicio_ids contiene duplicados' });
     }
 
-    const disponibles = await ServiciosModel.listarDisponibles();
+    const disponibles = await ClubServiciosModel.listarPorClub(req.club.club_id);
     const disponiblesSet = new Set(disponibles.map((s) => s.servicio_id));
 
     for (const servicioId of normalizados) {
@@ -672,12 +667,15 @@ router.patch('/mis-servicios', async (req, res) => {
       }
     }
 
-    const seleccionados = await ClubesServiciosModel.reemplazarSeleccion(
-      req.club.club_id,
-      normalizados
-    );
+    const servicios = await ClubServiciosModel.reemplazarSeleccion(req.club.club_id, normalizados);
 
-    res.json({ mensaje: 'Servicios actualizados', servicios: seleccionados });
+    res.json({
+      mensaje: 'Servicios actualizados',
+      servicios: servicios.map((servicio) => ({
+        ...servicio,
+        seleccionado: Boolean(servicio.activo),
+      })),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ mensaje: 'Error interno del servidor' });

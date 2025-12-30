@@ -23,12 +23,8 @@ jest.mock('../models/localidades.model', () => ({
   perteneceAProvincia: jest.fn(),
 }));
 
-jest.mock('../models/servicios.model', () => ({
-  listarDisponibles: jest.fn(),
-}));
-
-jest.mock('../models/clubesServicios.model', () => ({
-  listarSeleccionados: jest.fn(),
+jest.mock('../models/clubServicios.model', () => ({
+  listarPorClub: jest.fn(),
   reemplazarSeleccion: jest.fn(),
 }));
 
@@ -37,8 +33,7 @@ jest.mock('../models/clubesImpuestos.model', () => ({
   reemplazarSeleccion: jest.fn(),
 }));
 
-const ServiciosModel = require('../models/servicios.model');
-const ClubesServiciosModel = require('../models/clubesServicios.model');
+const ClubServiciosModel = require('../models/clubServicios.model');
 const clubesRoutes = require('../routes/clubes.routes');
 
 const buildApp = () => {
@@ -50,25 +45,23 @@ const buildApp = () => {
 
 describe('Rutas /mis-servicios', () => {
   beforeEach(() => {
-    ServiciosModel.listarDisponibles.mockReset();
-    ClubesServiciosModel.listarSeleccionados.mockReset();
-    ClubesServiciosModel.reemplazarSeleccion.mockReset();
+    ClubServiciosModel.listarPorClub.mockReset();
+    ClubServiciosModel.reemplazarSeleccion.mockReset();
   });
 
   it('lista servicios con el flag seleccionado', async () => {
     const app = buildApp();
-    ServiciosModel.listarDisponibles.mockResolvedValue([
-      { servicio_id: 1, nombre: 'Bar' },
-      { servicio_id: 2, nombre: 'Pileta' },
+    ClubServiciosModel.listarPorClub.mockResolvedValue([
+      { servicio_id: 1, nombre: 'Bar', activo: false },
+      { servicio_id: 2, nombre: 'Pileta', activo: true },
     ]);
-    ClubesServiciosModel.listarSeleccionados.mockResolvedValue([{ servicio_id: 2 }]);
 
     const res = await request(app).get('/mis-servicios');
 
     expect(res.status).toBe(200);
     expect(res.body.servicios).toEqual([
-      { servicio_id: 1, nombre: 'Bar', seleccionado: false },
-      { servicio_id: 2, nombre: 'Pileta', seleccionado: true },
+      { servicio_id: 1, nombre: 'Bar', activo: false, seleccionado: false },
+      { servicio_id: 2, nombre: 'Pileta', activo: true, seleccionado: true },
     ]);
   });
 
@@ -78,7 +71,7 @@ describe('Rutas /mis-servicios', () => {
     const res = await request(app).patch('/mis-servicios').send({});
 
     expect(res.status).toBe(400);
-    expect(ClubesServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
+    expect(ClubServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
   });
 
   it('rechaza ids no numéricos', async () => {
@@ -87,7 +80,7 @@ describe('Rutas /mis-servicios', () => {
     const res = await request(app).patch('/mis-servicios').send({ servicio_ids: ['abc'] });
 
     expect(res.status).toBe(400);
-    expect(ClubesServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
+    expect(ClubServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
   });
 
   it('rechaza ids duplicados', async () => {
@@ -96,28 +89,30 @@ describe('Rutas /mis-servicios', () => {
     const res = await request(app).patch('/mis-servicios').send({ servicio_ids: [1, 1] });
 
     expect(res.status).toBe(400);
-    expect(ClubesServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
+    expect(ClubServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
   });
 
   it('valida que los servicios existan', async () => {
     const app = buildApp();
-    ServiciosModel.listarDisponibles.mockResolvedValue([{ servicio_id: 1 }]);
+    ClubServiciosModel.listarPorClub.mockResolvedValue([{ servicio_id: 1 }]);
 
     const res = await request(app).patch('/mis-servicios').send({ servicio_ids: [2] });
 
     expect(res.status).toBe(400);
-    expect(ClubesServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
+    expect(ClubServiciosModel.reemplazarSeleccion).not.toHaveBeenCalled();
   });
 
   it('actualiza servicios correctamente', async () => {
     const app = buildApp();
-    ServiciosModel.listarDisponibles.mockResolvedValue([{ servicio_id: 1 }, { servicio_id: 2 }]);
-    ClubesServiciosModel.reemplazarSeleccion.mockResolvedValue([{ servicio_id: 1 }]);
+    ClubServiciosModel.listarPorClub.mockResolvedValue([{ servicio_id: 1 }, { servicio_id: 2 }]);
+    ClubServiciosModel.reemplazarSeleccion.mockResolvedValue([{ servicio_id: 1, activo: true }]);
 
     const res = await request(app).patch('/mis-servicios').send({ servicio_ids: ['1'] });
 
     expect(res.status).toBe(200);
-    expect(ClubesServiciosModel.reemplazarSeleccion).toHaveBeenCalledWith(42, [1]);
-    expect(res.body.servicios).toEqual([{ servicio_id: 1 }]);
+    expect(ClubServiciosModel.reemplazarSeleccion).toHaveBeenCalledWith(42, [1]);
+    expect(res.body.servicios).toEqual([
+      { servicio_id: 1, activo: true, seleccionado: true },
+    ]);
   });
 });
