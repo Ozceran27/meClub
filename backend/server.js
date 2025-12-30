@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const logger = require('./utils/logger');
+const { initAsociadosTablesCheck } = require('./utils/asociadosTablesGuard');
 const { logosDir, logosPublicPath } = require('./utils/logoStorage');
 const app = express();
 const PORT = process.env.PORT || 3006;
@@ -42,6 +43,8 @@ app.use('/api/asociados', asociadosRoutes);
 app.get('/', (req, res) => {
   res.send('API de meClub funcionando correctamente.');
 });
+
+initAsociadosTablesCheck();
 
 // PURGA DE TOKENS EXPIRADOS -----------------------------------------------------------------------
 const PURGE_INTERVAL_MS = 60 * 60 * 1000; // 1 hora

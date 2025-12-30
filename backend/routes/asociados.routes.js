@@ -5,8 +5,10 @@ const verifyToken = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/roles.middleware');
 const loadClub = require('../middleware/club.middleware');
 const asociadosController = require('../controllers/asociados.controller');
+const { asociadosTablesGuard } = require('../utils/asociadosTablesGuard');
 
 router.use(verifyToken, requireRole('club'), loadClub);
+router.use(asociadosTablesGuard);
 
 router.get('/tipos', asociadosController.listTipos);
 router.post('/tipos', asociadosController.createTipo);
