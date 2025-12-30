@@ -807,6 +807,26 @@ export async function listAvailableServices() {
   return extractServices(response);
 }
 
+export async function listClubServiceEntries() {
+  const response = await api.get('/servicios');
+  return extractServices(response);
+}
+
+export async function createClubServiceEntry(payload) {
+  const response = await api.post('/servicios', payload);
+  return response?.servicio ?? response?.data ?? response;
+}
+
+export async function updateClubServiceEntry(servicioId, payload) {
+  const response = await api.put(`/servicios/${servicioId}`, payload);
+  return response?.servicio ?? response?.data ?? response;
+}
+
+export async function deleteClubServiceEntry(servicioId) {
+  const response = await api.del(`/servicios/${servicioId}`);
+  return response?.mensaje ?? response;
+}
+
 export async function getClubTaxes() {
   const response = await api.get('/clubes/mis-impuestos');
   return extractTaxes(response);
@@ -1479,4 +1499,3 @@ export async function sendBroadcastMessage({ type = 'info', title, content, send
 
   return api.post('/mensajes/broadcast', payload);
 }
-
