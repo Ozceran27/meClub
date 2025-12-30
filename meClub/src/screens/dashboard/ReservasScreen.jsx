@@ -18,6 +18,7 @@ import {
   deleteClubReservation,
   getReservationsPanel,
   updateReservationStatus,
+  listPromotions,
 } from '../../lib/api';
 import {
   PAYMENT_STATUS_DETAILS,
@@ -918,6 +919,7 @@ export default function ReservasScreen({ summary, go }) {
   const [statusMenuReservation, setStatusMenuReservation] = useState(null);
   const [updatingReservationStatus, setUpdatingReservationStatus] = useState(false);
   const [statusUpdateError, setStatusUpdateError] = useState('');
+  const [promotions, setPromotions] = useState([]);
 
   const allReservations = useMemo(() => {
     if (!panelData?.agenda) return [];
@@ -956,6 +958,22 @@ export default function ReservasScreen({ summary, go }) {
       isMounted = false;
     };
   }, [selectedDate, refreshToken]);
+
+  useEffect(() => {
+    let isMounted = true;
+    listPromotions()
+      .then((result) => {
+        if (!isMounted) return;
+        setPromotions(Array.isArray(result) ? result : []);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setPromotions([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     setDateInput(selectedDate);
@@ -1600,6 +1618,7 @@ export default function ReservasScreen({ summary, go }) {
         availableDates={availableDates}
         availableStartTimes={availableStartTimes}
         cameraPrice={panelData?.club?.precioGrabacion}
+        promotions={promotions}
         nightStart={nightStartValue}
         nightEnd={nightEndValue}
         submissionError={creationError}
@@ -1617,4 +1636,3 @@ export default function ReservasScreen({ summary, go }) {
     </>
   );
 }
-
