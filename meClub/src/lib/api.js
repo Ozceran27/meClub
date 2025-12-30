@@ -886,8 +886,21 @@ export async function listMembers() {
   return extractMembers(response);
 }
 
+export async function searchMembers(query, { limit } = {}) {
+  const params = new URLSearchParams();
+  params.append('query', query);
+  if (limit) params.append('limit', String(limit));
+  const response = await api.get(`/asociados/buscar?${params.toString()}`);
+  return extractMembers(response);
+}
+
 export async function createMember(payload) {
   const response = await api.post('/asociados', payload);
+  return response?.asociado ?? response?.data ?? response;
+}
+
+export async function registerMemberPayment(asociadoId, payload) {
+  const response = await api.post(`/asociados/${asociadoId}/pagos`, payload);
   return response?.asociado ?? response?.data ?? response;
 }
 

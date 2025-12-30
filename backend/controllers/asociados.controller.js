@@ -59,19 +59,6 @@ const parseServicioIds = (value) => {
   return Array.from(new Set(ids));
 };
 
-const parsePagosRealizados = (value) => {
-  if (value === undefined || value === null) return [];
-  if (!Array.isArray(value)) {
-    throwValidationError('pagos_realizados debe ser un arreglo');
-  }
-  return value
-    .map((item) => {
-      const date = new Date(item);
-      return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
-    })
-    .filter(Boolean);
-};
-
 const parseDate = (value) => {
   if (!value) return null;
   const date = new Date(value);
@@ -81,16 +68,31 @@ const parseDate = (value) => {
 
 const daysInMonth = (year, monthIndex) => new Date(year, monthIndex + 1, 0).getDate();
 
+const calculateMonthsElapsed = (fechaInscripcion) => {
+  const startDate = parseDate(fechaInscripcion);
+  if (!startDate) return 0;
+  const today = new Date();
+  let months =
+    (today.getFullYear() - startDate.getFullYear()) * 12 +
+    (today.getMonth() - startDate.getMonth());
+  if (today.getDate() >= startDate.getDate()) {
+    months += 1;
+  }
+  return Math.max(months, 0);
+};
+
+const calculateDebt = (asociado) => {
+  const cuota = Number(asociado.cuota_mensual) || 0;
+  const pagos = Number(asociado.pagos_realizados) || 0;
+  const meses_transcurridos = calculateMonthsElapsed(asociado.fecha_inscripcion);
+  const deuda = Math.round((cuota * meses_transcurridos - pagos) * 100) / 100;
+  return { deuda, meses_transcurridos };
+};
+
 const computeEstadoPago = (asociado) => {
   const fechaPago = Number.isInteger(asociado.fecha_pago) ? asociado.fecha_pago : 1;
   const diasGracia = Number.isInteger(asociado.dias_gracia) ? asociado.dias_gracia : 0;
-  const pagos = Array.isArray(asociado.pagos_realizados) ? asociado.pagos_realizados : [];
-
-  const parsedPagos = pagos
-    .map((item) => parseDate(item))
-    .filter(Boolean)
-    .sort((a, b) => b.getTime() - a.getTime());
-  const lastPayment = parsedPagos[0] || null;
+  const { deuda } = calculateDebt(asociado);
 
   const today = new Date();
   const year = today.getFullYear();
@@ -99,9 +101,7 @@ const computeEstadoPago = (asociado) => {
   const dueDate = new Date(year, monthIndex, dueDay);
   const graceDate = new Date(dueDate);
   graceDate.setDate(graceDate.getDate() + diasGracia);
-  const startOfMonth = new Date(year, monthIndex, 1);
-
-  if (lastPayment && lastPayment >= startOfMonth) {
+  if (deuda <= 0) {
     return 'pagado';
   }
 
@@ -250,6 +250,7 @@ const listAsociados = async (req, res) => {
     const asociados = await AsociadosModel.listarPorClub(req.club.club_id);
     const payload = asociados.map((asociado) => ({
       ...asociado,
+      ...calculateDebt(asociado),
       estado_pago: computeEstadoPago(asociado),
     }));
     res.json({ asociados: payload });
@@ -298,7 +299,10 @@ const createAsociado = async (req, res) => {
     const correo =
       parseString(req.body?.correo, 'correo', { max: 200 }) || usuario?.email || null;
 
-    const pagos_realizados = parsePagosRealizados(req.body?.pagos_realizados);
+    const pagos_realizados =
+      req.body?.pagos_realizados !== undefined
+        ? parseNumberValue(req.body?.pagos_realizados, 'pagos_realizados', { min: 0 }) ?? 0
+        : 0;
     const fecha_inscripcion =
       parseString(req.body?.fecha_inscripcion, 'fecha_inscripcion', { max: 20 }) ||
       new Date().toISOString().slice(0, 10);
@@ -312,7 +316,7 @@ const createAsociado = async (req, res) => {
       telefono,
       direccion,
       correo,
-      pagos_realizados: JSON.stringify(pagos_realizados),
+      pagos_realizados,
       fecha_inscripcion,
     });
 
@@ -320,6 +324,7 @@ const createAsociado = async (req, res) => {
       mensaje: 'Asociado creado',
       asociado: {
         ...asociado,
+        ...calculateDebt(asociado),
         estado_pago: computeEstadoPago(asociado),
       },
     });
@@ -351,6 +356,82 @@ const deleteAsociado = async (req, res) => {
   }
 };
 
+const searchAsociados = async (req, res) => {
+  try {
+    const queryValue = req.query?.query ?? req.query?.q;
+    const query = parseString(queryValue, 'query', { required: true, max: 120 });
+    const limit = parseIntValue(req.query?.limit, 'limit', { min: 1, max: 50 }) || 20;
+    const asociados = await AsociadosModel.buscarPorQuery(req.club.club_id, query, limit);
+    const payload = asociados.map((asociado) => ({
+      ...asociado,
+      ...calculateDebt(asociado),
+      estado_pago: computeEstadoPago(asociado),
+    }));
+    res.json({ asociados: payload });
+  } catch (error) {
+    if (error.statusCode === 400) {
+      return res.status(400).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const registerPago = async (req, res) => {
+  try {
+    const asociadoId = Number.parseInt(req.params.asociado_id, 10);
+    if (!Number.isInteger(asociadoId)) {
+      return res.status(400).json({ mensaje: 'asociado_id inválido' });
+    }
+
+    const monto = parseNumberValue(req.body?.monto, 'monto', { required: true, min: 0.01 });
+    const fecha_pago =
+      parseString(req.body?.fecha_pago, 'fecha_pago', { max: 20 }) ||
+      new Date().toISOString().slice(0, 10);
+
+    const asociado = await AsociadosModel.obtenerPorId(asociadoId, req.club.club_id);
+    if (!asociado) {
+      return res.status(404).json({ mensaje: 'Asociado no encontrado' });
+    }
+
+    const pagosActuales = Number(asociado.pagos_realizados) || 0;
+    const pagos_realizados = Math.round((pagosActuales + monto) * 100) / 100;
+
+    const actualizado = await AsociadosModel.actualizarPagosRealizados(
+      asociadoId,
+      req.club.club_id,
+      pagos_realizados
+    );
+
+    try {
+      const PagosAsociadosModel = require('../models/pagosAsociados.model');
+      await PagosAsociadosModel.registrarPago({
+        asociado_id: asociadoId,
+        club_id: req.club.club_id,
+        monto,
+        fecha_pago,
+      });
+    } catch (error) {
+      console.warn('No se pudo registrar el pago en la tabla de pagos:', error.message);
+    }
+
+    res.json({
+      mensaje: 'Pago registrado',
+      asociado: {
+        ...actualizado,
+        ...calculateDebt(actualizado),
+        estado_pago: computeEstadoPago(actualizado),
+      },
+    });
+  } catch (error) {
+    if (error.statusCode === 400) {
+      return res.status(400).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
 module.exports = {
   listTipos,
   createTipo,
@@ -359,4 +440,6 @@ module.exports = {
   listAsociados,
   createAsociado,
   deleteAsociado,
+  searchAsociados,
+  registerPago,
 };

@@ -13,8 +13,10 @@ router.post('/tipos', asociadosController.createTipo);
 router.put('/tipos/:tipo_asociado_id', asociadosController.updateTipo);
 router.delete('/tipos/:tipo_asociado_id', asociadosController.deleteTipo);
 
+router.get('/buscar', asociadosController.searchAsociados);
 router.get('/', asociadosController.listAsociados);
 router.post('/', asociadosController.createAsociado);
+router.post('/:asociado_id/pagos', asociadosController.registerPago);
 router.delete('/:asociado_id', asociadosController.deleteAsociado);
 
 module.exports = router;

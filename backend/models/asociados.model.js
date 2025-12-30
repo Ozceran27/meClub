@@ -1,17 +1,34 @@
 const db = require('../config/db');
 
 const parsePagos = (value) => {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
+  if (value === null || value === undefined || value === '') return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (Array.isArray(value)) {
+    return value.reduce((acc, item) => {
+      if (typeof item === 'number' && Number.isFinite(item)) return acc + item;
+      if (item && typeof item === 'object') {
+        const monto = Number(item.monto);
+        return Number.isFinite(monto) ? acc + monto : acc;
+      }
+      return acc;
+    }, 0);
+  }
   if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return 0;
     try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
+      const parsed = JSON.parse(trimmed);
+      return parsePagos(parsed);
     } catch (err) {
-      return value.split(',').map((item) => item.trim()).filter(Boolean);
+      const parsed = Number(trimmed);
+      return Number.isFinite(parsed) ? parsed : 0;
     }
   }
-  return [];
+  if (typeof value === 'object') {
+    const parsed = Number(value.monto);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 };
 
 const normalizeRow = (row) => ({
@@ -53,6 +70,24 @@ const AsociadosModel = {
     return row ? normalizeRow(row) : null;
   },
 
+  buscarPorQuery: async (clubId, query, limit = 20) => {
+    const term = `%${query}%`;
+    const [rows] = await db.query(
+      `SELECT a.asociado_id, a.usuario_id, a.club_id, a.tipo_asociado_id, a.nombre, a.apellido,
+              a.dni, a.telefono, a.direccion, a.correo, a.pagos_realizados, a.fecha_inscripcion,
+              t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago, t.dias_gracia, t.color
+       FROM asociados a
+       JOIN tipos_asociado t ON t.tipo_asociado_id = a.tipo_asociado_id
+       WHERE a.club_id = ?
+         AND (a.nombre LIKE ? OR a.apellido LIKE ? OR a.telefono LIKE ?)
+       ORDER BY a.nombre ASC, a.apellido ASC
+       LIMIT ?`,
+      [clubId, term, term, term, limit]
+    );
+
+    return rows.map((row) => normalizeRow(row));
+  },
+
   crear: async (clubId, payload) => {
     const [result] = await db.query(
       `INSERT INTO asociados
@@ -83,6 +118,14 @@ const AsociadosModel = {
       [asociadoId, clubId]
     );
     return result.affectedRows > 0;
+  },
+
+  actualizarPagosRealizados: async (asociadoId, clubId, pagos_realizados) => {
+    await db.query(
+      'UPDATE asociados SET pagos_realizados = ? WHERE asociado_id = ? AND club_id = ?',
+      [pagos_realizados, asociadoId, clubId]
+    );
+    return AsociadosModel.obtenerPorId(asociadoId, clubId);
   },
 };
 
