@@ -342,7 +342,7 @@ function ServiceCard({
               service.activo ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/10 text-white/50'
             }`}
           >
-            <Text className="text-xs font-semibold">{service.activo ? 'Activo' : 'Pausado'}</Text>
+            <Text className="text-xs text-white font-semibold">{service.activo ? 'Activo' : 'Pausado'}</Text>
           </View>
         </View>
       </View>
@@ -1227,7 +1227,7 @@ export default function ServiciosScreen() {
                 className={ACTION_BUTTON_STYLES}
               >
                 <Ionicons name="people-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Crear tipo de asociado</Text>
+                <Text className="text-white text-sm font-semibold">Crear plan de asociado</Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowMemberPanel(true)}
@@ -1278,14 +1278,14 @@ export default function ServiciosScreen() {
               </Text>
               <View className="flex-row flex-wrap gap-4">
                 <View className="flex-1 min-w-[140px]">
-                  <Text className="text-white/60 text-xs">Servicios activos</Text>
-                  <Text className="text-white text-xl font-semibold">
+                  <Text className="text-white text-xs">Servicios activos</Text>
+                  <Text className="text-emerald-300 text-xl font-semibold">
                     {services.filter((service) => service.activo).length}
                   </Text>
                 </View>
                 <View className="flex-1 min-w-[140px]">
-                  <Text className="text-white/60 text-xs">Servicios pausados</Text>
-                  <Text className="text-white text-xl font-semibold">
+                  <Text className="text-white text-xs">Servicios pausados</Text>
+                  <Text className="text-amber-300 text-xl font-semibold">
                     {services.filter((service) => !service.activo).length}
                   </Text>
                 </View>
@@ -1471,7 +1471,7 @@ export default function ServiciosScreen() {
 
       <ActionPanel
         visible={showTypePanel}
-        title={editingTypeId ? 'Editar tipo de asociado' : 'Crear tipo de asociado'}
+        title={editingTypeId ? 'Editar plan de asociado' : 'Crear plan de asociado'}
         subtitle="Sumá nuevos planes con beneficios específicos."
         onClose={() => {
           setShowTypePanel(false);
