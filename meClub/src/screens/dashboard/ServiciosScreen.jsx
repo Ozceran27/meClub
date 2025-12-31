@@ -33,6 +33,8 @@ const FIELD_STYLES =
 const ACTION_BUTTON_STYLES =
   'flex-row items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2';
 
+const MAX_SERVICES = 10;
+
 const MODE_ACCESS_OPTIONS = [
   { value: 'libre', label: 'Libre' },
   { value: 'reserva', label: 'Requiere reserva' },
@@ -637,6 +639,7 @@ export default function ServiciosScreen() {
   const [couponForm, setCouponForm] = useState(buildCouponForm());
   const [courts, setCourts] = useState([]);
   const [newServiceForm, setNewServiceForm] = useState(buildServiceDefaults());
+  const serviceLimitReached = services.length >= MAX_SERVICES;
 
   const displayedMembers = members.slice(0, 10);
   const hasMoreMembers = members.length > 10;
@@ -824,6 +827,9 @@ export default function ServiciosScreen() {
   };
 
   const handleAddService = () => {
+    if (serviceLimitReached) {
+      return;
+    }
     setNewServiceForm(buildServiceDefaults());
     setShowServicePanel(true);
   };
@@ -1348,7 +1354,10 @@ export default function ServiciosScreen() {
               </Pressable>
               <Pressable
                 onPress={handleAddService}
-                className="flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3"
+                disabled={serviceLimitReached}
+                className={`flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3 ${
+                  serviceLimitReached ? 'opacity-50' : ''
+                }`}
               >
                 <Ionicons name="add-circle-outline" size={16} color="#0F172A" />
                 <Text className="text-slate-900 text-sm font-semibold">Nuevo servicio</Text>
@@ -1381,6 +1390,13 @@ export default function ServiciosScreen() {
           {errorMessage ? (
             <View className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
               <Text className="text-rose-100 text-sm">{errorMessage}</Text>
+            </View>
+          ) : null}
+          {serviceLimitReached ? (
+            <View className="rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
+              <Text className="text-amber-100 text-sm">
+                Alcanzaste el máximo de {MAX_SERVICES} servicios. Eliminá uno para crear otro.
+              </Text>
             </View>
           ) : null}
         </View>

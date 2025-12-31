@@ -170,9 +170,13 @@ const createServicio = async (req, res) => {
     const comida = parseBoolean(req.body?.comida, 'comida');
     const ecoFriendly = parseBoolean(req.body?.eco_friendly, 'eco_friendly');
     const activo = parseBoolean(req.body?.activo, 'activo');
+    const total = await ClubServiciosModel.contarPorClub(req.club.club_id);
+    if (total >= 10) {
+      throwValidationError('Máximo 10 servicios por club');
+    }
+
     let color = parseServiceColor(req.body?.color);
     if (!color) {
-      const total = await ClubServiciosModel.contarPorClub(req.club.club_id);
       color = SERVICE_COLORS[total % SERVICE_COLORS.length];
     }
 

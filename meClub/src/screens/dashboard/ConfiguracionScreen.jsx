@@ -50,6 +50,8 @@ import {
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
 
+const MAX_SERVICES = 10;
+
 export default function ConfiguracionScreen({ go }) {
   const { updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,7 @@ export default function ConfiguracionScreen({ go }) {
   const [logoAsset, setLogoAsset] = useState(null);
   const [removeLogo, setRemoveLogo] = useState(false);
   const [saveStatus, setSaveStatus] = useState(initialSaveStatus);
+  const [serviceLimitWarning, setServiceLimitWarning] = useState('');
   const [timeErrors, setTimeErrors] = useState({
     hora_nocturna_inicio: '',
     hora_nocturna_fin: '',
@@ -244,8 +247,14 @@ export default function ConfiguracionScreen({ go }) {
       const current = new Set(prev.servicios || []);
       if (current.has(id)) {
         current.delete(id);
+        setServiceLimitWarning('');
       } else {
+        if (current.size >= MAX_SERVICES) {
+          setServiceLimitWarning(`Máximo ${MAX_SERVICES} servicios por club.`);
+          return prev;
+        }
         current.add(id);
+        setServiceLimitWarning('');
       }
       return { ...prev, servicios: Array.from(current) };
     });
@@ -1037,6 +1046,11 @@ export default function ConfiguracionScreen({ go }) {
             <Text className="text-white/60 text-sm mt-1">
               Seleccioná los servicios que tu club ofrece para que los socios puedan encontrarlos fácilmente.
             </Text>
+            {!!serviceLimitWarning && (
+              <View className="mt-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
+                <Text className="text-amber-100 text-sm">{serviceLimitWarning}</Text>
+              </View>
+            )}
             <View className="mt-4 grid gap-3 md:grid-cols-2">
               {(availableServices || []).map((service) => {
                 const selected = (form.servicios || []).some(
