@@ -121,6 +121,7 @@ DROP TABLE IF EXISTS `club_servicios`;
 CREATE TABLE `club_servicios` (
   `servicio_id` int unsigned NOT NULL AUTO_INCREMENT,
   `club_id` int NOT NULL,
+  `servicio_catalogo_id` int unsigned DEFAULT NULL,
   `nombre` varchar(120) NOT NULL,
   `modo_acceso` varchar(20) NOT NULL DEFAULT 'libre',
   `dias_disponibles` varchar(120) DEFAULT NULL,
@@ -141,6 +142,8 @@ CREATE TABLE `club_servicios` (
   PRIMARY KEY (`servicio_id`),
   UNIQUE KEY `uniq_club_servicios_club_nombre` (`club_id`,`nombre`),
   KEY `idx_club_servicios_club` (`club_id`),
+  KEY `idx_club_servicios_catalogo` (`servicio_catalogo_id`),
+  CONSTRAINT `fk_club_servicios_catalogo` FOREIGN KEY (`servicio_catalogo_id`) REFERENCES `servicios` (`servicio_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_club_servicios_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
