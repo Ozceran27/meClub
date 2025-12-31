@@ -1282,10 +1282,36 @@ export default function ServiciosScreen() {
             <Text className="text-white text-[28px] font-extrabold tracking-tight">
               Servicios y asociados
             </Text>
-            <View className="flex-row flex-wrap items-center gap-3">
-              <Pressable onPress={handleAddService} className={ACTION_BUTTON_STYLES}>
-                <Ionicons name="add-circle-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Nuevo servicio</Text>
+            <View className="grid grid-cols-3 gap-3">
+              <Pressable
+                onPress={() => setShowPaymentPanel(true)}
+                className="flex-row items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-300 px-4 py-3"
+              >
+                <Ionicons name="cash-outline" size={16} color="#0F172A" />
+                <Text className="text-slate-900 text-sm font-semibold">Cargar pago</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowPromoPanel(true)}
+                className="flex-row items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-300 px-4 py-3"
+              >
+                <Ionicons name="sparkles-outline" size={16} color="#0F172A" />
+                <Text className="text-slate-900 text-sm font-semibold">Crear promoción</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowCouponPanel(true)}
+                className="flex-row items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-300 px-4 py-3"
+              >
+                <Ionicons name="ticket-outline" size={16} color="#0F172A" />
+                <Text className="text-slate-900 text-sm font-semibold">
+                  Crear cupón de descuento
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleAddService}
+                className="flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3"
+              >
+                <Ionicons name="add-circle-outline" size={16} color="#0F172A" />
+                <Text className="text-slate-900 text-sm font-semibold">Nuevo servicio</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -1293,38 +1319,19 @@ export default function ServiciosScreen() {
                   setEditingTypeId(null);
                   setShowTypePanel(true);
                 }}
-                className={ACTION_BUTTON_STYLES}
+                className="flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3"
               >
-                <Ionicons name="people-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Crear plan de asociado</Text>
+                <Ionicons name="people-outline" size={16} color="#0F172A" />
+                <Text className="text-slate-900 text-sm font-semibold">
+                  Crear plan de asociado
+                </Text>
               </Pressable>
               <Pressable
                 onPress={() => setShowMemberPanel(true)}
-                className={ACTION_BUTTON_STYLES}
+                className="flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3"
               >
-                <Ionicons name="person-add-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Alta de asociado</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setShowPaymentPanel(true)}
-                className={ACTION_BUTTON_STYLES}
-              >
-                <Ionicons name="cash-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Cargar pago</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setShowPromoPanel(true)}
-                className={ACTION_BUTTON_STYLES}
-              >
-                <Ionicons name="sparkles-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Crear promoción</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setShowCouponPanel(true)}
-                className={ACTION_BUTTON_STYLES}
-              >
-                <Ionicons name="ticket-outline" size={16} color="#F8FAFC" />
-                <Text className="text-white text-sm font-semibold">Crear cupón de descuento</Text>
+                <Ionicons name="person-add-outline" size={16} color="#0F172A" />
+                <Text className="text-slate-900 text-sm font-semibold">Alta de asociado</Text>
               </Pressable>
             </View>
           </View>
