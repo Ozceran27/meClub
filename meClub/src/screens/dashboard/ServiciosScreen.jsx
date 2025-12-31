@@ -218,19 +218,46 @@ const buildServiceDefaults = () => ({
   activo: true,
 });
 
+const parseDiasDisponibles = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((day) => Number(day)).filter((day) => day >= 1 && day <= 7);
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((day) => Number(day)).filter((day) => day >= 1 && day <= 7);
+      }
+    } catch (err) {
+      return value
+        .split(',')
+        .map((day) => Number(day))
+        .filter((day) => day >= 1 && day <= 7);
+    }
+  }
+  return [];
+};
+
+const normalizeModoAcceso = (value) => {
+  if (value === 'requiere_reserva') return 'reserva';
+  return value;
+};
+
 const normalizeServiceEntry = (service) => {
   if (!service || typeof service !== 'object') return buildServiceDefaults();
   return {
     ...buildServiceDefaults(),
     ...service,
+    servicio_id: service.servicio_id ?? service.id ?? service.servicioId ?? null,
     nombre: service.nombre ?? service.name ?? '',
-    modo_acceso: service.modo_acceso ?? 'libre',
-    dias_disponibles: Array.isArray(service.dias_disponibles)
-      ? service.dias_disponibles.map((day) => Number(day)).filter((day) => day >= 1 && day <= 7)
-      : [],
+    modo_acceso: normalizeModoAcceso(service.modo_acceso ?? service.modoAcceso ?? 'libre'),
+    dias_disponibles: parseDiasDisponibles(
+      service.dias_disponibles ?? service.diasDisponibles ?? service.dias,
+    ),
     hora_inicio: normalizeTimeToHHMM(service.hora_inicio) || '',
     hora_fin: normalizeTimeToHHMM(service.hora_fin) || '',
-    imagen_url: service.imagen_url ?? '',
+    imagen_url: service.imagen_url ?? service.imagenUrl ?? service.imagen ?? '',
     color: service.color ?? '',
     ambiente: service.ambiente ?? '',
     precio_tipo: service.precio_tipo ?? '',
