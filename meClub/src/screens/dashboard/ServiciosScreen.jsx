@@ -615,6 +615,7 @@ export default function ServiciosScreen() {
   const [showPromoPanel, setShowPromoPanel] = useState(false);
   const [showCouponPanel, setShowCouponPanel] = useState(false);
   const [showServicePanel, setShowServicePanel] = useState(false);
+  const [showAllMembersPanel, setShowAllMembersPanel] = useState(false);
   const [typeForm, setTypeForm] = useState(buildMemberTypeForm());
   const [editingTypeId, setEditingTypeId] = useState(null);
   const [memberTypes, setMemberTypes] = useState([]);
@@ -638,6 +639,9 @@ export default function ServiciosScreen() {
   const [courts, setCourts] = useState([]);
   const [newServiceForm, setNewServiceForm] = useState(buildServiceDefaults());
 
+  const displayedMembers = members.slice(0, 10);
+  const hasMoreMembers = members.length > 10;
+
   const memberTotals = useMemo(() => {
     return members.reduce(
       (acc, member) => {
@@ -649,6 +653,44 @@ export default function ServiciosScreen() {
       { total: 0, pagado: 0, pendiente: 0, vencido: 0 },
     );
   }, [members]);
+
+  const renderMemberCard = (member) => {
+    const statusKey = (member.estado_pago || 'pendiente').toLowerCase();
+    const statusLabel =
+      statusKey === 'pagado' ? 'Pagado' : statusKey === 'vencido' ? 'Vencido' : 'Pendiente';
+
+    return (
+      <View
+        key={member.asociado_id}
+        className="rounded-2xl border border-white/10 bg-white/5 p-4"
+      >
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Text className="text-white font-semibold">
+              {member.nombre_completo || member.nombre}
+            </Text>
+            <Text className="text-white/60 text-xs mt-1">
+              Plan {member.tipo_nombre || 'Sin asignar'}
+            </Text>
+            {member.telefono ? (
+              <Text className="text-white/40 text-xs mt-1">{member.telefono}</Text>
+            ) : null}
+          </View>
+          <View className={`rounded-full px-3 py-1 ${statusStyles[statusKey]}`}>
+            <Text className="text-xs font-semibold">{statusLabel}</Text>
+          </View>
+        </View>
+        <View className="flex-row flex-wrap gap-2 mt-3">
+          <Pressable
+            onPress={() => handleDeleteMember(member.asociado_id)}
+            className="rounded-full border border-rose-500/40 px-3 py-1"
+          >
+            <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -1472,7 +1514,17 @@ export default function ServiciosScreen() {
             </Card>
 
             <Card className="gap-4">
-              <CardTitle colorClass="text-mc-purpleAccent">Asociados</CardTitle>
+              <View className="flex-row items-center justify-between gap-3">
+                <CardTitle colorClass="text-mc-purpleAccent">Asociados</CardTitle>
+                {hasMoreMembers ? (
+                  <Pressable
+                    onPress={() => setShowAllMembersPanel(true)}
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2"
+                  >
+                    <Text className="text-white text-xs font-semibold">Ver todos</Text>
+                  </Pressable>
+                ) : null}
+              </View>
               <Text className="text-white/60">
                 Seguimiento rápido de pagos, altas y bajas de la membresía.
               </Text>
@@ -1496,47 +1548,8 @@ export default function ServiciosScreen() {
                 </View>
               </View>
               <View className="gap-3">
-                {members.length ? (
-                  members.map((member) => {
-                    const statusKey = (member.estado_pago || 'pendiente').toLowerCase();
-                    const statusLabel =
-                      statusKey === 'pagado'
-                        ? 'Pagado'
-                        : statusKey === 'vencido'
-                          ? 'Vencido'
-                          : 'Pendiente';
-                    return (
-                      <View
-                        key={member.asociado_id}
-                        className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                      >
-                        <View className="flex-row items-start justify-between gap-3">
-                          <View className="flex-1">
-                            <Text className="text-white font-semibold">
-                              {member.nombre_completo || member.nombre}
-                            </Text>
-                            <Text className="text-white/60 text-xs mt-1">
-                              Plan {member.tipo_nombre || 'Sin asignar'}
-                            </Text>
-                            {member.telefono ? (
-                              <Text className="text-white/40 text-xs mt-1">{member.telefono}</Text>
-                            ) : null}
-                          </View>
-                          <View className={`rounded-full px-3 py-1 ${statusStyles[statusKey]}`}>
-                            <Text className="text-xs font-semibold">{statusLabel}</Text>
-                          </View>
-                        </View>
-                        <View className="flex-row flex-wrap gap-2 mt-3">
-                          <Pressable
-                            onPress={() => handleDeleteMember(member.asociado_id)}
-                            className="rounded-full border border-rose-500/40 px-3 py-1"
-                          >
-                            <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
-                          </Pressable>
-                        </View>
-                      </View>
-                    );
-                  })
+                {displayedMembers.length ? (
+                  displayedMembers.map((member) => renderMemberCard(member))
                 ) : (
                   <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <Text className="text-white/70 text-sm">
@@ -2104,6 +2117,23 @@ export default function ServiciosScreen() {
         >
           <Text className="text-white font-semibold">Publicar cupón</Text>
         </Pressable>
+      </ActionPanel>
+
+      <ActionPanel
+        visible={showAllMembersPanel}
+        title="Asociados"
+        subtitle="Listado completo de asociados."
+        onClose={() => setShowAllMembersPanel(false)}
+      >
+        {members.length ? (
+          <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
+            <View className="gap-3 pb-2">{members.map((member) => renderMemberCard(member))}</View>
+          </ScrollView>
+        ) : (
+          <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <Text className="text-white/70 text-sm">No hay asociados registrados todavía.</Text>
+          </View>
+        )}
       </ActionPanel>
 
       <ActionPanel
