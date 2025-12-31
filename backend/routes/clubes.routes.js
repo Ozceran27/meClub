@@ -658,6 +658,9 @@ router.patch('/mis-servicios', async (req, res) => {
     if (set.size !== normalizados.length) {
       return res.status(400).json({ mensaje: 'servicio_ids contiene duplicados' });
     }
+    if (normalizados.length > 10) {
+      return res.status(400).json({ mensaje: 'Máximo 10 servicios por club' });
+    }
 
     const catalogo = await ServiciosModel.listarPorIds(normalizados);
     if (catalogo.length !== normalizados.length) {
