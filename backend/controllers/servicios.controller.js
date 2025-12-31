@@ -4,7 +4,7 @@ const { SERVICE_COLORS, normalizeHexColor } = require('../../shared/serviceColor
 
 const MODOS_ACCESO = new Set(['libre', 'reserva', 'solo_socios', 'requiere_reserva']);
 const AMBIENTES = new Set(['aire_libre', 'cerrado']);
-const PRECIO_TIPOS = new Set(['hora', 'dia']);
+const PRECIO_TIPOS = new Set(['hora', 'dia', 'mes']);
 
 const throwValidationError = (message) => {
   const error = new Error(message);
