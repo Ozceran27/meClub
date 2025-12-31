@@ -25,6 +25,7 @@ import {
   createCoupon,
 } from '../../lib/api';
 import { DAYS, normalizeSchedule, normalizeTimeToHHMM } from './configurationState';
+import { SERVICE_COLORS, normalizeHexColor } from '../../constants/serviceColors';
 
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
@@ -204,6 +205,7 @@ const buildServiceDefaults = () => ({
   hora_inicio: '',
   hora_fin: '',
   imagen_url: '',
+  color: '',
   ambiente: '',
   precio_tipo: '',
   precio_valor: '',
@@ -227,6 +229,7 @@ const normalizeServiceEntry = (service) => {
     hora_inicio: normalizeTimeToHHMM(service.hora_inicio) || '',
     hora_fin: normalizeTimeToHHMM(service.hora_fin) || '',
     imagen_url: service.imagen_url ?? '',
+    color: service.color ?? '',
     ambiente: service.ambiente ?? '',
     precio_tipo: service.precio_tipo ?? '',
     precio_valor:
@@ -303,6 +306,8 @@ const calculateDebt = (member) => {
 
 function ServiceCard({
   service,
+  cardColor,
+  fallbackColor,
   onToggleEdit,
   onUpdate,
   onToggleDay,
@@ -313,7 +318,7 @@ function ServiceCard({
 }) {
   const priceEnabled = service.modo_acceso === 'reserva';
   return (
-    <Card className="gap-4">
+    <Card className="gap-4" style={{ backgroundColor: cardColor }}>
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
           <Text className="text-white text-lg font-semibold">
@@ -538,6 +543,28 @@ function ServiceCard({
             </View>
           </View>
 
+          <View className="gap-2">
+            <Text className="text-white/60 text-xs">Color</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {SERVICE_COLORS.map((color) => {
+                const selected = (normalizeHexColor(service.color) || fallbackColor) === color;
+                return (
+                  <Pressable
+                    key={color}
+                    onPress={() => onUpdate(service.servicio_id, 'color', color)}
+                    className={`h-8 w-8 items-center justify-center rounded-full border ${
+                      selected ? 'border-white' : 'border-white/20'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    accessibilityLabel={`Seleccionar color ${color}`}
+                  >
+                    {selected ? <Ionicons name="checkmark" size={16} color="#F8FAFC" /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           <Pressable
             onPress={() => onUpdate(service.servicio_id, 'activo', !service.activo)}
             className="self-start rounded-full border border-white/10 px-3 py-2"
@@ -710,6 +737,7 @@ export default function ServiciosScreen() {
       hora_inicio: service.hora_inicio || null,
       hora_fin: service.hora_fin || null,
       imagen_url: service.imagen_url || null,
+      color: service.color || null,
       ambiente: service.ambiente || null,
       precio_tipo: service.precio_tipo || null,
       precio_valor: service.precio_valor ? Number(service.precio_valor) : null,
@@ -796,6 +824,12 @@ export default function ServiciosScreen() {
 
   const handleOpenPicker = ({ context = 'service', id, field, options, title }) => {
     setPickerState({ context, id, field, options, title });
+  };
+
+  const resolveServiceColor = (service, index) => {
+    const normalized = normalizeHexColor(service?.color);
+    if (normalized) return normalized;
+    return SERVICE_COLORS[index % SERVICE_COLORS.length];
   };
 
   const handleSelectPickerOption = (value) => {
@@ -1298,10 +1332,15 @@ export default function ServiciosScreen() {
                   <Text className="text-white/70">Cargando servicios...</Text>
                 </Card>
               ) : (
-                services.map((service) => (
+                services.map((service, index) => {
+                  const fallbackColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
+                  const cardColor = resolveServiceColor(service, index);
+                  return (
                   <View key={service.servicio_id} className="gap-2">
                     <ServiceCard
                       service={service}
+                      cardColor={cardColor}
+                      fallbackColor={fallbackColor}
                       onToggleEdit={handleToggleEdit}
                       onUpdate={handleServiceUpdate}
                       onToggleDay={handleToggleDay}
@@ -1319,7 +1358,8 @@ export default function ServiciosScreen() {
                       </Pressable>
                     ) : null}
                   </View>
-                ))
+                );
+                })
               )}
             </View>
           </View>

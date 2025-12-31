@@ -127,6 +127,7 @@ CREATE TABLE `club_servicios` (
   `hora_inicio` time DEFAULT NULL,
   `hora_fin` time DEFAULT NULL,
   `imagen_url` varchar(255) DEFAULT NULL,
+  `color` varchar(20) DEFAULT NULL,
   `ambiente` varchar(20) DEFAULT NULL,
   `precio_tipo` varchar(10) DEFAULT NULL,
   `precio_valor` decimal(10,2) DEFAULT NULL,
