@@ -1,5 +1,6 @@
 const ClubServiciosModel = require('../models/clubServicios.model');
 const { normalizeHour } = require('../utils/datetime');
+const { SERVICE_COLORS, normalizeHexColor } = require('../../shared/serviceColors');
 
 const MODOS_ACCESO = new Set(['libre', 'reserva', 'solo_socios', 'requiere_reserva']);
 const AMBIENTES = new Set(['aire_libre', 'cerrado']);
@@ -87,6 +88,16 @@ const parsePriceValue = (value) => {
   return Math.round(numeric * 100) / 100;
 };
 
+const parseServiceColor = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const normalized = normalizeHexColor(value);
+  if (!normalized) {
+    throwValidationError('color inválido');
+  }
+  return normalized;
+};
+
 const parseHourValue = (value, fieldName) => {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
@@ -159,6 +170,11 @@ const createServicio = async (req, res) => {
     const comida = parseBoolean(req.body?.comida, 'comida');
     const ecoFriendly = parseBoolean(req.body?.eco_friendly, 'eco_friendly');
     const activo = parseBoolean(req.body?.activo, 'activo');
+    let color = parseServiceColor(req.body?.color);
+    if (!color) {
+      const total = await ClubServiciosModel.contarPorClub(req.club.club_id);
+      color = SERVICE_COLORS[total % SERVICE_COLORS.length];
+    }
 
     const payload = {
       nombre,
@@ -175,6 +191,7 @@ const createServicio = async (req, res) => {
       comida: comida ?? false,
       eco_friendly: ecoFriendly ?? false,
       activo: activo ?? true,
+      color,
     };
 
     const servicio = await ClubServiciosModel.crear(req.club.club_id, payload);
@@ -253,6 +270,7 @@ const updateServicio = async (req, res) => {
       updates.eco_friendly = parseBoolean(req.body.eco_friendly, 'eco_friendly');
     }
     if (req.body?.activo !== undefined) updates.activo = parseBoolean(req.body.activo, 'activo');
+    if (req.body?.color !== undefined) updates.color = parseServiceColor(req.body.color);
 
     const modoAccesoFinal = updates.modo_acceso ?? existente.modo_acceso;
     const precioTipoFinal = updates.precio_tipo ?? existente.precio_tipo;

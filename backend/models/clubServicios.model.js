@@ -30,7 +30,7 @@ const ClubServiciosModel = {
   listarPorClub: async (clubId) => {
     const [rows] = await db.query(
       `SELECT servicio_id, servicio_catalogo_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-              imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
+              imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
               activo, creado_en, actualizado_en
        FROM club_servicios
        WHERE club_id = ?
@@ -44,7 +44,7 @@ const ClubServiciosModel = {
   obtenerPorId: async (servicioId, clubId) => {
     const [rows] = await db.query(
       `SELECT servicio_id, servicio_catalogo_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-              imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
+              imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
               activo, creado_en, actualizado_en
        FROM club_servicios
        WHERE servicio_id = ? AND club_id = ?
@@ -61,8 +61,8 @@ const ClubServiciosModel = {
       const [result] = await db.query(
         `INSERT INTO club_servicios (
           club_id, servicio_catalogo_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-          imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly, activo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly, activo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           clubId,
           payload.servicio_catalogo_id ?? null,
@@ -72,6 +72,7 @@ const ClubServiciosModel = {
           payload.hora_inicio,
           payload.hora_fin,
           payload.imagen_url,
+          payload.color ?? null,
           payload.ambiente,
           payload.precio_tipo,
           payload.precio_valor,
@@ -201,6 +202,14 @@ const ClubServiciosModel = {
     }
 
     return ClubServiciosModel.listarPorClub(clubId);
+  },
+
+  contarPorClub: async (clubId) => {
+    const [rows] = await db.query(
+      'SELECT COUNT(*) as total FROM club_servicios WHERE club_id = ?',
+      [clubId]
+    );
+    return Number(rows?.[0]?.total ?? 0);
   },
 };
 
