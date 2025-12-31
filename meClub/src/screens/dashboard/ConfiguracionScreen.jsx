@@ -21,7 +21,7 @@ import {
   listLocalities,
   getClubServices,
   updateClubServices,
-  listClubServiceEntries,
+  listAvailableServices,
   getClubTaxes,
   updateClubTaxes,
   getClubSchedule,
@@ -90,7 +90,7 @@ export default function ConfiguracionScreen({ go }) {
           getClubServices(),
           getClubTaxes(),
           getClubSchedule(),
-          listClubServiceEntries(),
+          listAvailableServices(),
         ]);
         if (!alive) return;
         if (Array.isArray(provincesRes)) {

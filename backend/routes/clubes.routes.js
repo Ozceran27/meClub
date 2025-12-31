@@ -13,6 +13,7 @@ const ReservasModel = require('../models/reservas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ProvinciasModel = require('../models/provincias.model');
 const LocalidadesModel = require('../models/localidades.model');
+const ServiciosModel = require('../models/servicios.model');
 const ClubServiciosModel = require('../models/clubServicios.model');
 const ClubesImpuestosModel = require('../models/clubesImpuestos.model');
 const GastosModel = require('../models/gastos.model');
@@ -658,16 +659,19 @@ router.patch('/mis-servicios', async (req, res) => {
       return res.status(400).json({ mensaje: 'servicio_ids contiene duplicados' });
     }
 
-    const disponibles = await ClubServiciosModel.listarPorClub(req.club.club_id);
-    const disponiblesSet = new Set(disponibles.map((s) => s.servicio_id));
-
-    for (const servicioId of normalizados) {
-      if (!disponiblesSet.has(servicioId)) {
-        return res.status(400).json({ mensaje: `Servicio ${servicioId} inválido` });
-      }
+    const catalogo = await ServiciosModel.listarPorIds(normalizados);
+    if (catalogo.length !== normalizados.length) {
+      const catalogoSet = new Set(catalogo.map((servicio) => servicio.servicio_id));
+      const faltantes = normalizados.filter((id) => !catalogoSet.has(id));
+      return res
+        .status(400)
+        .json({ mensaje: `Servicio ${faltantes[0]} inválido` });
     }
 
-    const servicios = await ClubServiciosModel.reemplazarSeleccion(req.club.club_id, normalizados);
+    await ClubServiciosModel.crearDesdeCatalogo(req.club.club_id, catalogo);
+    await ClubServiciosModel.eliminarNoSeleccionados(req.club.club_id, normalizados);
+
+    const servicios = await ClubServiciosModel.listarPorClub(req.club.club_id);
 
     res.json({
       mensaje: 'Servicios actualizados',

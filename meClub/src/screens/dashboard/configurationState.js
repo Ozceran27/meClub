@@ -65,7 +65,13 @@ export const normalizeServices = (services) => {
       if (service === null || service === undefined) return null;
       if (typeof service === 'object') {
         if (service?.seleccionado === false || service?.activo === false) return null;
-        const id = service?.id ?? service?.servicio_id ?? service?.codigo ?? service?.value;
+        const id =
+          service?.servicio_catalogo_id ??
+          service?.catalogo_id ??
+          service?.id ??
+          service?.servicio_id ??
+          service?.codigo ??
+          service?.value;
         return id === null || id === undefined ? null : String(id);
       }
       return String(service);

@@ -29,7 +29,7 @@ const normalizeRow = (row) => ({
 const ClubServiciosModel = {
   listarPorClub: async (clubId) => {
     const [rows] = await db.query(
-      `SELECT servicio_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
+      `SELECT servicio_id, servicio_catalogo_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
               imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
               activo, creado_en, actualizado_en
        FROM club_servicios
@@ -43,7 +43,7 @@ const ClubServiciosModel = {
 
   obtenerPorId: async (servicioId, clubId) => {
     const [rows] = await db.query(
-      `SELECT servicio_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
+      `SELECT servicio_id, servicio_catalogo_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
               imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
               activo, creado_en, actualizado_en
        FROM club_servicios
@@ -60,11 +60,12 @@ const ClubServiciosModel = {
     try {
       const [result] = await db.query(
         `INSERT INTO club_servicios (
-          club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
+          club_id, servicio_catalogo_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
           imagen_url, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly, activo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           clubId,
+          payload.servicio_catalogo_id ?? null,
           payload.nombre,
           payload.modo_acceso,
           payload.dias_disponibles,
@@ -91,6 +92,51 @@ const ClubServiciosModel = {
       }
       throw err;
     }
+  },
+
+  crearDesdeCatalogo: async (clubId, catalogoRows = []) => {
+    if (!Array.isArray(catalogoRows) || catalogoRows.length === 0) {
+      return [];
+    }
+
+    const values = catalogoRows.map((row) => [
+      clubId,
+      row.servicio_id,
+      row.nombre,
+      1,
+    ]);
+
+    await db.query(
+      `INSERT INTO club_servicios (club_id, servicio_catalogo_id, nombre, activo)
+       VALUES ?
+       ON DUPLICATE KEY UPDATE
+         servicio_catalogo_id = VALUES(servicio_catalogo_id),
+         nombre = VALUES(nombre),
+         activo = VALUES(activo)`,
+      [values]
+    );
+
+    return ClubServiciosModel.listarPorClub(clubId);
+  },
+
+  eliminarNoSeleccionados: async (clubId, catalogoIds = []) => {
+    if (!Array.isArray(catalogoIds) || catalogoIds.length === 0) {
+      const [result] = await db.query(
+        'DELETE FROM club_servicios WHERE club_id = ? AND servicio_catalogo_id IS NOT NULL',
+        [clubId]
+      );
+      return result.affectedRows;
+    }
+
+    const [result] = await db.query(
+      `DELETE FROM club_servicios
+       WHERE club_id = ?
+         AND servicio_catalogo_id IS NOT NULL
+         AND servicio_catalogo_id NOT IN (?)`,
+      [clubId, catalogoIds]
+    );
+
+    return result.affectedRows;
   },
 
   actualizar: async (servicioId, clubId, updates) => {
