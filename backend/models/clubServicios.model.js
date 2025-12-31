@@ -26,12 +26,35 @@ const normalizeRow = (row) => ({
   activo: Boolean(row.activo),
 });
 
+let hasServicioCatalogoIdColumn;
+
+const ensureServicioCatalogoIdColumn = async () => {
+  if (hasServicioCatalogoIdColumn !== undefined) {
+    return hasServicioCatalogoIdColumn;
+  }
+
+  const [rows] = await db.query(
+    "SHOW COLUMNS FROM club_servicios LIKE 'servicio_catalogo_id'"
+  );
+  hasServicioCatalogoIdColumn = rows.length > 0;
+  return hasServicioCatalogoIdColumn;
+};
+
+const buildSelectColumns = async () => {
+  const hasColumn = await ensureServicioCatalogoIdColumn();
+  const servicioCatalogoColumn = hasColumn
+    ? 'servicio_catalogo_id'
+    : 'NULL AS servicio_catalogo_id';
+  return `servicio_id, ${servicioCatalogoColumn}, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
+          imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
+          activo, creado_en, actualizado_en`;
+};
+
 const ClubServiciosModel = {
   listarPorClub: async (clubId) => {
+    const columns = await buildSelectColumns();
     const [rows] = await db.query(
-      `SELECT servicio_id, servicio_catalogo_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-              imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
-              activo, creado_en, actualizado_en
+      `SELECT ${columns}
        FROM club_servicios
        WHERE club_id = ?
        ORDER BY creado_en DESC, servicio_id DESC`,
@@ -42,10 +65,9 @@ const ClubServiciosModel = {
   },
 
   obtenerPorId: async (servicioId, clubId) => {
+    const columns = await buildSelectColumns();
     const [rows] = await db.query(
-      `SELECT servicio_id, servicio_catalogo_id, club_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-              imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly,
-              activo, creado_en, actualizado_en
+      `SELECT ${columns}
        FROM club_servicios
        WHERE servicio_id = ? AND club_id = ?
        LIMIT 1`,
@@ -58,30 +80,51 @@ const ClubServiciosModel = {
 
   crear: async (clubId, payload) => {
     try {
+      const hasColumn = await ensureServicioCatalogoIdColumn();
+      const columns = [
+        'club_id',
+        ...(hasColumn ? ['servicio_catalogo_id'] : []),
+        'nombre',
+        'modo_acceso',
+        'dias_disponibles',
+        'hora_inicio',
+        'hora_fin',
+        'imagen_url',
+        'color',
+        'ambiente',
+        'precio_tipo',
+        'precio_valor',
+        'no_fumar',
+        'mas_18',
+        'comida',
+        'eco_friendly',
+        'activo',
+      ];
+      const values = [
+        clubId,
+        ...(hasColumn ? [payload.servicio_catalogo_id ?? null] : []),
+        payload.nombre,
+        payload.modo_acceso,
+        payload.dias_disponibles,
+        payload.hora_inicio,
+        payload.hora_fin,
+        payload.imagen_url,
+        payload.color ?? null,
+        payload.ambiente,
+        payload.precio_tipo,
+        payload.precio_valor,
+        payload.no_fumar ? 1 : 0,
+        payload.mas_18 ? 1 : 0,
+        payload.comida ? 1 : 0,
+        payload.eco_friendly ? 1 : 0,
+        payload.activo ? 1 : 0,
+      ];
+      const placeholders = columns.map(() => '?').join(', ');
+
       const [result] = await db.query(
-        `INSERT INTO club_servicios (
-          club_id, servicio_catalogo_id, nombre, modo_acceso, dias_disponibles, hora_inicio, hora_fin,
-          imagen_url, color, ambiente, precio_tipo, precio_valor, no_fumar, mas_18, comida, eco_friendly, activo
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          clubId,
-          payload.servicio_catalogo_id ?? null,
-          payload.nombre,
-          payload.modo_acceso,
-          payload.dias_disponibles,
-          payload.hora_inicio,
-          payload.hora_fin,
-          payload.imagen_url,
-          payload.color ?? null,
-          payload.ambiente,
-          payload.precio_tipo,
-          payload.precio_valor,
-          payload.no_fumar ? 1 : 0,
-          payload.mas_18 ? 1 : 0,
-          payload.comida ? 1 : 0,
-          payload.eco_friendly ? 1 : 0,
-          payload.activo ? 1 : 0,
-        ]
+        `INSERT INTO club_servicios (${columns.join(', ')})
+         VALUES (${placeholders})`,
+        values
       );
 
       return ClubServiciosModel.obtenerPorId(result.insertId, clubId);
@@ -100,27 +143,50 @@ const ClubServiciosModel = {
       return [];
     }
 
-    const values = catalogoRows.map((row) => [
-      clubId,
-      row.servicio_id,
-      row.nombre,
-      1,
-    ]);
+    const hasColumn = await ensureServicioCatalogoIdColumn();
+    if (hasColumn) {
+      const values = catalogoRows.map((row) => [
+        clubId,
+        row.servicio_id,
+        row.nombre,
+        1,
+      ]);
 
-    await db.query(
-      `INSERT INTO club_servicios (club_id, servicio_catalogo_id, nombre, activo)
-       VALUES ?
-       ON DUPLICATE KEY UPDATE
-         servicio_catalogo_id = VALUES(servicio_catalogo_id),
-         nombre = VALUES(nombre),
-         activo = VALUES(activo)`,
-      [values]
-    );
+      await db.query(
+        `INSERT INTO club_servicios (club_id, servicio_catalogo_id, nombre, activo)
+         VALUES ?
+         ON DUPLICATE KEY UPDATE
+           servicio_catalogo_id = VALUES(servicio_catalogo_id),
+           nombre = VALUES(nombre),
+           activo = VALUES(activo)`,
+        [values]
+      );
+    } else {
+      const values = catalogoRows.map((row) => [
+        clubId,
+        row.nombre,
+        1,
+      ]);
+
+      await db.query(
+        `INSERT INTO club_servicios (club_id, nombre, activo)
+         VALUES ?
+         ON DUPLICATE KEY UPDATE
+           nombre = VALUES(nombre),
+           activo = VALUES(activo)`,
+        [values]
+      );
+    }
 
     return ClubServiciosModel.listarPorClub(clubId);
   },
 
   eliminarNoSeleccionados: async (clubId, catalogoIds = []) => {
+    const hasColumn = await ensureServicioCatalogoIdColumn();
+    if (!hasColumn) {
+      return 0;
+    }
+
     if (!Array.isArray(catalogoIds) || catalogoIds.length === 0) {
       const [result] = await db.query(
         'DELETE FROM club_servicios WHERE club_id = ? AND servicio_catalogo_id IS NOT NULL',
