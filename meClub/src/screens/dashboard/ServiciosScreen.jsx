@@ -1260,8 +1260,7 @@ export default function ServiciosScreen() {
             </View>
           </View>
           <Text className="text-white/60 max-w-3xl">
-            Centralizá la configuración de servicios y el seguimiento de asociados. Ajustá precios,
-            editá descripciones y administrá promociones sin salir del panel.
+            Centralizá la configuración de tus servicios y el seguimiento de asociados.
           </Text>
           {errorMessage ? (
             <View className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
