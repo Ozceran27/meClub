@@ -1326,7 +1326,7 @@ export default function ServiciosScreen() {
 
           <View className="flex-1 gap-6">
             <Card className="gap-4">
-              <CardTitle colorClass="text-mc-warn">Tipos de asociados</CardTitle>
+              <CardTitle colorClass="text-mc-warn">Planes de asociados</CardTitle>
               <Text className="text-white/60">
                 Definí planes para socios, cuotas mensuales y beneficios incluidos.
               </Text>
