@@ -303,9 +303,7 @@ const createAsociado = async (req, res) => {
       req.body?.pagos_realizados !== undefined
         ? parseNumberValue(req.body?.pagos_realizados, 'pagos_realizados', { min: 0 }) ?? 0
         : 0;
-    const fecha_inscripcion =
-      parseString(req.body?.fecha_inscripcion, 'fecha_inscripcion', { max: 20 }) ||
-      new Date().toISOString().slice(0, 10);
+    const fecha_inscripcion = new Date().toISOString().slice(0, 10);
 
     const asociado = await AsociadosModel.crear(req.club.club_id, {
       tipo_asociado_id,
