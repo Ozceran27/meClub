@@ -104,7 +104,6 @@ const buildMemberForm = () => ({
   direccion: '',
   correo: '',
   tipo_asociado_id: null,
-  fecha_inscripcion: '',
 });
 
 const isValidDate = (value) => {
@@ -1274,7 +1273,6 @@ export default function ServiciosScreen() {
         telefono,
         direccion: memberForm.direccion || undefined,
         correo: memberForm.correo || undefined,
-        fecha_inscripcion: memberForm.fecha_inscripcion || undefined,
       };
 
       const saved = await createMember(payload);
@@ -1820,13 +1818,6 @@ export default function ServiciosScreen() {
           placeholder="Correo electrónico"
           placeholderTextColor="#94A3B8"
           keyboardType="email-address"
-          className={FIELD_STYLES}
-        />
-        <TextInput
-          value={memberForm.fecha_inscripcion}
-          onChangeText={(value) => setMemberForm((prev) => ({ ...prev, fecha_inscripcion: value }))}
-          placeholder="Fecha de inscripción (YYYY-MM-DD)"
-          placeholderTextColor="#94A3B8"
           className={FIELD_STYLES}
         />
         <Pressable
