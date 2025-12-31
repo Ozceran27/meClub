@@ -47,6 +47,7 @@ const AMBIENTE_OPTIONS = [
 const PRECIO_TIPO_OPTIONS = [
   { value: 'hora', label: 'Por hora' },
   { value: 'dia', label: 'Por día' },
+  { value: 'mes', label: 'Por mes' },
 ];
 
 const DISCOUNT_TYPE_OPTIONS = [
@@ -139,8 +140,8 @@ const buildDateTimePayload = (date, time) => {
 
 function ActionPanel({ visible, title, subtitle, onClose, children }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/60 justify-end">
+    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 bg-mc-bg justify-end">
         <View className="rounded-t-3xl bg-[#0F172A] px-6 pb-8 pt-5 shadow-card">
           <View className="flex-row items-start justify-between gap-4">
             <View className="flex-1">
@@ -353,227 +354,24 @@ function ServiceCard({
       </View>
 
       {isEditing ? (
-        <View className="gap-3">
-          <TextInput
-            value={service.nombre}
-            onChangeText={(value) => onUpdate(service.servicio_id, 'nombre', value)}
-            placeholder="Nombre del servicio"
-            placeholderTextColor="#94A3B8"
-            className={FIELD_STYLES}
-          />
-          <View className="gap-2">
-            <Text className="text-white/60 text-xs">Modo de acceso</Text>
-            <Pressable
-              onPress={() =>
-                onOpenPicker({
-                  context: 'service',
-                  id: service.servicio_id,
-                  field: 'modo_acceso',
-                  options: MODE_ACCESS_OPTIONS,
-                  title: 'Modo de acceso',
-                })
-              }
-              className={`${FIELD_STYLES} flex-row items-center justify-between`}
-            >
-              <Text className="text-white">
-                {MODE_ACCESS_OPTIONS.find((option) => option.value === service.modo_acceso)?.label ||
-                  'Seleccioná un modo'}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
-            </Pressable>
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-white/60 text-xs">Días disponibles</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {DAYS.map((day, index) => {
-                const number = index + 1;
-                const active = service.dias_disponibles.includes(number);
-                return (
-                  <Pressable
-                    key={day.key}
-                    onPress={() => onToggleDay(service.servicio_id, number)}
-                    className={`px-3 py-1 rounded-full border ${
-                      active ? 'border-mc-warn bg-mc-warn/20' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <Text className="text-white text-xs font-semibold">
-                      {day.label.charAt(0)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-white/60 text-xs mb-2">Hora inicio</Text>
-              <Pressable
-              onPress={() =>
-                  onOpenPicker({
-                    context: 'service',
-                    id: service.servicio_id,
-                    field: 'hora_inicio',
-                    options: timeOptions,
-                    title: 'Hora inicio',
-                  })
-                }
-                className={`${FIELD_STYLES} flex-row items-center justify-between`}
-              >
-                <Text className="text-white">{service.hora_inicio || 'Seleccionar'}</Text>
-                <Ionicons name="time-outline" size={16} color="#E2E8F0" />
-              </Pressable>
-            </View>
-            <View className="flex-1">
-              <Text className="text-white/60 text-xs mb-2">Hora fin</Text>
-              <Pressable
-              onPress={() =>
-                  onOpenPicker({
-                    context: 'service',
-                    id: service.servicio_id,
-                    field: 'hora_fin',
-                    options: timeOptions,
-                    title: 'Hora fin',
-                  })
-                }
-                className={`${FIELD_STYLES} flex-row items-center justify-between`}
-              >
-                <Text className="text-white">{service.hora_fin || 'Seleccionar'}</Text>
-                <Ionicons name="time-outline" size={16} color="#E2E8F0" />
-              </Pressable>
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Text className="text-white/60 text-xs mb-2">Ambiente</Text>
-              <Pressable
-              onPress={() =>
-                  onOpenPicker({
-                    context: 'service',
-                    id: service.servicio_id,
-                    field: 'ambiente',
-                    options: AMBIENTE_OPTIONS,
-                    title: 'Ambiente',
-                  })
-                }
-                className={`${FIELD_STYLES} flex-row items-center justify-between`}
-              >
-                <Text className="text-white">
-                  {AMBIENTE_OPTIONS.find((option) => option.value === service.ambiente)?.label ||
-                    'Seleccionar'}
-                </Text>
-                <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
-              </Pressable>
-            </View>
-            <View className="flex-1">
-              <Text className="text-white/60 text-xs mb-2">Precio</Text>
-              <Pressable
-                disabled={!priceEnabled}
-              onPress={() =>
-                  onOpenPicker({
-                    context: 'service',
-                    id: service.servicio_id,
-                    field: 'precio_tipo',
-                    options: PRECIO_TIPO_OPTIONS,
-                    title: 'Tipo de precio',
-                  })
-                }
-                className={`${FIELD_STYLES} flex-row items-center justify-between ${
-                  priceEnabled ? '' : 'opacity-50'
-                }`}
-              >
-                <Text className="text-white">
-                  {PRECIO_TIPO_OPTIONS.find((option) => option.value === service.precio_tipo)?.label ||
-                    (priceEnabled ? 'Seleccionar' : 'Solo reserva')}
-                </Text>
-                <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
-              </Pressable>
-            </View>
-          </View>
-
-          <TextInput
-            value={service.precio_valor}
-            onChangeText={(value) => onUpdate(service.servicio_id, 'precio_valor', value)}
-            placeholder="Precio"
-            placeholderTextColor="#94A3B8"
-            keyboardType="numeric"
-            editable={priceEnabled}
-            className={`${FIELD_STYLES} ${priceEnabled ? '' : 'opacity-50'}`}
-          />
-
-          <View className="gap-2">
-            <Text className="text-white/60 text-xs">Imagen</Text>
-            <View className="flex-row gap-3">
-              <TextInput
-                value={service.imagen_url}
-                onChangeText={(value) => onUpdate(service.servicio_id, 'imagen_url', value)}
-                placeholder="URL o selector"
-                placeholderTextColor="#94A3B8"
-                className={`${FIELD_STYLES} flex-1`}
-              />
-              <Pressable
-                onPress={() => onSelectImage(service.servicio_id)}
-                className="rounded-full border border-white/10 px-4 py-3"
-              >
-                <Ionicons name="image-outline" size={16} color="#F8FAFC" />
-              </Pressable>
-            </View>
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-white/60 text-xs">Iconos</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {ICON_OPTIONS.map((option) => {
-                const active = Boolean(service[option.key]);
-                return (
-                  <Pressable
-                    key={option.key}
-                    onPress={() => onUpdate(service.servicio_id, option.key, !active)}
-                    className={`flex-row items-center gap-2 rounded-full px-3 py-2 border ${
-                      active ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-white/5'
-                    }`}
-                  >
-                    <Ionicons name={option.icon} size={14} color="#F8FAFC" />
-                    <Text className="text-white text-xs font-semibold">{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View className="gap-2">
-            <Text className="text-white/60 text-xs">Color</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {SERVICE_COLORS.map((color) => {
-                const selected = (normalizeHexColor(service.color) || fallbackColor) === color;
-                return (
-                  <Pressable
-                    key={color}
-                    onPress={() => onUpdate(service.servicio_id, 'color', color)}
-                    className={`h-8 w-8 items-center justify-center rounded-full border ${
-                      selected ? 'border-white' : 'border-white/20'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    accessibilityLabel={`Seleccionar color ${color}`}
-                  >
-                    {selected ? <Ionicons name="checkmark" size={16} color="#F8FAFC" /> : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <Pressable
-            onPress={() => onUpdate(service.servicio_id, 'activo', !service.activo)}
-            className="self-start rounded-full border border-white/10 px-3 py-2"
-          >
-            <Text className="text-white text-xs font-semibold">
-              {service.activo ? 'Pausar servicio' : 'Reactivar servicio'}
-            </Text>
-          </Pressable>
-        </View>
+        <ServiceForm
+          service={service}
+          fallbackColor={fallbackColor}
+          priceEnabled={priceEnabled}
+          onUpdate={(key, value) => onUpdate(service.servicio_id, key, value)}
+          onToggleDay={(dayNumber) => onToggleDay(service.servicio_id, dayNumber)}
+          onOpenPicker={(field, options, title) =>
+            onOpenPicker({
+              context: 'service',
+              id: service.servicio_id,
+              field,
+              options,
+              title,
+            })
+          }
+          onSelectImage={() => onSelectImage(service.servicio_id)}
+          timeOptions={timeOptions}
+        />
       ) : (
         <View className="flex-row flex-wrap gap-4">
           <View className="flex-1 min-w-[140px]">
@@ -609,6 +407,201 @@ function ServiceCard({
   );
 }
 
+function ServiceForm({
+  service,
+  fallbackColor,
+  priceEnabled,
+  onUpdate,
+  onToggleDay,
+  onOpenPicker,
+  onSelectImage,
+  timeOptions,
+}) {
+  return (
+    <View className="gap-3">
+      <TextInput
+        value={service.nombre}
+        onChangeText={(value) => onUpdate('nombre', value)}
+        placeholder="Nombre del servicio"
+        placeholderTextColor="#94A3B8"
+        className={FIELD_STYLES}
+      />
+      <View className="gap-2">
+        <Text className="text-white/60 text-xs">Modo de acceso</Text>
+        <Pressable
+          onPress={() =>
+            onOpenPicker('modo_acceso', MODE_ACCESS_OPTIONS, 'Modo de acceso')
+          }
+          className={`${FIELD_STYLES} flex-row items-center justify-between`}
+        >
+          <Text className="text-white">
+            {MODE_ACCESS_OPTIONS.find((option) => option.value === service.modo_acceso)?.label ||
+              'Seleccioná un modo'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
+        </Pressable>
+      </View>
+
+      <View className="gap-2">
+        <Text className="text-white/60 text-xs">Días disponibles</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {DAYS.map((day, index) => {
+            const number = index + 1;
+            const active = service.dias_disponibles.includes(number);
+            return (
+              <Pressable
+                key={day.key}
+                onPress={() => onToggleDay(number)}
+                className={`px-3 py-1 rounded-full border ${
+                  active ? 'border-mc-warn bg-mc-warn/20' : 'border-white/10 bg-white/5'
+                }`}
+              >
+                <Text className="text-white text-xs font-semibold">{day.label.charAt(0)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View className="flex-row gap-3">
+        <View className="flex-1">
+          <Text className="text-white/60 text-xs mb-2">Hora inicio</Text>
+          <Pressable
+            onPress={() => onOpenPicker('hora_inicio', timeOptions, 'Hora inicio')}
+            className={`${FIELD_STYLES} flex-row items-center justify-between`}
+          >
+            <Text className="text-white">{service.hora_inicio || 'Seleccionar'}</Text>
+            <Ionicons name="time-outline" size={16} color="#E2E8F0" />
+          </Pressable>
+        </View>
+        <View className="flex-1">
+          <Text className="text-white/60 text-xs mb-2">Hora fin</Text>
+          <Pressable
+            onPress={() => onOpenPicker('hora_fin', timeOptions, 'Hora fin')}
+            className={`${FIELD_STYLES} flex-row items-center justify-between`}
+          >
+            <Text className="text-white">{service.hora_fin || 'Seleccionar'}</Text>
+            <Ionicons name="time-outline" size={16} color="#E2E8F0" />
+          </Pressable>
+        </View>
+      </View>
+
+      <View className="flex-row gap-3">
+        <View className="flex-1">
+          <Text className="text-white/60 text-xs mb-2">Ambiente</Text>
+          <Pressable
+            onPress={() => onOpenPicker('ambiente', AMBIENTE_OPTIONS, 'Ambiente')}
+            className={`${FIELD_STYLES} flex-row items-center justify-between`}
+          >
+            <Text className="text-white">
+              {AMBIENTE_OPTIONS.find((option) => option.value === service.ambiente)?.label ||
+                'Seleccionar'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
+          </Pressable>
+        </View>
+        <View className="flex-1">
+          <Text className="text-white/60 text-xs mb-2">Precio</Text>
+          <Pressable
+            disabled={!priceEnabled}
+            onPress={() => onOpenPicker('precio_tipo', PRECIO_TIPO_OPTIONS, 'Tipo de precio')}
+            className={`${FIELD_STYLES} flex-row items-center justify-between ${
+              priceEnabled ? '' : 'opacity-50'
+            }`}
+          >
+            <Text className="text-white">
+              {PRECIO_TIPO_OPTIONS.find((option) => option.value === service.precio_tipo)?.label ||
+                (priceEnabled ? 'Seleccionar' : 'Solo reserva')}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
+          </Pressable>
+        </View>
+      </View>
+
+      <TextInput
+        value={service.precio_valor}
+        onChangeText={(value) => onUpdate('precio_valor', value)}
+        placeholder="Precio"
+        placeholderTextColor="#94A3B8"
+        keyboardType="numeric"
+        editable={priceEnabled}
+        className={`${FIELD_STYLES} ${priceEnabled ? '' : 'opacity-50'}`}
+      />
+
+      <View className="gap-2">
+        <Text className="text-white/60 text-xs">Imagen</Text>
+        <View className="flex-row gap-3">
+          <TextInput
+            value={service.imagen_url}
+            onChangeText={(value) => onUpdate('imagen_url', value)}
+            placeholder="URL o selector"
+            placeholderTextColor="#94A3B8"
+            className={`${FIELD_STYLES} flex-1`}
+          />
+          <Pressable
+            onPress={onSelectImage}
+            className="rounded-full border border-white/10 px-4 py-3"
+          >
+            <Ionicons name="image-outline" size={16} color="#F8FAFC" />
+          </Pressable>
+        </View>
+      </View>
+
+      <View className="gap-2">
+        <Text className="text-white/60 text-xs">Iconos</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {ICON_OPTIONS.map((option) => {
+            const active = Boolean(service[option.key]);
+            return (
+              <Pressable
+                key={option.key}
+                onPress={() => onUpdate(option.key, !active)}
+                className={`flex-row items-center gap-2 rounded-full px-3 py-2 border ${
+                  active ? 'border-emerald-400 bg-emerald-500/20' : 'border-white/10 bg-white/5'
+                }`}
+              >
+                <Ionicons name={option.icon} size={14} color="#F8FAFC" />
+                <Text className="text-white text-xs font-semibold">{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View className="gap-2">
+        <Text className="text-white/60 text-xs">Color</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {SERVICE_COLORS.map((color) => {
+            const selected = (normalizeHexColor(service.color) || fallbackColor) === color;
+            return (
+              <Pressable
+                key={color}
+                onPress={() => onUpdate('color', color)}
+                className={`h-8 w-8 items-center justify-center rounded-full border ${
+                  selected ? 'border-white' : 'border-white/20'
+                }`}
+                style={{ backgroundColor: color }}
+                accessibilityLabel={`Seleccionar color ${color}`}
+              >
+                {selected ? <Ionicons name="checkmark" size={16} color="#F8FAFC" /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <Pressable
+        onPress={() => onUpdate('activo', !service.activo)}
+        className="self-start rounded-full border border-white/10 px-3 py-2"
+      >
+        <Text className="text-white text-xs font-semibold">
+          {service.activo ? 'Pausar servicio' : 'Reactivar servicio'}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function ServiciosScreen() {
   const [services, setServices] = useState([]);
   const [editingServiceId, setEditingServiceId] = useState(null);
@@ -621,6 +614,7 @@ export default function ServiciosScreen() {
   const [showPaymentPanel, setShowPaymentPanel] = useState(false);
   const [showPromoPanel, setShowPromoPanel] = useState(false);
   const [showCouponPanel, setShowCouponPanel] = useState(false);
+  const [showServicePanel, setShowServicePanel] = useState(false);
   const [typeForm, setTypeForm] = useState(buildMemberTypeForm());
   const [editingTypeId, setEditingTypeId] = useState(null);
   const [memberTypes, setMemberTypes] = useState([]);
@@ -642,6 +636,7 @@ export default function ServiciosScreen() {
   const [promoForm, setPromoForm] = useState(buildPromotionForm());
   const [couponForm, setCouponForm] = useState(buildCouponForm());
   const [courts, setCourts] = useState([]);
+  const [newServiceForm, setNewServiceForm] = useState(buildServiceDefaults());
 
   const memberTotals = useMemo(() => {
     return members.reduce(
@@ -788,10 +783,8 @@ export default function ServiciosScreen() {
   };
 
   const handleAddService = () => {
-    const tempId = `tmp-${Date.now()}`;
-    const draft = { ...buildServiceDefaults(), servicio_id: tempId };
-    setServices((prev) => [draft, ...prev]);
-    setEditingServiceId(tempId);
+    setNewServiceForm(buildServiceDefaults());
+    setShowServicePanel(true);
   };
 
   const handleDeleteService = async (serviceId) => {
@@ -836,6 +829,8 @@ export default function ServiciosScreen() {
     if (!pickerState) return;
     if (pickerState.context === 'service') {
       handleServiceUpdate(pickerState.id, pickerState.field, value);
+    } else if (pickerState.context === 'newService') {
+      setNewServiceForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'member') {
       setMemberForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'type') {
@@ -867,6 +862,46 @@ export default function ServiciosScreen() {
       }
     } catch (err) {
       setErrorMessage('No pudimos abrir el selector de imágenes');
+    }
+  };
+
+  const handleSelectNewServiceImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMessage('Necesitamos permisos para acceder a tus fotos');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        const asset = result.assets?.[0];
+        if (asset?.uri) {
+          setNewServiceForm((prev) => ({ ...prev, imagen_url: asset.uri }));
+        }
+      }
+    } catch (err) {
+      setErrorMessage('No pudimos abrir el selector de imágenes');
+    }
+  };
+
+  const handleSaveNewService = async () => {
+    try {
+      setErrorMessage('');
+      if (!newServiceForm.nombre.trim()) {
+        setErrorMessage('El nombre del servicio es obligatorio.');
+        return;
+      }
+      const saved = await persistService(newServiceForm);
+      const normalized = normalizeServiceEntry(saved);
+      setServices((prev) => [normalized, ...prev]);
+      setCatalogServices((prev) => [normalized, ...prev]);
+      setShowServicePanel(false);
+      setNewServiceForm(buildServiceDefaults());
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos crear el servicio');
     }
   };
 
@@ -1305,7 +1340,7 @@ export default function ServiciosScreen() {
 
         <View className="gap-6 lg:flex-row">
           <View className="flex-1 gap-6">
-            <Card className="gap-4">
+            <Card className="gap-4 pb-6">
               <CardTitle colorClass="text-mc-info">Configuración de servicios</CardTitle>
               <Text className="text-white/60">
                 Editá cada servicio con detalle, definí duraciones y mantené el catálogo actualizado.
@@ -1324,44 +1359,43 @@ export default function ServiciosScreen() {
                   </Text>
                 </View>
               </View>
+              <View className="mt-6 gap-5">
+                {loadingServices ? (
+                  <Card className="items-center py-6">
+                    <Text className="text-white/70">Cargando servicios...</Text>
+                  </Card>
+                ) : (
+                  services.map((service, index) => {
+                    const fallbackColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
+                    const cardColor = resolveServiceColor(service, index);
+                    return (
+                      <View key={service.servicio_id} className="gap-2">
+                        <ServiceCard
+                          service={service}
+                          cardColor={cardColor}
+                          fallbackColor={fallbackColor}
+                          onToggleEdit={handleToggleEdit}
+                          onUpdate={handleServiceUpdate}
+                          onToggleDay={handleToggleDay}
+                          onOpenPicker={handleOpenPicker}
+                          onSelectImage={handleSelectImage}
+                          isEditing={editingServiceId === service.servicio_id}
+                          timeOptions={timeOptions}
+                        />
+                        {editingServiceId === service.servicio_id ? (
+                          <Pressable
+                            onPress={() => handleDeleteService(service.servicio_id)}
+                            className="self-end rounded-full border border-rose-500/40 px-3 py-2"
+                          >
+                            <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    );
+                  })
+                )}
+              </View>
             </Card>
-
-            <View className="gap-5">
-              {loadingServices ? (
-                <Card className="items-center py-6">
-                  <Text className="text-white/70">Cargando servicios...</Text>
-                </Card>
-              ) : (
-                services.map((service, index) => {
-                  const fallbackColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
-                  const cardColor = resolveServiceColor(service, index);
-                  return (
-                  <View key={service.servicio_id} className="gap-2">
-                    <ServiceCard
-                      service={service}
-                      cardColor={cardColor}
-                      fallbackColor={fallbackColor}
-                      onToggleEdit={handleToggleEdit}
-                      onUpdate={handleServiceUpdate}
-                      onToggleDay={handleToggleDay}
-                      onOpenPicker={handleOpenPicker}
-                      onSelectImage={handleSelectImage}
-                      isEditing={editingServiceId === service.servicio_id}
-                      timeOptions={timeOptions}
-                    />
-                    {editingServiceId === service.servicio_id ? (
-                      <Pressable
-                        onPress={() => handleDeleteService(service.servicio_id)}
-                        className="self-end rounded-full border border-rose-500/40 px-3 py-2"
-                      >
-                        <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                );
-                })
-              )}
-            </View>
           </View>
 
           <View className="flex-1 gap-6">
@@ -1508,6 +1542,48 @@ export default function ServiciosScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <ActionPanel
+        visible={showServicePanel}
+        title="Nuevo servicio"
+        subtitle="Cargá la información base antes de publicarlo."
+        onClose={() => {
+          setShowServicePanel(false);
+          setNewServiceForm(buildServiceDefaults());
+        }}
+      >
+        <ServiceForm
+          service={newServiceForm}
+          fallbackColor={SERVICE_COLORS[0]}
+          priceEnabled={newServiceForm.modo_acceso === 'reserva'}
+          onUpdate={(key, value) => setNewServiceForm((prev) => ({ ...prev, [key]: value }))}
+          onToggleDay={(dayNumber) =>
+            setNewServiceForm((prev) => {
+              const exists = prev.dias_disponibles.includes(dayNumber);
+              const updated = exists
+                ? prev.dias_disponibles.filter((day) => day !== dayNumber)
+                : [...prev.dias_disponibles, dayNumber];
+              return { ...prev, dias_disponibles: updated };
+            })
+          }
+          onOpenPicker={(field, options, title) =>
+            handleOpenPicker({
+              context: 'newService',
+              field,
+              options,
+              title,
+            })
+          }
+          onSelectImage={handleSelectNewServiceImage}
+          timeOptions={timeOptions}
+        />
+        <Pressable
+          onPress={handleSaveNewService}
+          className="rounded-full bg-mc-primary px-4 py-3 items-center"
+        >
+          <Text className="text-white font-semibold">Crear servicio</Text>
+        </Pressable>
+      </ActionPanel>
 
       <ActionPanel
         visible={showTypePanel}
@@ -2023,36 +2099,27 @@ export default function ServiciosScreen() {
         </Pressable>
       </ActionPanel>
 
-      {pickerState ? (
-        <View className="absolute inset-0 bg-black/50 items-center justify-center px-4">
-          <Card className="w-full max-w-xl max-h-[480px]">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-white text-lg font-semibold">{pickerState.title}</Text>
+      <ActionPanel
+        visible={Boolean(pickerState)}
+        title={pickerState?.title}
+        onClose={() => setPickerState(null)}
+      >
+        <ScrollView className="max-h-[360px]" contentContainerClassName="gap-2 pb-2">
+          {pickerState?.options?.map((option) => {
+            const value = option.value ?? option.id ?? option.key ?? option;
+            const label = option.label ?? option.nombre ?? option.title ?? String(option);
+            return (
               <Pressable
-                onPress={() => setPickerState(null)}
-                className="h-9 w-9 items-center justify-center rounded-full bg-white/5"
+                key={value}
+                onPress={() => handleSelectPickerOption(value)}
+                className="rounded-xl px-4 py-3 border border-white/5 bg-white/5"
               >
-                <Ionicons name="close" size={18} color="white" />
+                <Text className="text-white text-base font-medium">{label}</Text>
               </Pressable>
-            </View>
-            <ScrollView className="max-h-[360px]" contentContainerClassName="pb-2">
-              {pickerState.options.map((option) => {
-                const value = option.value ?? option.id ?? option.key ?? option;
-                const label = option.label ?? option.nombre ?? option.title ?? String(option);
-                return (
-                  <Pressable
-                    key={value}
-                    onPress={() => handleSelectPickerOption(value)}
-                    className="rounded-xl px-4 py-3 mb-2 border border-white/5 bg-white/5"
-                  >
-                    <Text className="text-white text-base font-medium">{label}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </Card>
-        </View>
-      ) : null}
+            );
+          })}
+        </ScrollView>
+      </ActionPanel>
     </View>
   );
 }
