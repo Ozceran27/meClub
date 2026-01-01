@@ -893,6 +893,24 @@ export default function ServiciosScreen() {
     setPickerState({ context, id, field, options, title });
   };
 
+  const softenServiceColor = (value, alpha = 0.32) => {
+    const normalized = normalizeHexColor(value);
+    if (!normalized) return value;
+    let hex = normalized.slice(1);
+    if (hex.length === 3) {
+      hex = hex
+        .split('')
+        .map((char) => char + char)
+        .join('');
+    }
+    const intValue = Number.parseInt(hex, 16);
+    if (Number.isNaN(intValue)) return value;
+    const red = (intValue >> 16) & 255;
+    const green = (intValue >> 8) & 255;
+    const blue = intValue & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  };
+
   const resolveServiceColor = (service, index) => {
     const normalized = normalizeHexColor(service?.color);
     if (normalized) return normalized;
@@ -1457,7 +1475,8 @@ export default function ServiciosScreen() {
                 ) : (
                   services.map((service, index) => {
                     const fallbackColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
-                    const cardColor = resolveServiceColor(service, index);
+                    const baseColor = resolveServiceColor(service, index);
+                    const cardColor = softenServiceColor(baseColor);
                     return (
                       <View key={service.servicio_id} className="gap-2">
                         <ServiceCard
