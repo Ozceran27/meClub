@@ -1,7 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import ModalContainer from '../../components/ModalContainer';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -36,16 +37,15 @@ export default function CourtSummaryModal({ visible, onClose, court, summary, lo
   const proximaReserva = summary?.proximaReserva;
 
   return (
-    <Modal
+    <ModalContainer
       visible={visible}
-      transparent
-      animationType="fade"
       onRequestClose={() => {
         onClose?.();
       }}
+      overlayClassName="bg-black/70"
+      containerClassName="w-full max-w-3xl max-h-[85vh]"
     >
-      <View className="flex-1 bg-black/70 items-center justify-center px-4">
-        <Card className="w-full max-w-3xl max-h-[85vh]">
+      <Card className="w-full max-h-[85vh]">
           <View className="flex-row items-center justify-between mb-5">
             <View>
               <Text className="text-white text-2xl font-bold tracking-tight">Estado general</Text>
@@ -175,8 +175,7 @@ export default function CourtSummaryModal({ visible, onClose, court, summary, lo
               </View>
             </ScrollView>
           )}
-        </Card>
-      </View>
-    </Modal>
+      </Card>
+    </ModalContainer>
   );
 }

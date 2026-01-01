@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import ModalContainer from '../../components/ModalContainer';
 import ReservationFormModal from './ReservationFormModal';
 import {
   createClubReservation,
@@ -504,14 +504,13 @@ function ReservationStatusMenu({
   }, [onSave, selectedPayment, selectedStatus]);
 
   return (
-    <Modal
-      transparent
+    <ModalContainer
       visible={visible}
-      animationType="fade"
       onRequestClose={onClose}
+      overlayClassName="bg-slate-950/80"
+      containerClassName="w-full max-w-md max-h-[85vh]"
     >
-      <View className="flex-1 items-center justify-center bg-slate-950/80 px-4">
-        <View className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-5">
+      <View className="w-full rounded-3xl border border-white/10 bg-slate-900 p-5">
           <View className="flex-row items-start justify-between">
             <View className="flex-1 pr-4">
               <Text className="text-white text-lg font-semibold">Actualizar estado</Text>
@@ -633,9 +632,8 @@ function ReservationStatusMenu({
               <Text className="text-mc-warn text-sm font-semibold">Guardar cambios</Text>
             </Pressable>
           </View>
-        </View>
       </View>
-    </Modal>
+    </ModalContainer>
   );
 }
 

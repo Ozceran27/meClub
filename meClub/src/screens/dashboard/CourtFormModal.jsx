@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Card from '../../components/Card';
+import ModalContainer from '../../components/ModalContainer';
 import { resolveAssetUrl } from '../../lib/api';
 
 const FIELD_STYLES =
@@ -246,8 +246,12 @@ export default function CourtFormModal({
   const renderSportPicker = () => {
     if (!showSportPicker) return null;
     return (
-      <View className="absolute inset-0 bg-black/50 items-center justify-center px-4">
-        <Card className="w-full max-w-xl max-h-[480px]">
+      <ModalContainer
+        visible={showSportPicker}
+        onRequestClose={() => setShowSportPicker(false)}
+        containerClassName="w-full max-w-xl max-h-[480px]"
+      >
+        <Card className="w-full max-h-[480px]">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-white text-lg font-semibold">Seleccioná un deporte</Text>
             <Pressable
@@ -287,14 +291,12 @@ export default function CourtFormModal({
             )}
           </ScrollView>
         </Card>
-      </View>
+      </ModalContainer>
     );
   };
 
   return (
-    <Modal
-      animationType="fade"
-      transparent
+    <ModalContainer
       visible={visible}
       onRequestClose={() => {
         if (!loading) {
@@ -302,8 +304,7 @@ export default function CourtFormModal({
         }
       }}
     >
-      <View className="flex-1 bg-black/60 items-center justify-center px-4">
-        <Card className="w-full max-w-3xl max-h-[90vh]">
+      <Card className="w-full max-h-[90vh]">
           <View className="flex-row items-center justify-between mb-6">
             <View>
               <Text className="text-white text-2xl font-bold tracking-tight">{title}</Text>
@@ -517,7 +518,6 @@ export default function CourtFormModal({
           </View>
         </Card>
         {renderSportPicker()}
-      </View>
-    </Modal>
+    </ModalContainer>
   );
 }
