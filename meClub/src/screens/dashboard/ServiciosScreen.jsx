@@ -1383,7 +1383,7 @@ export default function ServiciosScreen() {
         <View className="py-6 gap-4">
           <View className="flex-row flex-wrap items-center justify-between gap-3">
             <Text className="text-white text-[28px] font-extrabold tracking-tight">
-              Servicios y asociados
+              Servicios y Asociados
             </Text>
             <View className="grid grid-cols-3 gap-3">
               <ActionButton
