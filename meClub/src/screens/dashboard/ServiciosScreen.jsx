@@ -1390,16 +1390,19 @@ export default function ServiciosScreen() {
                 onPress={() => setShowPaymentPanel(true)}
                 icon="cash-outline"
                 label="Cargar pago"
+                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
               />
               <ActionButton
                 onPress={() => setShowPromoPanel(true)}
                 icon="sparkles-outline"
                 label="Crear promoción"
+                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
               />
               <ActionButton
                 onPress={() => setShowCouponPanel(true)}
                 icon="ticket-outline"
                 label="Crear cupón de descuento"
+                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
               />
               <ActionButton
                 onPress={handleAddService}

@@ -8,13 +8,14 @@ export default function ActionButton({
   onPress,
   disabled = false,
   className = '',
+  backgroundClassName = 'bg-mc-warn hover:bg-mc-warn/80',
   iconSize = 18,
 }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className={`flex-row items-center gap-2 rounded-2xl bg-mc-warn px-4 py-2 hover:bg-mc-warn/80 ${
+      className={`flex-row items-center gap-2 rounded-2xl px-4 py-2 ${backgroundClassName} ${
         disabled ? 'opacity-50' : ''
       } ${className}`.trim()}
     >
