@@ -144,10 +144,9 @@ function ActionPanel({ visible, title, subtitle, onClose, children }) {
       visible={visible}
       onRequestClose={onClose}
       animationType="fade"
-      contentClassName="items-center justify-end"
-      containerClassName="w-full max-w-3xl max-h-[85vh]"
+      contentClassName="items-center justify-center"
     >
-      <View className="rounded-t-3xl bg-[#0F172A] px-6 pb-8 pt-5 shadow-card">
+      <Card className="w-full max-h-[90vh] bg-[#0F172A] px-6 pb-8 pt-5">
         <View className="flex-row items-start justify-between gap-4">
           <View className="flex-1">
             <Text className="text-white text-xl font-semibold">{title}</Text>
@@ -161,8 +160,10 @@ function ActionPanel({ visible, title, subtitle, onClose, children }) {
             <Ionicons name="close" size={18} color="#E2E8F0" />
           </Pressable>
         </View>
-        <View className="mt-6 gap-4">{children}</View>
-      </View>
+        <ScrollView className="mt-6 max-h-[70vh]" contentContainerClassName="gap-4 pb-2">
+          {children}
+        </ScrollView>
+      </Card>
     </ModalContainer>
   );
 }
