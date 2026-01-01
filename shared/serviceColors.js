@@ -1,12 +1,12 @@
 const SERVICE_COLORS = [
-  '#1E3A8A',
-  '#047857',
-  '#B45309',
-  '#9F1239',
-  '#6D28D9',
-  '#0F766E',
-  '#B91C1C',
-  '#0E7490',
+  '#4C5A92',
+  '#2F6F5B',
+  '#9A6A3B',
+  '#8A3B5C',
+  '#6A4C9B',
+  '#2B6C6A',
+  '#8B3A3A',
+  '#3A6B78',
 ];
 
 const normalizeHexColor = (value) => {
