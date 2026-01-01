@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
 import ActionButton from '../../components/ActionButton';
@@ -118,6 +119,20 @@ const isValidDate = (value) => {
     date.getMonth() === month - 1 &&
     date.getDate() === day
   );
+};
+
+const formatDateInput = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateInput = (value) => {
+  if (!isValidDate(value)) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
+  return new Date(year, month - 1, day);
 };
 
 const isValidTime = (value) => {
@@ -643,6 +658,7 @@ export default function ServiciosScreen() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [promoForm, setPromoForm] = useState(buildPromotionForm());
+  const [promoDatePicker, setPromoDatePicker] = useState({ visible: false, field: null });
   const [couponForm, setCouponForm] = useState(buildCouponForm());
   const [courts, setCourts] = useState([]);
   const [newServiceForm, setNewServiceForm] = useState(buildServiceDefaults());
@@ -872,6 +888,27 @@ export default function ServiciosScreen() {
 
   const handleOpenPicker = ({ context = 'editService', id, field, options, title }) => {
     setPickerState({ context, id, field, options, title });
+  };
+
+  const handleOpenPromoDatePicker = (field) => {
+    if (Platform.OS === 'web') return;
+    setPromoDatePicker({ visible: true, field });
+  };
+
+  const handlePromoDateChange = (event, selectedDate) => {
+    if (!promoDatePicker.field) return;
+    if (event?.type === 'dismissed') {
+      setPromoDatePicker({ visible: false, field: null });
+      return;
+    }
+    const nextDate = selectedDate ?? new Date();
+    setPromoForm((prev) => ({
+      ...prev,
+      [promoDatePicker.field]: formatDateInput(nextDate),
+    }));
+    if (Platform.OS !== 'ios') {
+      setPromoDatePicker({ visible: false, field: null });
+    }
   };
 
   const softenServiceColor = (value, alpha = 0.32) => {
@@ -1332,6 +1369,7 @@ export default function ServiciosScreen() {
     setTypeForm(buildMemberTypeForm());
     setEditingTypeId(null);
     setPromoForm(buildPromotionForm());
+    setPromoDatePicker({ visible: false, field: null });
     setCouponForm(buildCouponForm());
     setMemberForm(buildMemberForm());
     setMemberSearchQuery('');
@@ -2023,13 +2061,25 @@ export default function ServiciosScreen() {
           className={FIELD_STYLES}
         />
         <View className="flex-row gap-3">
-          <TextInput
-            value={promoForm.fecha_inicio}
-            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_inicio: value }))}
-            placeholder="Fecha inicio (YYYY-MM-DD)"
-            placeholderTextColor="#94A3B8"
-            className={`${FIELD_STYLES} flex-1`}
-          />
+          {Platform.OS === 'web' ? (
+            <TextInput
+              value={promoForm.fecha_inicio}
+              onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_inicio: value }))}
+              placeholder="Fecha inicio (YYYY-MM-DD)"
+              placeholderTextColor="#94A3B8"
+              type="date"
+              className={`${FIELD_STYLES} flex-1`}
+            />
+          ) : (
+            <Pressable
+              onPress={() => handleOpenPromoDatePicker('fecha_inicio')}
+              className={`${FIELD_STYLES} flex-1 justify-center`}
+            >
+              <Text className={promoForm.fecha_inicio ? 'text-white' : 'text-white/50'}>
+                {promoForm.fecha_inicio || 'Fecha inicio'}
+              </Text>
+            </Pressable>
+          )}
           <TextInput
             value={promoForm.hora_inicio}
             onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_inicio: value }))}
@@ -2039,13 +2089,25 @@ export default function ServiciosScreen() {
           />
         </View>
         <View className="flex-row gap-3">
-          <TextInput
-            value={promoForm.fecha_fin}
-            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_fin: value }))}
-            placeholder="Fecha fin (YYYY-MM-DD)"
-            placeholderTextColor="#94A3B8"
-            className={`${FIELD_STYLES} flex-1`}
-          />
+          {Platform.OS === 'web' ? (
+            <TextInput
+              value={promoForm.fecha_fin}
+              onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_fin: value }))}
+              placeholder="Fecha fin (YYYY-MM-DD)"
+              placeholderTextColor="#94A3B8"
+              type="date"
+              className={`${FIELD_STYLES} flex-1`}
+            />
+          ) : (
+            <Pressable
+              onPress={() => handleOpenPromoDatePicker('fecha_fin')}
+              className={`${FIELD_STYLES} flex-1 justify-center`}
+            >
+              <Text className={promoForm.fecha_fin ? 'text-white' : 'text-white/50'}>
+                {promoForm.fecha_fin || 'Fecha fin'}
+              </Text>
+            </Pressable>
+          )}
           <TextInput
             value={promoForm.hora_fin}
             onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_fin: value }))}
@@ -2054,6 +2116,16 @@ export default function ServiciosScreen() {
             className={`${FIELD_STYLES} flex-1`}
           />
         </View>
+        {promoDatePicker.visible && Platform.OS !== 'web' ? (
+          <DateTimePicker
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+            value={
+              parseDateInput(promoForm[promoDatePicker.field]) ?? new Date()
+            }
+            onChange={handlePromoDateChange}
+          />
+        ) : null}
         <Pressable
           onPress={() =>
             handleOpenPicker({
