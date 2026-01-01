@@ -1381,10 +1381,15 @@ export default function ServiciosScreen() {
     <View className="flex-1 bg-mc-bg">
       <ScrollView contentContainerClassName="px-6 pb-12">
         <View className="py-6 gap-4">
-          <View className="flex-row flex-wrap items-center justify-between gap-3">
-            <Text className="text-white text-[28px] font-extrabold tracking-tight">
-              Servicios y Asociados
-            </Text>
+          <View className="flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <View className="flex-1 gap-2">
+              <Text className="text-white text-[28px] font-extrabold tracking-tight">
+                Servicios y Asociados
+              </Text>
+              <Text className="text-white/60 max-w-3xl">
+                Centralizá la configuración de tus servicios y el seguimiento de asociados.
+              </Text>
+            </View>
             <View className="grid grid-cols-3 gap-3">
               <ActionButton
                 onPress={() => setShowPaymentPanel(true)}
@@ -1426,9 +1431,6 @@ export default function ServiciosScreen() {
               />
             </View>
           </View>
-          <Text className="text-white/60 max-w-3xl">
-            Centralizá la configuración de tus servicios y el seguimiento de asociados.
-          </Text>
           {errorMessage ? (
             <View className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
               <Text className="text-rose-100 text-sm">{errorMessage}</Text>
