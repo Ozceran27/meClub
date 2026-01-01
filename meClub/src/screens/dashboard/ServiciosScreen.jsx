@@ -336,19 +336,7 @@ const calculateDebt = (member) => {
   return Math.round((cuota * months - pagos) * 100) / 100;
 };
 
-function ServiceCard({
-  service,
-  cardColor,
-  fallbackColor,
-  onToggleEdit,
-  onUpdate,
-  onToggleDay,
-  onOpenPicker,
-  onSelectImage,
-  isEditing,
-  timeOptions,
-}) {
-  const priceEnabled = service.modo_acceso === 'reserva';
+function ServiceCard({ service, cardColor, onToggleEdit }) {
   return (
     <Card className="gap-4" style={{ backgroundColor: cardColor }}>
       <View className="flex-row items-start justify-between gap-3">
@@ -369,10 +357,8 @@ function ServiceCard({
             onPress={() => onToggleEdit(service.servicio_id)}
             className="flex-row items-center gap-2 rounded-full border border-white/10 px-3 py-1"
           >
-            <Ionicons name={isEditing ? 'checkmark' : 'pencil'} size={14} color="#F8FAFC" />
-            <Text className="text-white text-xs font-semibold">
-              {isEditing ? 'Listo' : 'Editar'}
-            </Text>
+            <Ionicons name="pencil" size={14} color="#F8FAFC" />
+            <Text className="text-white text-xs font-semibold">Editar</Text>
           </Pressable>
           <View
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -384,56 +370,35 @@ function ServiceCard({
         </View>
       </View>
 
-      {isEditing ? (
-        <ServiceForm
-          service={service}
-          fallbackColor={fallbackColor}
-          priceEnabled={priceEnabled}
-          onUpdate={(key, value) => onUpdate(service.servicio_id, key, value)}
-          onToggleDay={(dayNumber) => onToggleDay(service.servicio_id, dayNumber)}
-          onOpenPicker={(field, options, title) =>
-            onOpenPicker({
-              context: 'service',
-              id: service.servicio_id,
-              field,
-              options,
-              title,
-            })
-          }
-          onSelectImage={() => onSelectImage(service.servicio_id)}
-          timeOptions={timeOptions}
-        />
-      ) : (
-        <View className="flex-row flex-wrap gap-4">
-          <View className="flex-1 min-w-[140px]">
-            <Text className="text-white/60 text-xs">Horario</Text>
-            <Text className="text-white font-semibold">
-              {service.hora_inicio && service.hora_fin
-                ? `${service.hora_inicio} - ${service.hora_fin}`
-                : 'Sin horario'}
-            </Text>
-          </View>
-          <View className="flex-1 min-w-[140px]">
-            <Text className="text-white/60 text-xs">Precio</Text>
-            <Text className="text-white font-semibold">
-              {service.modo_acceso === 'reserva' && service.precio_valor
-                ? `$${service.precio_valor} / ${service.precio_tipo || 'hora'}`
-                : 'Sin precio'}
-            </Text>
-          </View>
-          <View className="flex-1 min-w-[140px]">
-            <Text className="text-white/60 text-xs">Días</Text>
-            <Text className="text-white font-semibold">
-              {service.dias_disponibles.length
-                ? service.dias_disponibles
-                    .map((day) => DAYS[day - 1]?.label?.charAt(0))
-                    .filter(Boolean)
-                    .join(', ')
-                : 'Sin definir'}
-            </Text>
-          </View>
+      <View className="flex-row flex-wrap gap-4">
+        <View className="flex-1 min-w-[140px]">
+          <Text className="text-white/60 text-xs">Horario</Text>
+          <Text className="text-white font-semibold">
+            {service.hora_inicio && service.hora_fin
+              ? `${service.hora_inicio} - ${service.hora_fin}`
+              : 'Sin horario'}
+          </Text>
         </View>
-      )}
+        <View className="flex-1 min-w-[140px]">
+          <Text className="text-white/60 text-xs">Precio</Text>
+          <Text className="text-white font-semibold">
+            {service.modo_acceso === 'reserva' && service.precio_valor
+              ? `$${service.precio_valor} / ${service.precio_tipo || 'hora'}`
+              : 'Sin precio'}
+          </Text>
+        </View>
+        <View className="flex-1 min-w-[140px]">
+          <Text className="text-white/60 text-xs">Días</Text>
+          <Text className="text-white font-semibold">
+            {service.dias_disponibles.length
+              ? service.dias_disponibles
+                  .map((day) => DAYS[day - 1]?.label?.charAt(0))
+                  .filter(Boolean)
+                  .join(', ')
+              : 'Sin definir'}
+          </Text>
+        </View>
+      </View>
     </Card>
   );
 }
@@ -644,7 +609,9 @@ function ServiceForm({
 
 export default function ServiciosScreen() {
   const [services, setServices] = useState([]);
-  const [editingServiceId, setEditingServiceId] = useState(null);
+  const [editingService, setEditingService] = useState(null);
+  const [editingServiceForm, setEditingServiceForm] = useState(buildServiceDefaults());
+  const [showEditServicePanel, setShowEditServicePanel] = useState(false);
   const [pickerState, setPickerState] = useState(null);
   const [timeOptions, setTimeOptions] = useState(() => buildTimeOptions([]));
   const [loadingServices, setLoadingServices] = useState(true);
@@ -832,36 +799,44 @@ export default function ServiciosScreen() {
     return createClubServiceEntry(payload);
   };
 
-  const handleServiceUpdate = (id, key, value) => {
-    setServices((prev) =>
-      prev.map((service) =>
-        service.servicio_id === id
-          ? {
-              ...service,
-              [key]: value,
-            }
-          : service,
-      ),
-    );
+  const handleToggleEdit = (id) => {
+    const target = services.find((service) => service.servicio_id === id);
+    if (!target) return;
+    setEditingService(target);
+    setEditingServiceForm({ ...buildServiceDefaults(), ...target });
+    setShowEditServicePanel(true);
   };
 
-  const handleToggleEdit = (id) => {
-    setEditingServiceId((prev) => (prev === id ? null : id));
-    const target = services.find((service) => service.servicio_id === id);
-    if (editingServiceId === id && target) {
-      persistService(target)
-        .then((saved) => {
-          const normalized = normalizeServiceEntry(saved);
-          setServices((current) =>
-            current.map((item) => {
-              if (item.servicio_id === id) return normalized;
-              return item;
-            }),
-          );
-        })
-        .catch((err) => {
-          setErrorMessage(err?.message || 'No pudimos guardar el servicio');
-        });
+  const handleCloseEditServicePanel = () => {
+    setShowEditServicePanel(false);
+    setEditingService(null);
+    setEditingServiceForm(buildServiceDefaults());
+  };
+
+  const handleSaveEditService = async () => {
+    try {
+      setErrorMessage('');
+      if (!editingServiceForm.nombre.trim()) {
+        setErrorMessage('El nombre del servicio es obligatorio.');
+        return;
+      }
+      const saved = await persistService(editingServiceForm);
+      const normalized = normalizeServiceEntry(saved);
+      setServices((current) =>
+        current.map((item) => {
+          if (item.servicio_id === editingServiceForm.servicio_id) return normalized;
+          return item;
+        }),
+      );
+      setCatalogServices((current) =>
+        current.map((item) => {
+          if (item.servicio_id === editingServiceForm.servicio_id) return normalized;
+          return item;
+        }),
+      );
+      handleCloseEditServicePanel();
+    } catch (err) {
+      setErrorMessage(err?.message || 'No pudimos guardar el servicio');
     }
   };
 
@@ -888,20 +863,13 @@ export default function ServiciosScreen() {
     }
   };
 
-  const handleToggleDay = (serviceId, dayNumber) => {
-    setServices((prev) =>
-      prev.map((service) => {
-        if (service.servicio_id !== serviceId) return service;
-        const exists = service.dias_disponibles.includes(dayNumber);
-        const updated = exists
-          ? service.dias_disponibles.filter((day) => day !== dayNumber)
-          : [...service.dias_disponibles, dayNumber];
-        return { ...service, dias_disponibles: updated };
-      }),
-    );
+  const handleDeleteEditingService = async () => {
+    if (!editingServiceForm.servicio_id) return;
+    await handleDeleteService(editingServiceForm.servicio_id);
+    handleCloseEditServicePanel();
   };
 
-  const handleOpenPicker = ({ context = 'service', id, field, options, title }) => {
+  const handleOpenPicker = ({ context = 'editService', id, field, options, title }) => {
     setPickerState({ context, id, field, options, title });
   };
 
@@ -931,8 +899,8 @@ export default function ServiciosScreen() {
 
   const handleSelectPickerOption = (value) => {
     if (!pickerState) return;
-    if (pickerState.context === 'service') {
-      handleServiceUpdate(pickerState.id, pickerState.field, value);
+    if (pickerState.context === 'editService') {
+      setEditingServiceForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'newService') {
       setNewServiceForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'member') {
@@ -945,28 +913,6 @@ export default function ServiciosScreen() {
       setCouponForm((prev) => ({ ...prev, [pickerState.field]: value }));
     }
     setPickerState(null);
-  };
-
-  const handleSelectImage = async (serviceId) => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMessage('Necesitamos permisos para acceder a tus fotos');
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-      });
-      if (!result.canceled) {
-        const asset = result.assets?.[0];
-        if (asset?.uri) {
-          handleServiceUpdate(serviceId, 'imagen_url', asset.uri);
-        }
-      }
-    } catch (err) {
-      setErrorMessage('No pudimos abrir el selector de imágenes');
-    }
   };
 
   const handleSelectNewServiceImage = async () => {
@@ -984,6 +930,28 @@ export default function ServiciosScreen() {
         const asset = result.assets?.[0];
         if (asset?.uri) {
           setNewServiceForm((prev) => ({ ...prev, imagen_url: asset.uri }));
+        }
+      }
+    } catch (err) {
+      setErrorMessage('No pudimos abrir el selector de imágenes');
+    }
+  };
+
+  const handleSelectEditServiceImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMessage('Necesitamos permisos para acceder a tus fotos');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      });
+      if (!result.canceled) {
+        const asset = result.assets?.[0];
+        if (asset?.uri) {
+          setEditingServiceForm((prev) => ({ ...prev, imagen_url: asset.uri }));
         }
       }
     } catch (err) {
@@ -1473,7 +1441,6 @@ export default function ServiciosScreen() {
                   </Card>
                 ) : (
                   services.map((service, index) => {
-                    const fallbackColor = SERVICE_COLORS[index % SERVICE_COLORS.length];
                     const baseColor = resolveServiceColor(service, index);
                     const cardColor = softenServiceColor(baseColor);
                     return (
@@ -1481,23 +1448,8 @@ export default function ServiciosScreen() {
                         <ServiceCard
                           service={service}
                           cardColor={cardColor}
-                          fallbackColor={fallbackColor}
                           onToggleEdit={handleToggleEdit}
-                          onUpdate={handleServiceUpdate}
-                          onToggleDay={handleToggleDay}
-                          onOpenPicker={handleOpenPicker}
-                          onSelectImage={handleSelectImage}
-                          isEditing={editingServiceId === service.servicio_id}
-                          timeOptions={timeOptions}
                         />
-                        {editingServiceId === service.servicio_id ? (
-                          <Pressable
-                            onPress={() => handleDeleteService(service.servicio_id)}
-                            className="self-end rounded-full border border-rose-500/40 px-3 py-2"
-                          >
-                            <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
-                          </Pressable>
-                        ) : null}
                       </View>
                     );
                   })
@@ -1662,6 +1614,61 @@ export default function ServiciosScreen() {
         >
           <Text className="text-white font-semibold">Crear servicio</Text>
         </Pressable>
+      </ActionPanel>
+
+      <ActionPanel
+        visible={showEditServicePanel}
+        title={editingService?.nombre ? `Editar ${editingService.nombre}` : 'Editar servicio'}
+        subtitle="Actualizá la información del servicio."
+        onClose={handleCloseEditServicePanel}
+      >
+        <ServiceForm
+          service={editingServiceForm}
+          fallbackColor={SERVICE_COLORS[0]}
+          priceEnabled={editingServiceForm.modo_acceso === 'reserva'}
+          onUpdate={(key, value) => setEditingServiceForm((prev) => ({ ...prev, [key]: value }))}
+          onToggleDay={(dayNumber) =>
+            setEditingServiceForm((prev) => {
+              const exists = prev.dias_disponibles.includes(dayNumber);
+              const updated = exists
+                ? prev.dias_disponibles.filter((day) => day !== dayNumber)
+                : [...prev.dias_disponibles, dayNumber];
+              return { ...prev, dias_disponibles: updated };
+            })
+          }
+          onOpenPicker={(field, options, title) =>
+            handleOpenPicker({
+              context: 'editService',
+              field,
+              options,
+              title,
+            })
+          }
+          onSelectImage={handleSelectEditServiceImage}
+          timeOptions={timeOptions}
+        />
+        <View className="flex-row flex-wrap gap-3">
+          <Pressable
+            onPress={handleCloseEditServicePanel}
+            className="rounded-full border border-white/10 px-4 py-3 items-center"
+          >
+            <Text className="text-white font-semibold">Cancelar</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleSaveEditService}
+            className="rounded-full bg-mc-primary px-4 py-3 items-center"
+          >
+            <Text className="text-white font-semibold">Guardar cambios</Text>
+          </Pressable>
+          {editingServiceForm.servicio_id ? (
+            <Pressable
+              onPress={handleDeleteEditingService}
+              className="rounded-full border border-rose-500/40 px-4 py-3 items-center"
+            >
+              <Text className="text-rose-200 font-semibold">Eliminar servicio</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </ActionPanel>
 
       <ActionPanel
