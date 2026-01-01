@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
+import ActionButton from '../../components/ActionButton';
 import ModalContainer from '../../components/ModalContainer';
 import {
   createClubServiceEntry,
@@ -30,9 +31,6 @@ import { SERVICE_COLORS, normalizeHexColor } from '../../constants/serviceColors
 
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
-
-const ACTION_BUTTON_STYLES =
-  'flex-row items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2';
 
 const MAX_SERVICES = 10;
 
@@ -1388,59 +1386,41 @@ export default function ServiciosScreen() {
               Servicios y asociados
             </Text>
             <View className="grid grid-cols-3 gap-3">
-              <Pressable
+              <ActionButton
                 onPress={() => setShowPaymentPanel(true)}
-                className="flex-row items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-300 px-4 py-3"
-              >
-                <Ionicons name="cash-outline" size={16} color="#0F172A" />
-                <Text className="text-slate-900 text-sm font-semibold">Cargar pago</Text>
-              </Pressable>
-              <Pressable
+                icon="cash-outline"
+                label="Cargar pago"
+              />
+              <ActionButton
                 onPress={() => setShowPromoPanel(true)}
-                className="flex-row items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-300 px-4 py-3"
-              >
-                <Ionicons name="sparkles-outline" size={16} color="#0F172A" />
-                <Text className="text-slate-900 text-sm font-semibold">Crear promoción</Text>
-              </Pressable>
-              <Pressable
+                icon="sparkles-outline"
+                label="Crear promoción"
+              />
+              <ActionButton
                 onPress={() => setShowCouponPanel(true)}
-                className="flex-row items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-300 px-4 py-3"
-              >
-                <Ionicons name="ticket-outline" size={16} color="#0F172A" />
-                <Text className="text-slate-900 text-sm font-semibold">
-                  Crear cupón de descuento
-                </Text>
-              </Pressable>
-              <Pressable
+                icon="ticket-outline"
+                label="Crear cupón de descuento"
+              />
+              <ActionButton
                 onPress={handleAddService}
                 disabled={serviceLimitReached}
-                className={`flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3 ${
-                  serviceLimitReached ? 'opacity-50' : ''
-                }`}
-              >
-                <Ionicons name="add-circle-outline" size={16} color="#0F172A" />
-                <Text className="text-slate-900 text-sm font-semibold">Nuevo servicio</Text>
-              </Pressable>
-              <Pressable
+                icon="add-circle-outline"
+                label="Nuevo servicio"
+              />
+              <ActionButton
                 onPress={() => {
                   setTypeForm(buildMemberTypeForm());
                   setEditingTypeId(null);
                   setShowTypePanel(true);
                 }}
-                className="flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3"
-              >
-                <Ionicons name="people-outline" size={16} color="#0F172A" />
-                <Text className="text-slate-900 text-sm font-semibold">
-                  Crear plan de asociado
-                </Text>
-              </Pressable>
-              <Pressable
+                icon="people-outline"
+                label="Crear plan de asociado"
+              />
+              <ActionButton
                 onPress={() => setShowMemberPanel(true)}
-                className="flex-row items-center gap-2 rounded-2xl border border-amber-300 bg-mc-warn px-4 py-3"
-              >
-                <Ionicons name="person-add-outline" size={16} color="#0F172A" />
-                <Text className="text-slate-900 text-sm font-semibold">Alta de asociado</Text>
-              </Pressable>
+                icon="person-add-outline"
+                label="Alta de asociado"
+              />
             </View>
           </View>
           <Text className="text-white/60 max-w-3xl">
