@@ -251,7 +251,7 @@ export default function CourtFormModal({
         onRequestClose={() => setShowSportPicker(false)}
         containerClassName="w-full max-w-xl max-h-[480px]"
       >
-        <Card className="w-full max-h-[480px]">
+        <Card opaque className="w-full max-h-[480px]">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-white text-lg font-semibold">Seleccioná un deporte</Text>
             <Pressable
@@ -304,7 +304,7 @@ export default function CourtFormModal({
         }
       }}
     >
-      <Card className="w-full max-h-[90vh]">
+      <Card opaque className="w-full max-h-[90vh]">
           <View className="flex-row items-center justify-between mb-6">
             <View>
               <Text className="text-white text-2xl font-bold tracking-tight">{title}</Text>

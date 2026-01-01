@@ -858,7 +858,7 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
       overlayClassName="bg-black/70"
       containerClassName="w-full max-w-xl max-h-[85vh]"
     >
-      <Card className="w-full max-h-[85vh]">
+      <Card opaque className="w-full max-h-[85vh]">
           <CardTitle colorClass="text-white">{initialValue ? 'Editar gasto' : 'Nuevo gasto'}</CardTitle>
           <View className="mt-4 gap-4">
             <View>

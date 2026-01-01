@@ -45,7 +45,7 @@ export default function CourtSummaryModal({ visible, onClose, court, summary, lo
       overlayClassName="bg-black/70"
       containerClassName="w-full max-w-3xl max-h-[85vh]"
     >
-      <Card className="w-full max-h-[85vh]">
+      <Card opaque className="w-full max-h-[85vh]">
           <View className="flex-row items-center justify-between mb-5">
             <View>
               <Text className="text-white text-2xl font-bold tracking-tight">Estado general</Text>

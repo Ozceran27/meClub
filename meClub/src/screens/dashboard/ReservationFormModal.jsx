@@ -463,7 +463,7 @@ export default function ReservationFormModal({
         onRequestClose={onClose}
         containerClassName="w-full max-w-xl max-h-[480px]"
       >
-        <Card className="w-full max-h-[480px]">
+        <Card opaque className="w-full max-h-[480px]">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-white text-lg font-semibold">{pickerTitle}</Text>
             <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
@@ -562,7 +562,7 @@ export default function ReservationFormModal({
         if (!loading) onDismiss?.();
       }}
     >
-      <Card className="w-full max-h-[90vh]">
+      <Card opaque className="w-full max-h-[90vh]">
           <View className="flex-row items-center justify-between mb-6">
             <View>
               <Text className="text-white text-2xl font-bold tracking-tight">{title}</Text>
