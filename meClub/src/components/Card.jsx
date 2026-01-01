@@ -15,7 +15,7 @@ export default function Card({ className = '', children, style, ...rest }) {
 
   return (
     <View
-      className={`bg-[#0F172A]/90 rounded-2xl p-5 shadow-card ${className}`}
+      className={`bg-[#0F172A] rounded-2xl p-5 shadow-card ${className}`}
       style={combinedStyle}
       {...rest}
     >
