@@ -445,6 +445,9 @@ function ServiceForm({
   onSelectImage,
   timeOptions,
 }) {
+  const isPersistedService =
+    service.servicio_id && !String(service.servicio_id).startsWith('tmp-');
+
   return (
     <View className="gap-3">
       <TextInput
@@ -452,8 +455,14 @@ function ServiceForm({
         onChangeText={(value) => onUpdate('nombre', value)}
         placeholder="Nombre del servicio"
         placeholderTextColor="#94A3B8"
-        className={FIELD_STYLES}
+        editable={!isPersistedService}
+        className={`${FIELD_STYLES} ${isPersistedService ? 'opacity-60' : ''}`}
       />
+      {isPersistedService ? (
+        <Text className="text-white/60 text-xs">
+          El nombre no se puede editar luego de crear el servicio.
+        </Text>
+      ) : null}
       <View className="gap-2">
         <Text className="text-white/60 text-xs">Modo de acceso</Text>
         <Pressable

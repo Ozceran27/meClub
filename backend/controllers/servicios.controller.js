@@ -224,7 +224,7 @@ const updateServicio = async (req, res) => {
     const updates = {};
 
     if (req.body?.nombre !== undefined) {
-      updates.nombre = parseString(req.body.nombre, 'nombre', { required: true, max: 120 });
+      throwValidationError('No se puede editar el nombre del servicio');
     }
 
     if (req.body?.modo_acceso !== undefined) {
