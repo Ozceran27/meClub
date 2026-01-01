@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
+import ModalContainer from '../../components/ModalContainer';
 import {
   createClubServiceEntry,
   deleteClubServiceEntry,
@@ -141,26 +142,30 @@ const buildDateTimePayload = (date, time) => {
 
 function ActionPanel({ visible, title, subtitle, onClose, children }) {
   return (
-    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={onClose}>
-      <View className="flex-1 bg-mc-bg justify-end">
-        <View className="rounded-t-3xl bg-[#0F172A] px-6 pb-8 pt-5 shadow-card">
-          <View className="flex-row items-start justify-between gap-4">
-            <View className="flex-1">
-              <Text className="text-white text-xl font-semibold">{title}</Text>
-              {subtitle ? <Text className="text-white/60 mt-1">{subtitle}</Text> : null}
-            </View>
-            <Pressable
-              onPress={onClose}
-              className="h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5"
-              accessibilityLabel="Cerrar panel"
-            >
-              <Ionicons name="close" size={18} color="#E2E8F0" />
-            </Pressable>
+    <ModalContainer
+      visible={visible}
+      onRequestClose={onClose}
+      animationType="fade"
+      contentClassName="items-center justify-end"
+      containerClassName="w-full max-w-3xl max-h-[85vh]"
+    >
+      <View className="rounded-t-3xl bg-[#0F172A] px-6 pb-8 pt-5 shadow-card">
+        <View className="flex-row items-start justify-between gap-4">
+          <View className="flex-1">
+            <Text className="text-white text-xl font-semibold">{title}</Text>
+            {subtitle ? <Text className="text-white/60 mt-1">{subtitle}</Text> : null}
           </View>
-          <View className="mt-6 gap-4">{children}</View>
+          <Pressable
+            onPress={onClose}
+            className="h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5"
+            accessibilityLabel="Cerrar panel"
+          >
+            <Ionicons name="close" size={18} color="#E2E8F0" />
+          </Pressable>
         </View>
+        <View className="mt-6 gap-4">{children}</View>
       </View>
-    </Modal>
+    </ModalContainer>
   );
 }
 

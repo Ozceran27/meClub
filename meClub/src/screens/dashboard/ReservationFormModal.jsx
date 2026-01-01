@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   Switch,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import ModalContainer from '../../components/ModalContainer';
 import { searchPlayers } from '../../lib/api';
 import { calculateBaseAmount, toNumberOrNull } from './pricing';
 
@@ -458,8 +458,12 @@ export default function ReservationFormModal({
   const renderPickerModal = ({ visible: pickerVisible, onClose, options, selectedValue, onSelect, title: pickerTitle, emptyText = 'No hay datos disponibles' }) => {
     if (!pickerVisible) return null;
     return (
-      <View className="absolute inset-0 bg-black/50 items-center justify-center px-4">
-        <Card className="w-full max-w-xl max-h-[480px]">
+      <ModalContainer
+        visible={pickerVisible}
+        onRequestClose={onClose}
+        containerClassName="w-full max-w-xl max-h-[480px]"
+      >
+        <Card className="w-full max-h-[480px]">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-white text-lg font-semibold">{pickerTitle}</Text>
             <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
@@ -494,7 +498,7 @@ export default function ReservationFormModal({
             ) : null}
           </ScrollView>
         </Card>
-      </View>
+      </ModalContainer>
     );
   };
 
@@ -551,17 +555,14 @@ export default function ReservationFormModal({
   };
 
   return (
-    <Modal
-      animationType="fade"
-      transparent
+    <ModalContainer
       visible={visible}
       onRequestClose={() => {
         handleFormInteraction();
         if (!loading) onDismiss?.();
       }}
     >
-      <View className="flex-1 bg-black/60 items-center justify-center px-4">
-        <Card className="w-full max-w-3xl max-h-[90vh]">
+      <Card className="w-full max-h-[90vh]">
           <View className="flex-row items-center justify-between mb-6">
             <View>
               <Text className="text-white text-2xl font-bold tracking-tight">{title}</Text>
@@ -893,7 +894,6 @@ export default function ReservationFormModal({
           title: 'Seleccioná la duración',
           emptyText: 'No encontramos duraciones disponibles',
         })}
-      </View>
-    </Modal>
+    </ModalContainer>
   );
 }

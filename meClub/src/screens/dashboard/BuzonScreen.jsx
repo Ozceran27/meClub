@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import ModalContainer from '../../components/ModalContainer';
 import { deleteInbox, getInbox, markInboxRead } from '../../lib/api';
 
 const PAGE_LIMIT = 40;
@@ -272,14 +273,13 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
         {(hasMore || page > 1) && pagination}
       </ScrollView>
 
-      <Modal
+      <ModalContainer
         visible={!!selectedMessage}
-        transparent
-        animationType="slide"
         onRequestClose={closeModal}
+        animationType="fade"
+        containerClassName="w-full max-w-2xl max-h-[85vh]"
       >
-        <View className="flex-1 bg-black/60 items-center justify-center px-4">
-          <View className="w-full max-w-2xl rounded-2xl bg-[#0B1224] border border-white/10 p-5">
+        <View className="w-full rounded-2xl bg-[#0B1224] border border-white/10 p-5">
             <View className="flex-row justify-between items-start mb-4">
               <View className="flex-1 pr-4 gap-2">
                 <Text className="text-white text-xl font-semibold" numberOfLines={2}>
@@ -371,9 +371,8 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
                 </Pressable>
               </View>
             )}
-          </View>
         </View>
-      </Modal>
+      </ModalContainer>
     </View>
   );
 }

@@ -5,12 +5,12 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
-  Modal,
   TextInput,
 } from 'react-native';
 import { useMutation, useQuery, useQueryClient, queryOptions } from '@tanstack/react-query';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
+import ModalContainer from '../../components/ModalContainer';
 import MonthlyFlowChart from '../../components/MonthlyFlowChart';
 import {
   createClubExpense,
@@ -852,9 +852,13 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <View className="flex-1 bg-black/70 items-center justify-center px-4">
-        <Card className="w-full max-w-xl">
+    <ModalContainer
+      visible={visible}
+      onRequestClose={onClose}
+      overlayClassName="bg-black/70"
+      containerClassName="w-full max-w-xl max-h-[85vh]"
+    >
+      <Card className="w-full max-h-[85vh]">
           <CardTitle colorClass="text-white">{initialValue ? 'Editar gasto' : 'Nuevo gasto'}</CardTitle>
           <View className="mt-4 gap-4">
             <View>
@@ -936,9 +940,8 @@ function ExpenseModal({ visible, onClose, onSubmit, loading, initialValue }) {
               </TouchableOpacity>
             </View>
           </View>
-        </Card>
-      </View>
-    </Modal>
+      </Card>
+    </ModalContainer>
   );
 }
 
