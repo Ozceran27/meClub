@@ -1401,7 +1401,7 @@ export default function ServiciosScreen() {
               <ActionButton
                 onPress={() => setShowPaymentPanel(true)}
                 icon="cash-outline"
-                label="Cargar pago"
+                label="Cargar pago de cuota"
                 backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
               />
               <ActionButton
