@@ -1464,12 +1464,12 @@ export default function ReservasScreen({ summary, go }) {
         </View>
         <Pressable
           onPress={handleOpenModal}
-          className="flex-row items-center gap-2 rounded-2xl bg-mc-warn px-4 py-2 shadow-lg hover:bg-mc-warn/80"
+          className="rounded-2xl bg-mc-warn px-4 py-2 hover:bg-mc-warn/80"
         >
-          <Ionicons name="add" size={18} color="#0A0F1D" />
-          <Text className="text-[#0A0F1D] text-sm font-semibold uppercase tracking-wide">
-            Añadir reserva
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="add" size={18} color="#0A0F1D" />
+            <Text className="text-[#0A0F1D] text-sm font-semibold">Añadir reserva</Text>
+          </View>
         </Pressable>
       </View>
 
