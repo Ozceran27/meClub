@@ -1398,7 +1398,7 @@ export default function ServiciosScreen() {
               className="items-start text-left"
             />
           </View>
-          <View className="flex-1 basis-1/2 items-end">
+          <View className="flex-1 basis-1/2 items-end py-8">
             <View className="grid grid-cols-3 gap-3 self-end">
               <ActionButton
                 onPress={() => setShowPaymentPanel(true)}

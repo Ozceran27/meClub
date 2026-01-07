@@ -1457,7 +1457,7 @@ export default function ReservasScreen({ summary, go }) {
 
   return (
     <>
-      <View className="py-6 flex-row flex-wrap items-start justify-between gap-4 sm:gap-6">
+      <View className="py-6 flex-row flex-wrap items-center justify-between gap-4 sm:gap-6">
         <View className="flex-1 min-w-[260px] space-y-1">
           <Text className="text-white text-[36px] font-extrabold tracking-tight">Reservas</Text>
           <Text className="text-white/60">Gestioná las reservas y seguí la agenda de tus canchas</Text>
