@@ -1768,13 +1768,27 @@ export default function ServiciosScreen() {
             keyboardType="numeric"
             className={`${FIELD_STYLES} flex-1`}
           />
-          <TextInput
-            value={typeForm.color}
-            onChangeText={(value) => setTypeForm((prev) => ({ ...prev, color: value }))}
-            placeholder="Color (hex)"
-            placeholderTextColor="#94A3B8"
-            className={`${FIELD_STYLES} flex-1`}
-          />
+          <View className="flex-1 gap-2">
+            <Text className="text-white/60 text-xs">Color</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {SERVICE_COLORS.map((color) => {
+                const selected = (normalizeHexColor(typeForm.color) || SERVICE_COLORS[0]) === color;
+                return (
+                  <Pressable
+                    key={color}
+                    onPress={() => setTypeForm((prev) => ({ ...prev, color }))}
+                    className={`h-6 w-6 items-center justify-center rounded-full border ${
+                      selected ? 'border-white border-2' : 'border-white/20'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    accessibilityLabel={`Seleccionar color ${color}`}
+                  >
+                    {selected ? <View className="h-2 w-2 rounded-full bg-white/80" /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
         </View>
         <View className="gap-2">
           <Text className="text-white/60 text-xs">Servicios incluidos</Text>
