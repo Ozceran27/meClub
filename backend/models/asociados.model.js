@@ -37,6 +37,7 @@ const normalizeRow = (row) => ({
   cuota_mensual: row.cuota_mensual === null ? null : Number(row.cuota_mensual),
   fecha_pago: row.fecha_pago === null ? null : Number(row.fecha_pago),
   dias_gracia: row.dias_gracia === null ? null : Number(row.dias_gracia),
+  estado_pago_manual: row.estado_pago_manual ?? null,
 });
 
 const AsociadosModel = {
@@ -44,7 +45,8 @@ const AsociadosModel = {
     const [rows] = await db.query(
       `SELECT a.asociado_id, a.usuario_id, a.club_id, a.tipo_asociado_id, a.nombre, a.apellido,
               a.dni, a.telefono, a.direccion, a.correo, a.pagos_realizados, a.fecha_inscripcion,
-              t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago, t.dias_gracia, t.color
+              a.estado_pago_manual, t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago,
+              t.dias_gracia, t.color
        FROM asociados a
        JOIN tipos_asociado t ON t.tipo_asociado_id = a.tipo_asociado_id
        WHERE a.club_id = ?
@@ -59,7 +61,8 @@ const AsociadosModel = {
     const [rows] = await db.query(
       `SELECT a.asociado_id, a.usuario_id, a.club_id, a.tipo_asociado_id, a.nombre, a.apellido,
               a.dni, a.telefono, a.direccion, a.correo, a.pagos_realizados, a.fecha_inscripcion,
-              t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago, t.dias_gracia, t.color
+              a.estado_pago_manual, t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago,
+              t.dias_gracia, t.color
        FROM asociados a
        JOIN tipos_asociado t ON t.tipo_asociado_id = a.tipo_asociado_id
        WHERE a.asociado_id = ? AND a.club_id = ?
@@ -75,7 +78,8 @@ const AsociadosModel = {
     const [rows] = await db.query(
       `SELECT a.asociado_id, a.usuario_id, a.club_id, a.tipo_asociado_id, a.nombre, a.apellido,
               a.dni, a.telefono, a.direccion, a.correo, a.pagos_realizados, a.fecha_inscripcion,
-              t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago, t.dias_gracia, t.color
+              a.estado_pago_manual, t.nombre AS tipo_nombre, t.cuota_mensual, t.fecha_pago,
+              t.dias_gracia, t.color
        FROM asociados a
        JOIN tipos_asociado t ON t.tipo_asociado_id = a.tipo_asociado_id
        WHERE a.club_id = ?
@@ -124,6 +128,14 @@ const AsociadosModel = {
     await db.query(
       'UPDATE asociados SET pagos_realizados = ? WHERE asociado_id = ? AND club_id = ?',
       [pagos_realizados, asociadoId, clubId]
+    );
+    return AsociadosModel.obtenerPorId(asociadoId, clubId);
+  },
+
+  actualizarEstadoPagoManual: async (asociadoId, clubId, estado_pago_manual) => {
+    await db.query(
+      'UPDATE asociados SET estado_pago_manual = ? WHERE asociado_id = ? AND club_id = ?',
+      [estado_pago_manual, asociadoId, clubId]
     );
     return AsociadosModel.obtenerPorId(asociadoId, clubId);
   },

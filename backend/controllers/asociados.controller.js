@@ -89,7 +89,15 @@ const calculateDebt = (asociado) => {
   return { deuda, meses_transcurridos };
 };
 
+const ESTADO_PAGO_VALUES = ['pagado', 'pendiente', 'vencido'];
+
 const computeEstadoPago = (asociado) => {
+  const manual = typeof asociado.estado_pago_manual === 'string'
+    ? asociado.estado_pago_manual.trim().toLowerCase()
+    : '';
+  if (ESTADO_PAGO_VALUES.includes(manual)) {
+    return manual;
+  }
   const fechaPago = Number.isInteger(asociado.fecha_pago) ? asociado.fecha_pago : 1;
   const diasGracia = Number.isInteger(asociado.dias_gracia) ? asociado.dias_gracia : 0;
   const { deuda } = calculateDebt(asociado);
@@ -430,6 +438,51 @@ const registerPago = async (req, res) => {
   }
 };
 
+const updateEstadoAsociado = async (req, res) => {
+  try {
+    const asociadoId = Number.parseInt(req.params.asociado_id, 10);
+    if (!Number.isInteger(asociadoId)) {
+      return res.status(400).json({ mensaje: 'asociado_id inválido' });
+    }
+
+    const estado = parseString(req.body?.estado_pago ?? req.body?.estado, 'estado_pago', {
+      required: true,
+      max: 20,
+    })
+      .toLowerCase();
+
+    if (!ESTADO_PAGO_VALUES.includes(estado)) {
+      return res.status(400).json({ mensaje: 'estado_pago inválido' });
+    }
+
+    const asociado = await AsociadosModel.obtenerPorId(asociadoId, req.club.club_id);
+    if (!asociado) {
+      return res.status(404).json({ mensaje: 'Asociado no encontrado' });
+    }
+
+    const actualizado = await AsociadosModel.actualizarEstadoPagoManual(
+      asociadoId,
+      req.club.club_id,
+      estado
+    );
+
+    res.json({
+      mensaje: 'Estado actualizado',
+      asociado: {
+        ...actualizado,
+        ...calculateDebt(actualizado),
+        estado_pago: computeEstadoPago(actualizado),
+      },
+    });
+  } catch (error) {
+    if (error.statusCode === 400) {
+      return res.status(400).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
 module.exports = {
   listTipos,
   createTipo,
@@ -440,4 +493,5 @@ module.exports = {
   deleteAsociado,
   searchAsociados,
   registerPago,
+  updateEstadoAsociado,
 };

@@ -916,6 +916,11 @@ export async function registerMemberPayment(asociadoId, payload) {
   return response?.asociado ?? response?.data ?? response;
 }
 
+export async function updateMemberStatus(asociadoId, payload) {
+  const response = await api.put(`/asociados/${asociadoId}/estado`, payload);
+  return response?.asociado ?? response?.data ?? response;
+}
+
 export async function deleteMember(asociadoId) {
   const response = await api.del(`/asociados/${asociadoId}`);
   return response?.mensaje ?? response;

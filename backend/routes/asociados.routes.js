@@ -18,6 +18,7 @@ router.delete('/tipos/:tipo_asociado_id', asociadosController.deleteTipo);
 router.get('/buscar', asociadosController.searchAsociados);
 router.get('/', asociadosController.listAsociados);
 router.post('/', asociadosController.createAsociado);
+router.put('/:asociado_id/estado', asociadosController.updateEstadoAsociado);
 router.post('/:asociado_id/pagos', asociadosController.registerPago);
 router.delete('/:asociado_id', asociadosController.deleteAsociado);
 

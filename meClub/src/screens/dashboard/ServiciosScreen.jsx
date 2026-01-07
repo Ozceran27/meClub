@@ -23,6 +23,7 @@ import {
   deleteMember,
   searchMembers,
   registerMemberPayment,
+  updateMemberStatus,
   searchPlayers,
   getClubCourts,
   createPromotion,
@@ -76,6 +77,12 @@ const statusTextStyles = {
   pendiente: 'text-amber-200',
   vencido: 'text-rose-200',
 };
+
+const MEMBER_STATUS_OPTIONS = [
+  { value: 'pagado', label: 'Pagado' },
+  { value: 'pendiente', label: 'Pendiente' },
+  { value: 'vencido', label: 'Vencido' },
+];
 
 const currencyFormatter = new Intl.NumberFormat('es-AR', {
   minimumFractionDigits: 0,
@@ -732,6 +739,18 @@ export default function ServiciosScreen() {
         </View>
         <View className="flex-row flex-wrap gap-2 mt-3">
           <Pressable
+            onPress={() => handleOpenMemberStatusPicker(member)}
+            className="rounded-full border border-white/10 px-3 py-1"
+          >
+            <Text className="text-white text-xs font-semibold">Cambiar estado</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => handleOpenPaymentForMember(member)}
+            className="rounded-full border border-white/10 px-3 py-1"
+          >
+            <Text className="text-white text-xs font-semibold">Cargar pago</Text>
+          </Pressable>
+          <Pressable
             onPress={() => handleDeleteMember(member.asociado_id)}
             className="rounded-full border border-rose-500/40 px-3 py-1"
           >
@@ -912,6 +931,25 @@ export default function ServiciosScreen() {
     setPickerState({ context, id, field, options, title });
   };
 
+  const handleOpenMemberStatusPicker = (member) => {
+    if (!member?.asociado_id) return;
+    handleOpenPicker({
+      context: 'memberStatus',
+      id: member.asociado_id,
+      options: MEMBER_STATUS_OPTIONS,
+      title: `Estado de ${member.nombre_completo || member.nombre}`,
+    });
+  };
+
+  const handleOpenPaymentForMember = (member) => {
+    if (!member) return;
+    setShowPaymentPanel(true);
+    handleSelectPaymentMember(member);
+    setPaymentSearchQuery(member.nombre_completo || member.nombre || '');
+    setPaymentSearchResults([member]);
+    setPaymentSearchError('');
+  };
+
   const handleOpenPromoDatePicker = (field) => {
     setPromoDatePicker({ visible: true, field });
   };
@@ -956,7 +994,7 @@ export default function ServiciosScreen() {
     return SERVICE_COLORS[index % SERVICE_COLORS.length];
   };
 
-  const handleSelectPickerOption = (value) => {
+  const handleSelectPickerOption = async (value) => {
     if (!pickerState) return;
     if (pickerState.context === 'editService') {
       setEditingServiceForm((prev) => ({ ...prev, [pickerState.field]: value }));
@@ -970,6 +1008,8 @@ export default function ServiciosScreen() {
       setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'coupon') {
       setCouponForm((prev) => ({ ...prev, [pickerState.field]: value }));
+    } else if (pickerState.context === 'memberStatus') {
+      await handleUpdateMemberStatus(pickerState.id, value);
     }
     setPickerState(null);
   };
@@ -1234,6 +1274,27 @@ export default function ServiciosScreen() {
       ],
       { cancelable: true }
     );
+  };
+
+  const handleUpdateMemberStatus = async (asociadoId, estadoPago) => {
+    if (!asociadoId || !estadoPago) return;
+    try {
+      setMemberLoadError('');
+      const updated = await updateMemberStatus(asociadoId, { estado_pago: estadoPago });
+      const normalized = normalizeMember(updated);
+      if (normalized) {
+        setMembers((prev) =>
+          prev.map((item) =>
+            item.asociado_id === normalized.asociado_id ? normalized : item
+          )
+        );
+        if (selectedPaymentMember?.asociado_id === normalized.asociado_id) {
+          setSelectedPaymentMember(normalized);
+        }
+      }
+    } catch (err) {
+      setMemberLoadError(err?.message || 'No pudimos actualizar el estado del asociado.');
+    }
   };
 
   const handleTogglePromoCourt = (courtId) => {
