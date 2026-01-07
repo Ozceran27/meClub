@@ -315,6 +315,14 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       },
     });
 
+    const tarifaPrecio = toNullableNumber(tarifa?.precio);
+    const tarifaAplicada = tarifa
+      ? {
+          tarifa_id: tarifa.tarifa_id,
+          precio: tarifaPrecio,
+        }
+      : null;
+
     return res.status(201).json({
       mensaje: 'Reserva creada',
       reserva: {
@@ -322,6 +330,8 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
         monto_base: montoBase,
         monto_grabacion: montoGrabacion,
         monto: total,
+        tarifa: tarifaAplicada,
+        tarifa_precio: tarifaPrecio,
         tarifa_tipo: appliedRateType,
         estado_pago: estadoPagoNormalizado,
       },
@@ -357,8 +367,36 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
 
     const { club } = req;
     const clubId = club.club_id;
+    const diaSemana = diaSemana1a7(fechaSeleccionada);
 
-    const [resumenHoy, agendaFilas, enCursoFilas, canchasClub] = await Promise.all([
+    const mapWithTarifaAplicable = async (reservas = []) => {
+      if (!Array.isArray(reservas)) return [];
+      const results = await Promise.all(
+        reservas.map(async (reserva) => {
+          const tarifa = await TarifasModel.obtenerTarifaAplicable(
+            clubId,
+            diaSemana,
+            reserva.hora_inicio,
+            reserva.hora_fin
+          );
+          const tarifaPrecio = toNullableNumber(tarifa?.precio);
+          const tarifaAplicada = tarifa
+            ? {
+                tarifa_id: tarifa.tarifa_id,
+                precio: tarifaPrecio,
+              }
+            : null;
+          return {
+            ...reserva,
+            tarifa: tarifaAplicada,
+            tarifa_precio: tarifaPrecio,
+          };
+        })
+      );
+      return results;
+    };
+
+    const [resumenHoy, agendaFilasBase, enCursoFilasBase, canchasClub] = await Promise.all([
       ReservasModel.resumenReservasClub({ club_id: clubId, fecha: fechaSeleccionada }),
       ReservasModel.reservasAgendaClub({ club_id: clubId, fecha: fechaSeleccionada }),
       ReservasModel.reservasEnCurso({
@@ -367,6 +405,11 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
         ahora: horaActual,
       }),
       CanchasModel.listarPorClub(clubId),
+    ]);
+
+    const [agendaFilas, enCursoFilas] = await Promise.all([
+      mapWithTarifaAplicable(agendaFilasBase),
+      mapWithTarifaAplicable(enCursoFilasBase),
     ]);
 
     const totalesHoy = acumularTotales(buildTotalesAccumulator(), resumenHoy);
@@ -391,6 +434,9 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
         source.precio_noche ?? source.precioNoche ?? source.cancha_precio_noche
       );
       const precioGenerico = toNullableNumber(source.precio ?? source.monto_base);
+      const tarifaPrecio = toNullableNumber(
+        source.tarifa_precio ?? source.tarifaPrecio ?? source.tarifa?.precio
+      );
 
       if (precioDia !== null && (grupo.precio_dia === null || grupo.precio_dia === undefined)) {
         grupo.precio_dia = precioDia;
@@ -415,6 +461,10 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
       if (fallbackGenerico !== null && (grupo.precio === null || grupo.precio === undefined)) {
         grupo.precio = fallbackGenerico;
       }
+
+      if (tarifaPrecio !== null && (grupo.tarifa_precio === null || grupo.tarifa_precio === undefined)) {
+        grupo.tarifa_precio = tarifaPrecio;
+      }
     };
 
     const agendaAgrupada = agendaFilas.reduce((acc, reserva) => {
@@ -426,6 +476,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
           precio: null,
           precio_dia: null,
           precio_noche: null,
+          tarifa_precio: null,
           reservas: [],
         };
       }
@@ -447,6 +498,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
           precio: null,
           precio_dia: null,
           precio_noche: null,
+          tarifa_precio: null,
           reservas: [],
         };
       } else if (!agendaAgrupada[canchaKey].cancha_nombre) {
@@ -462,6 +514,7 @@ router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res
         precio: toNullableNumber(grupo.precio),
         precio_dia: toNullableNumber(grupo.precio_dia),
         precio_noche: toNullableNumber(grupo.precio_noche),
+        tarifa_precio: toNullableNumber(grupo.tarifa_precio),
         reservas: grupo.reservas.sort((a, b) => (a.hora_inicio < b.hora_inicio ? -1 : a.hora_inicio > b.hora_inicio ? 1 : 0)),
       }))
       .sort((a, b) => {

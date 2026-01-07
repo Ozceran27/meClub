@@ -36,6 +36,8 @@ const DEFAULT_VALUES = {
   contacto_telefono: '',
   contacto_email: '',
   jugador: null,
+  tarifa: null,
+  tarifa_precio: null,
 };
 
 const DURATION_HOURS_OPTIONS = Array.from({ length: 8 }, (_, index) => {
@@ -99,6 +101,8 @@ function useInitialValues(initialValues) {
       contacto_telefono: safe.contacto_telefono || '',
       contacto_email: safe.contacto_email || '',
       jugador: safe.jugador || null,
+      tarifa: safe.tarifa ?? null,
+      tarifa_precio: safe.tarifa_precio ?? null,
     };
   }, [initialValues]);
 }
@@ -236,11 +240,21 @@ export default function ReservationFormModal({
       selectedCourt?.precio_noche
     );
 
+    const tarifaPrecio = pickFirstNumber(
+      form.tarifa_precio,
+      parsedInitialValues.tarifa_precio,
+      selectedCourt?.tarifaPrecio,
+      selectedCourt?.tarifa_precio,
+      selectedCourt?.tarifa?.precio
+    );
+    const tarifaAplicable = form.tarifa || parsedInitialValues.tarifa || (tarifaPrecio !== null ? { precio: tarifaPrecio } : null);
+
     return calculateBaseAmount({
       cancha: selectedCourt || {},
       club: pricingClub,
       horaInicio: form.hora_inicio,
       duracionHoras: form.duracion_horas,
+      tarifa: tarifaAplicable,
       explicitAmount: explicitBase,
       fallbackAmount: fallbackPrice,
     });
@@ -249,8 +263,12 @@ export default function ReservationFormModal({
     form.hora_inicio,
     form.duracion_horas,
     parsedInitialValues.monto_base,
+    parsedInitialValues.tarifa,
+    parsedInitialValues.tarifa_precio,
     pricingClub,
     selectedCourt,
+    form.tarifa,
+    form.tarifa_precio,
   ]);
 
   const appliedPromotion = useMemo(() => {

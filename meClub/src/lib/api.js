@@ -615,6 +615,7 @@ function normalizeReservation(raw) {
     raw.estado_pago !== undefined && raw.estado_pago !== null
       ? String(raw.estado_pago).trim()
       : null;
+  const tarifaPrecio = toNumberOrNull(raw.tarifa_precio ?? raw.tarifa?.precio);
 
   return {
     reservaId,
@@ -643,6 +644,9 @@ function normalizeReservation(raw) {
     creadoPorApellido: raw.creado_por_apellido ?? null,
     creadoPorEmail: raw.creado_por_email ?? null,
     estadoTemporal: raw.estado_temporal ?? null,
+    tarifa: raw.tarifa ?? null,
+    tarifaPrecio,
+    tarifa_precio: tarifaPrecio,
   };
 }
 
@@ -715,6 +719,8 @@ function extractReservationsPanel(payload) {
         precio: toNumberOrNull(item?.precio),
         precioDia: toNumberOrNull(item?.precio_dia ?? item?.precioDia),
         precioNoche: toNumberOrNull(item?.precio_noche ?? item?.precioNoche),
+        tarifa: item?.tarifa ?? null,
+        tarifaPrecio: toNumberOrNull(item?.tarifa_precio ?? item?.tarifa?.precio ?? item?.tarifaPrecio),
         reservas: normalizeReservationList(item?.reservas),
       }))
     : [];

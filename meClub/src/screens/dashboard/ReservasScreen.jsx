@@ -301,6 +301,10 @@ function TimelineReservationCard({
     court?.precioNoche,
     court?.precio_noche
   );
+  const tarifaAplicable =
+    reservation.tarifa || (reservation.tarifaPrecio !== null && reservation.tarifaPrecio !== undefined
+      ? { precio: reservation.tarifaPrecio }
+      : null);
 
   const derivedBaseAmount = useMemo(
     () =>
@@ -309,10 +313,19 @@ function TimelineReservationCard({
         club: pricingClub,
         horaInicio: reservation.horaInicio,
         duracionHoras: durationHours,
+        tarifa: tarifaAplicable,
         explicitAmount: explicitBase,
         fallbackAmount: fallbackPrice,
       }),
-    [court, explicitBase, fallbackPrice, pricingClub, reservation.horaInicio, durationHours]
+    [
+      court,
+      explicitBase,
+      fallbackPrice,
+      pricingClub,
+      reservation.horaInicio,
+      durationHours,
+      tarifaAplicable,
+    ]
   );
 
   const appliedRateType = determineRateType({ horaInicio: reservation.horaInicio, club: pricingClub });
@@ -705,12 +718,22 @@ function normalizeReservationDraft(
     selectedCourt?.precioNoche,
     selectedCourt?.precio_noche
   );
+  const tarifaPrecio = pickFirstNumber(
+    draft?.tarifa_precio,
+    draft?.tarifaPrecio,
+    draft?.tarifa?.precio,
+    selectedCourt?.tarifaPrecio,
+    selectedCourt?.tarifa_precio,
+    selectedCourt?.tarifa?.precio
+  );
+  const tarifaAplicable = draft?.tarifa || (tarifaPrecio !== null && tarifaPrecio !== undefined ? { precio: tarifaPrecio } : null);
 
   const baseAmount = calculateBaseAmount({
     cancha: selectedCourt || {},
     club: pricingClub,
     horaInicio,
     duracionHoras: duracionHorasNumero,
+    tarifa: tarifaAplicable,
     explicitAmount: explicitBaseAmount,
     fallbackAmount: fallbackPrice,
   });
@@ -1029,11 +1052,23 @@ export default function ReservasScreen({ summary, go }) {
           return null;
         })();
 
+        const tarifaPrecio = pickFirstNumber(
+          reserva?.tarifa_precio,
+          reserva?.tarifaPrecio,
+          reserva?.tarifa?.precio,
+          court?.tarifa_precio,
+          court?.tarifaPrecio,
+          court?.tarifa?.precio
+        );
+        const tarifaAplicable =
+          reserva?.tarifa || court?.tarifa || (tarifaPrecio !== null && tarifaPrecio !== undefined ? { precio: tarifaPrecio } : null);
+
         const derivedAmount = calculateBaseAmount({
           cancha: court || {},
           club: panelData?.club || {},
           horaInicio: reserva?.horaInicio ?? reserva?.hora_inicio,
           duracionHoras: duration,
+          tarifa: tarifaAplicable,
           explicitAmount: pickFirstNumber(reserva?.montoBase, reserva?.monto_base),
           fallbackAmount,
         });
@@ -1080,6 +1115,8 @@ export default function ReservasScreen({ summary, go }) {
         precioNoche: pickFirstNumber(item?.precioNoche, item?.precio_noche),
         precio_dia: pickFirstNumber(item?.precioDia, item?.precio_dia),
         precio_noche: pickFirstNumber(item?.precioNoche, item?.precio_noche),
+        tarifa: item?.tarifa ?? null,
+        tarifaPrecio: pickFirstNumber(item?.tarifaPrecio, item?.tarifa_precio, item?.tarifa?.precio),
       })),
     [panelData]
   );
