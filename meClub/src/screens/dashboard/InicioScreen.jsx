@@ -112,10 +112,11 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
   return (
     <>
       <View className="gap-3">
-        <View className="flex-row items-start justify-between gap-3">
-          <View className="flex-1 min-w-[240px] gap-2">
-            <View className="flex-row flex-wrap items-center gap-20">
+        <View className="flex-row items-center justify-between gap-4">
+          <View className="flex-1 min-w-[240px]">
+            <View className="flex-row items-center gap-6">
               <ScreenHeader
+                className="py-0"
                 title={
                   <>
                     Hola, <Text className="text-mc-warn">{firstName}</Text>
@@ -134,7 +135,7 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
           </View>
 
           <View
-            className="ml-auto flex-row items-center"
+            className="flex-row items-center"
             accessibilityRole="text"
             accessibilityLabel="Indicador de demanda"
           >
