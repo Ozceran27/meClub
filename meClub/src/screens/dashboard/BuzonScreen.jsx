@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import ModalContainer from '../../components/ModalContainer';
+import ScreenHeader from '../../components/ScreenHeader';
 import { deleteInbox, getInbox, markInboxRead } from '../../lib/api';
 
 const PAGE_LIMIT = 40;
@@ -212,12 +213,12 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
   );
 
   return (
-    <View className="flex-1 bg-[#0A0F1D] px-6 py-4">
+    <View className="flex-1 bg-[#0A0F1D] px-6">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
-        <Text className="text-white text-2xl font-semibold mb-2">Buzón</Text>
-        <Text className="text-white/70 mb-4">
-          Revisa tus notificaciones y mensajes del club.
-        </Text>
+        <ScreenHeader
+          title="Buzón"
+          subtitle="Revisa tus notificaciones y mensajes del club."
+        />
 
         {error ? (
           <Card className="border border-rose-400/40">

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
+import ScreenHeader from '../../components/ScreenHeader';
 import {
   createClubCourt,
   deleteClubCourt,
@@ -424,15 +425,15 @@ export default function CanchasScreen({ go }) {
   return (
     <View className="flex-1">
       <ScrollView
-        className="py-6"
-        contentContainerClassName="pb-28"
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
       >
         <View className="flex-row flex-wrap items-center justify-between gap-3 px-4 md:px-0">
-          <View>
-            <Text className="text-white text-[32px] font-extrabold tracking-tight">Mis Canchas</Text>
-            <Text className="text-white/60 mt-1">Gestioná los espacios disponibles en tu club</Text>
-          </View>
+          <ScreenHeader
+            title="Mis Canchas"
+            subtitle="Gestioná los espacios disponibles en tu club"
+          />
           <View className="flex-row flex-wrap items-center gap-3">
             <Pressable
               onPress={() => go?.('inicio')}
