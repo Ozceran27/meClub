@@ -894,7 +894,6 @@ export default function ServiciosScreen() {
   };
 
   const handleOpenPromoDatePicker = (field) => {
-    if (Platform.OS === 'web') return;
     setPromoDatePicker({ visible: true, field });
   };
 
@@ -2066,25 +2065,14 @@ export default function ServiciosScreen() {
           className={FIELD_STYLES}
         />
         <View className="flex-row gap-3">
-          {Platform.OS === 'web' ? (
-            <TextInput
-              value={promoForm.fecha_inicio}
-              onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_inicio: value }))}
-              placeholder="Fecha inicio (YYYY-MM-DD)"
-              placeholderTextColor="#94A3B8"
-              type="date"
-              className={`${FIELD_STYLES} flex-1`}
-            />
-          ) : (
-            <Pressable
-              onPress={() => handleOpenPromoDatePicker('fecha_inicio')}
-              className={`${FIELD_STYLES} flex-1 justify-center`}
-            >
-              <Text className={promoForm.fecha_inicio ? 'text-white' : 'text-white/50'}>
-                {promoForm.fecha_inicio || 'Fecha inicio'}
-              </Text>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={() => handleOpenPromoDatePicker('fecha_inicio')}
+            className={`${FIELD_STYLES} flex-1 justify-center`}
+          >
+            <Text className={promoForm.fecha_inicio ? 'text-white' : 'text-white/50'}>
+              {promoForm.fecha_inicio || 'Fecha inicio'}
+            </Text>
+          </Pressable>
           <TextInput
             value={promoForm.hora_inicio}
             onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_inicio: value }))}
@@ -2094,25 +2082,14 @@ export default function ServiciosScreen() {
           />
         </View>
         <View className="flex-row gap-3">
-          {Platform.OS === 'web' ? (
-            <TextInput
-              value={promoForm.fecha_fin}
-              onChangeText={(value) => setPromoForm((prev) => ({ ...prev, fecha_fin: value }))}
-              placeholder="Fecha fin (YYYY-MM-DD)"
-              placeholderTextColor="#94A3B8"
-              type="date"
-              className={`${FIELD_STYLES} flex-1`}
-            />
-          ) : (
-            <Pressable
-              onPress={() => handleOpenPromoDatePicker('fecha_fin')}
-              className={`${FIELD_STYLES} flex-1 justify-center`}
-            >
-              <Text className={promoForm.fecha_fin ? 'text-white' : 'text-white/50'}>
-                {promoForm.fecha_fin || 'Fecha fin'}
-              </Text>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={() => handleOpenPromoDatePicker('fecha_fin')}
+            className={`${FIELD_STYLES} flex-1 justify-center`}
+          >
+            <Text className={promoForm.fecha_fin ? 'text-white' : 'text-white/50'}>
+              {promoForm.fecha_fin || 'Fecha fin'}
+            </Text>
+          </Pressable>
           <TextInput
             value={promoForm.hora_fin}
             onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_fin: value }))}
@@ -2121,7 +2098,7 @@ export default function ServiciosScreen() {
             className={`${FIELD_STYLES} flex-1`}
           />
         </View>
-        {promoDatePicker.visible && Platform.OS !== 'web' ? (
+        {promoDatePicker.visible ? (
           <DateTimePicker
             mode="date"
             display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
