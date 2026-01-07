@@ -1388,7 +1388,8 @@ export default function ServiciosScreen() {
   };
 
   return (
-    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
+    <>
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
       <ScreenHeader
         title="Servicios y Asociados"
         subtitle="Centralizá la configuración de tus servicios y el seguimiento de asociados."
@@ -2289,6 +2290,6 @@ export default function ServiciosScreen() {
           })}
         </ScrollView>
       </ActionPanel>
-    </ScrollView>
+    </>
   );
 }
