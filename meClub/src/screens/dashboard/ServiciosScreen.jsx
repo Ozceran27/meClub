@@ -424,6 +424,7 @@ function ServiceForm({
   service,
   fallbackColor,
   priceEnabled,
+  showNameField = true,
   onUpdate,
   onToggleDay,
   onOpenPicker,
@@ -435,18 +436,22 @@ function ServiceForm({
 
   return (
     <View className="gap-3">
-      <TextInput
-        value={service.nombre}
-        onChangeText={(value) => onUpdate('nombre', value)}
-        placeholder="Nombre del servicio"
-        placeholderTextColor="#94A3B8"
-        editable={!isPersistedService}
-        className={`${FIELD_STYLES} ${isPersistedService ? 'opacity-60' : ''}`}
-      />
-      {isPersistedService ? (
-        <Text className="text-white/60 text-xs">
-          El nombre no se puede editar luego de crear el servicio.
-        </Text>
+      {showNameField ? (
+        <>
+          <TextInput
+            value={service.nombre}
+            onChangeText={(value) => onUpdate('nombre', value)}
+            placeholder="Nombre del servicio"
+            placeholderTextColor="#94A3B8"
+            editable={!isPersistedService}
+            className={`${FIELD_STYLES} ${isPersistedService ? 'opacity-60' : ''}`}
+          />
+          {isPersistedService ? (
+            <Text className="text-white/60 text-xs">
+              El nombre no se puede editar luego de crear el servicio.
+            </Text>
+          ) : null}
+        </>
       ) : null}
       <View className="gap-2">
         <Text className="text-white/60 text-xs">Modo de acceso</Text>
@@ -812,7 +817,8 @@ export default function ServiciosScreen() {
     };
 
     if (service.servicio_id && !String(service.servicio_id).startsWith('tmp-')) {
-      return updateClubServiceEntry(service.servicio_id, payload);
+      const { nombre, ...updatePayload } = payload;
+      return updateClubServiceEntry(service.servicio_id, updatePayload);
     }
     return createClubServiceEntry(payload);
   };
@@ -834,10 +840,6 @@ export default function ServiciosScreen() {
   const handleSaveEditService = async () => {
     try {
       setErrorMessage('');
-      if (!editingServiceForm.nombre.trim()) {
-        setErrorMessage('El nombre del servicio es obligatorio.');
-        return;
-      }
       const saved = await persistService(editingServiceForm);
       const normalized = normalizeServiceEntry(saved);
       setServices((current) =>
@@ -1662,6 +1664,7 @@ export default function ServiciosScreen() {
           service={editingServiceForm}
           fallbackColor={SERVICE_COLORS[0]}
           priceEnabled={editingServiceForm.modo_acceso === 'reserva'}
+          showNameField={false}
           onUpdate={(key, value) => setEditingServiceForm((prev) => ({ ...prev, [key]: value }))}
           onToggleDay={(dayNumber) =>
             setEditingServiceForm((prev) => {
