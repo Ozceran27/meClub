@@ -1390,114 +1390,118 @@ export default function ServiciosScreen() {
   return (
     <>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
-      <ScreenHeader
-        title="Servicios y Asociados"
-        subtitle="Centralizá la configuración de tus servicios y el seguimiento de asociados."
-      />
-
-      <View className="flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <View className="grid grid-cols-3 gap-3">
-          <ActionButton
-            onPress={() => setShowPaymentPanel(true)}
-            icon="cash-outline"
-            label="Cargar pago de cuota"
-            backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
-          />
-          <ActionButton
-            onPress={() => setShowPromoPanel(true)}
-            icon="sparkles-outline"
-            label="Crear promoción"
-            backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
-          />
-          <ActionButton
-            onPress={() => setShowCouponPanel(true)}
-            icon="ticket-outline"
-            label="Crear cupón de descuento"
-            backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
-          />
-          <ActionButton
-            onPress={handleAddService}
-            disabled={serviceLimitReached}
-            icon="add-circle-outline"
-            label="Nuevo servicio"
-          />
-          <ActionButton
-            onPress={() => {
-              setTypeForm(buildMemberTypeForm());
-              setEditingTypeId(null);
-              setShowTypePanel(true);
-            }}
-            icon="people-outline"
-            label="Crear plan de asociado"
-          />
-          <ActionButton
-            onPress={() => setShowMemberPanel(true)}
-            icon="person-add-outline"
-            label="Alta de asociado"
-          />
+        <View className="flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <View className="flex-1 basis-1/2">
+            <ScreenHeader
+              title="Servicios y Asociados"
+              subtitle="Centralizá la configuración de tus servicios y el seguimiento de asociados."
+              className="items-start text-left"
+            />
+          </View>
+          <View className="flex-1 basis-1/2 items-end">
+            <View className="grid grid-cols-3 gap-3 self-end">
+              <ActionButton
+                onPress={() => setShowPaymentPanel(true)}
+                icon="cash-outline"
+                label="Cargar pago de cuota"
+                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
+              />
+              <ActionButton
+                onPress={() => setShowPromoPanel(true)}
+                icon="sparkles-outline"
+                label="Crear promoción"
+                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
+              />
+              <ActionButton
+                onPress={() => setShowCouponPanel(true)}
+                icon="ticket-outline"
+                label="Crear cupón de descuento"
+                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
+              />
+              <ActionButton
+                onPress={handleAddService}
+                disabled={serviceLimitReached}
+                icon="add-circle-outline"
+                label="Nuevo servicio"
+              />
+              <ActionButton
+                onPress={() => {
+                  setTypeForm(buildMemberTypeForm());
+                  setEditingTypeId(null);
+                  setShowTypePanel(true);
+                }}
+                icon="people-outline"
+                label="Crear plan de asociado"
+              />
+              <ActionButton
+                onPress={() => setShowMemberPanel(true)}
+                icon="person-add-outline"
+                label="Alta de asociado"
+              />
+            </View>
+          </View>
         </View>
-      </View>
-      <View className="mt-4 gap-3">
-        {errorMessage ? (
-          <View className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
-            <Text className="text-rose-100 text-sm">{errorMessage}</Text>
-          </View>
-        ) : null}
-        {serviceLimitReached ? (
-          <View className="rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
-            <Text className="text-amber-100 text-sm">
-              Alcanzaste el máximo de {MAX_SERVICES} servicios. Eliminá uno para crear otro.
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View className="gap-6 lg:flex-row">
-        <View className="flex-1 gap-6">
-          <Card className="gap-4 pb-6">
-            <CardTitle colorClass="text-mc-info">Configuración de servicios</CardTitle>
-            <Text className="text-white/60">
-              Editá cada servicio con detalle, definí duraciones y mantené el catálogo actualizado.
-            </Text>
-            <View className="flex-row flex-wrap gap-4">
-              <View className="flex-1 min-w-[140px]">
-                <Text className="text-white text-xs">Servicios activos</Text>
-                <Text className="text-emerald-300 text-xl font-semibold">
-                  {services.filter((service) => service.activo).length}
-                </Text>
-              </View>
-              <View className="flex-1 min-w-[140px]">
-                <Text className="text-white text-xs">Servicios pausados</Text>
-                <Text className="text-amber-300 text-xl font-semibold">
-                  {services.filter((service) => !service.activo).length}
-                </Text>
-              </View>
+        <View className="mt-4 gap-3">
+          {errorMessage ? (
+            <View className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+              <Text className="text-rose-100 text-sm">{errorMessage}</Text>
             </View>
-            <View className="mt-6 gap-5">
-              {loadingServices ? (
-                <Card className="items-center py-6">
-                  <Text className="text-white/70">Cargando servicios...</Text>
-                </Card>
-              ) : (
-                services.map((service, index) => {
-                  const baseColor = resolveServiceColor(service, index);
-                  const cardColor = softenServiceColor(baseColor);
-                  return (
-                    <View key={service.servicio_id} className="gap-2">
-                      <ServiceCard
-                        service={service}
-                        cardColor={cardColor}
-                        onToggleEdit={handleToggleEdit}
-                      />
-                    </View>
-                  );
-                })
-              )}
+          ) : null}
+          {serviceLimitReached ? (
+            <View className="rounded-2xl border border-amber-400/40 bg-amber-400/10 px-4 py-3">
+              <Text className="text-amber-100 text-sm">
+                Alcanzaste el máximo de {MAX_SERVICES} servicios. Eliminá uno para crear otro.
+              </Text>
             </View>
-          </Card>
+          ) : null}
         </View>
 
-        <View className="flex-1 gap-6">
+        <View className="gap-6 lg:flex-row">
+          <View className="flex-1 gap-6">
+            <Card className="gap-4 pb-6">
+              <CardTitle colorClass="text-mc-info">Configuración de servicios</CardTitle>
+              <Text className="text-white/60">
+                Editá cada servicio con detalle, definí duraciones y mantené el catálogo actualizado.
+              </Text>
+              <View className="flex-row flex-wrap gap-4">
+                <View className="flex-1 min-w-[140px]">
+                  <Text className="text-white text-xs">Servicios activos</Text>
+                  <Text className="text-emerald-300 text-xl font-semibold">
+                    {services.filter((service) => service.activo).length}
+                  </Text>
+                </View>
+                <View className="flex-1 min-w-[140px]">
+                  <Text className="text-white text-xs">Servicios pausados</Text>
+                  <Text className="text-amber-300 text-xl font-semibold">
+                    {services.filter((service) => !service.activo).length}
+                  </Text>
+                </View>
+              </View>
+              <View className="mt-6 gap-5">
+                {loadingServices ? (
+                  <Card className="items-center py-6">
+                    <Text className="text-white/70">Cargando servicios...</Text>
+                  </Card>
+                ) : (
+                  services.map((service, index) => {
+                    const baseColor = resolveServiceColor(service, index);
+                    const cardColor = softenServiceColor(baseColor);
+                    return (
+                      <View key={service.servicio_id} className="gap-2">
+                        <ServiceCard
+                          service={service}
+                          cardColor={cardColor}
+                          onToggleEdit={handleToggleEdit}
+                        />
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+            </Card>
+          </View>
+
+          <View className="flex-1 gap-6">
             <Card className="gap-4">
               <CardTitle colorClass="text-mc-warn">Planes de asociados</CardTitle>
               <Text className="text-white/60">
