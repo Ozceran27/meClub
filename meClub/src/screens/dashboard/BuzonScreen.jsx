@@ -213,7 +213,7 @@ export default function BuzonScreen({ unreadCount = 0, onUnreadCountChange, refr
   );
 
   return (
-    <View className="flex-1 bg-[#0A0F1D] px-6">
+    <View className="flex-1 bg-[#0A0F1D]">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
         <ScreenHeader
           title="Buzón"
