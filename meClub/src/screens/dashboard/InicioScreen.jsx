@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
 import MonthlyFlowChart from '../../components/MonthlyFlowChart';
+import ScreenHeader from '../../components/ScreenHeader';
 
 const titleColors = ['text-emerald-300', 'text-mc-info', 'text-mc-warn', 'text-mc-purpleAccent'];
 const getTitleColor = (index) => titleColors[index % titleColors.length];
@@ -110,13 +111,18 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
 
   return (
     <>
-      <View className="py-6 gap-3">
+      <View className="gap-3">
         <View className="flex-row items-start justify-between gap-3">
           <View className="flex-1 min-w-[240px] gap-2">
             <View className="flex-row flex-wrap items-center gap-20">
-              <Text className="text-white text-[32px] sm:text-[36px] font-extrabold tracking-tight">
-                Hola, <Text className="text-mc-warn">{firstName}</Text>
-              </Text>
+              <ScreenHeader
+                title={
+                  <>
+                    Hola, <Text className="text-mc-warn">{firstName}</Text>
+                  </>
+                }
+                subtitle={today}
+              />
               <View className="flex-row items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5">
                 <Ionicons name="partly-sunny-outline" size={20} color="#FDE68A" />
                 <Text className="text-amber-100 text-[14px] font-semibold tracking-wide">{weatherTemp}</Text>
@@ -125,7 +131,6 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
                 </Text>
               </View>
             </View>
-            <Text className="text-white/60">{today}</Text>
           </View>
 
           <View

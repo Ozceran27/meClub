@@ -7,6 +7,7 @@ import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
 import ActionButton from '../../components/ActionButton';
 import ModalContainer from '../../components/ModalContainer';
+import ScreenHeader from '../../components/ScreenHeader';
 import {
   createClubServiceEntry,
   deleteClubServiceEntry,
@@ -1386,14 +1387,10 @@ export default function ServiciosScreen() {
 
   return (
     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
-      <View className="py-6">
-        <Text className="text-white text-[36px] font-extrabold tracking-tight">
-          Servicios y Asociados
-        </Text>
-        <Text className="text-white/60 mt-1">
-          Centralizá la configuración de tus servicios y el seguimiento de asociados.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Servicios y Asociados"
+        subtitle="Centralizá la configuración de tus servicios y el seguimiento de asociados."
+      />
 
       <View className="flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <View className="grid grid-cols-3 gap-3">

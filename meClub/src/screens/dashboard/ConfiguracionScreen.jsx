@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Card from '../../components/Card';
+import ScreenHeader from '../../components/ScreenHeader';
 import {
   getClubProfile,
   updateClubProfile,
@@ -596,12 +597,12 @@ export default function ConfiguracionScreen({ go }) {
   }
 
   return (
-    <ScrollView className="py-6" contentContainerClassName="pb-32">
+    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
       <View className="flex-row items-center justify-between px-4 md:px-0">
-        <View>
-          <Text className="text-white text-[32px] font-extrabold tracking-tight">Configuración</Text>
-          <Text className="text-white/60 mt-1">Actualizá la información pública de tu club</Text>
-        </View>
+        <ScreenHeader
+          title="Configuración"
+          subtitle="Actualizá la información pública de tu club"
+        />
         <Pressable
           onPress={() => go?.('inicio')}
           className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 hover:bg-white/10"
