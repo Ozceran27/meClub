@@ -53,6 +53,7 @@ CREATE TABLE `asociados` (
   `direccion` varchar(200) DEFAULT NULL,
   `correo` varchar(200) DEFAULT NULL,
   `pagos_realizados` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `estado_pago_manual` varchar(20) DEFAULT NULL,
   `fecha_inscripcion` date NOT NULL,
   PRIMARY KEY (`asociado_id`),
   KEY `idx_asociados_club` (`club_id`),
