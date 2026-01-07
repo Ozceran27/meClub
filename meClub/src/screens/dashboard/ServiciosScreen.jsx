@@ -66,9 +66,15 @@ const ICON_OPTIONS = [
 ];
 
 const statusStyles = {
-  pagado: 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30',
-  pendiente: 'bg-amber-500/15 text-amber-200 border border-amber-500/30',
-  vencido: 'bg-rose-500/15 text-rose-200 border border-rose-500/30',
+  pagado: 'bg-emerald-500/15 border border-emerald-500/30',
+  pendiente: 'bg-amber-500/15 border border-amber-500/30',
+  vencido: 'bg-rose-500/15 border border-rose-500/30',
+};
+
+const statusTextStyles = {
+  pagado: 'text-emerald-200',
+  pendiente: 'text-amber-200',
+  vencido: 'text-rose-200',
 };
 
 const currencyFormatter = new Intl.NumberFormat('es-AR', {
@@ -719,7 +725,9 @@ export default function ServiciosScreen() {
             ) : null}
           </View>
           <View className={`rounded-full px-3 py-1 ${statusStyles[statusKey]}`}>
-            <Text className="text-xs font-semibold">{statusLabel}</Text>
+            <Text className={`text-xs font-semibold ${statusTextStyles[statusKey]}`}>
+              {statusLabel}
+            </Text>
           </View>
         </View>
         <View className="flex-row flex-wrap gap-2 mt-3">
