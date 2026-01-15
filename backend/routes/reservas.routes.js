@@ -130,6 +130,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
       contacto_telefono: contacto_telefono_payload = null,
       estado_pago = 'pendiente_pago',
       monto_base: montoBasePayload = null,
+      monto: montoPayloadRaw = null,
     } = req.body;
 
     if (!cancha_id || !fecha || !hora_inicio) {
@@ -152,6 +153,14 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     const estadoPagoNormalizado = normalizarEstadoPago(estado_pago);
     if (!estadoPagoNormalizado) {
       return res.status(400).json({ mensaje: 'estado_pago inválido' });
+    }
+
+    let montoPayload = null;
+    if (montoPayloadRaw !== null && montoPayloadRaw !== undefined) {
+      montoPayload = toNumberOrNull(montoPayloadRaw);
+      if (!Number.isFinite(montoPayload) || montoPayload < 0) {
+        return res.status(400).json({ mensaje: 'monto inválido' });
+      }
     }
 
     const usuarioIdToken = getUserId(req.usuario);
@@ -225,7 +234,7 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     const grabacionSolicitada = parseBoolean(grabacion_solicitada);
     const montoGrabacion = grabacionSolicitada ? toNumberOrZero(club.precio_grabacion) : 0;
 
-    const total = montoBase + montoGrabacion;
+    const total = Number.isFinite(montoPayload) ? montoPayload : montoBase + montoGrabacion;
 
     const canchaNombre = cancha.nombre || `Cancha ${cancha.cancha_id}`;
     const horarioTexto = `${fecha} de ${hora_inicio} a ${hora_fin}`;

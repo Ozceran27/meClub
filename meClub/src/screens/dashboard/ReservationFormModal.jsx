@@ -448,6 +448,16 @@ export default function ReservationFormModal({
       contacto_email: form.contacto_email?.trim() || '',
     };
 
+    const resolvedBaseAmount = Number(baseAmount);
+    if (Number.isFinite(resolvedBaseAmount)) {
+      payload.monto_base = resolvedBaseAmount;
+    }
+
+    const resolvedTotalAmount = Number(totalAmount);
+    if (Number.isFinite(resolvedTotalAmount)) {
+      payload.monto = resolvedTotalAmount;
+    }
+
     if (form.tipo_reserva === 'relacionada') {
       payload.jugador_usuario_id = form.jugador?.id ?? form.jugador?.jugador_id ?? null;
     }
