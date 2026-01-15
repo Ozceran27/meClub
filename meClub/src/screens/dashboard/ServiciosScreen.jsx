@@ -8,6 +8,7 @@ import CardTitle from '../../components/CardTitle';
 import ActionButton from '../../components/ActionButton';
 import ModalContainer from '../../components/ModalContainer';
 import ScreenHeader from '../../components/ScreenHeader';
+import { useAuth } from '../../features/auth/useAuth';
 import {
   createClubServiceEntry,
   deleteClubServiceEntry,
@@ -160,6 +161,8 @@ const buildMemberForm = () => ({
   correo: '',
   tipo_asociado_id: null,
 });
+
+const PRO_BADGE = 'PRO';
 
 const isValidDate = (value) => {
   if (!value) return false;
@@ -714,6 +717,7 @@ function ServiceForm({
 }
 
 export default function ServiciosScreen() {
+  const { user } = useAuth();
   const [services, setServices] = useState([]);
   const [editingService, setEditingService] = useState(null);
   const [editingServiceForm, setEditingServiceForm] = useState(buildServiceDefaults());
@@ -754,6 +758,11 @@ export default function ServiciosScreen() {
   const [courts, setCourts] = useState([]);
   const [newServiceForm, setNewServiceForm] = useState(buildServiceDefaults());
   const serviceLimitReached = services.length >= MAX_SERVICES;
+  const clubLevel = useMemo(() => {
+    const parsed = Number(user?.nivel_id ?? 1);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [user?.nivel_id]);
+  const hasProAccess = clubLevel >= 2;
 
   const displayedMembers = members.slice(0, 5);
   const hasMoreMembers = members.length > 5;
@@ -1599,9 +1608,12 @@ export default function ServiciosScreen() {
               />
               <ActionButton
                 onPress={handleAddService}
-                disabled={serviceLimitReached}
+                disabled={serviceLimitReached || !hasProAccess}
                 icon="add-circle-outline"
                 label="Nuevo servicio"
+                badge={hasProAccess ? null : PRO_BADGE}
+                backgroundClassName={hasProAccess ? undefined : 'bg-white/10'}
+                className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
               <ActionButton
                 onPress={() => {
@@ -1609,13 +1621,21 @@ export default function ServiciosScreen() {
                   setEditingTypeId(null);
                   setShowTypePanel(true);
                 }}
+                disabled={!hasProAccess}
                 icon="people-outline"
                 label="Crear plan de asociado"
+                badge={hasProAccess ? null : PRO_BADGE}
+                backgroundClassName={hasProAccess ? undefined : 'bg-white/10'}
+                className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
               <ActionButton
                 onPress={() => setShowMemberPanel(true)}
+                disabled={!hasProAccess}
                 icon="person-add-outline"
                 label="Alta de asociado"
+                badge={hasProAccess ? null : PRO_BADGE}
+                backgroundClassName={hasProAccess ? undefined : 'bg-white/10'}
+                className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
             </View>
           </View>
