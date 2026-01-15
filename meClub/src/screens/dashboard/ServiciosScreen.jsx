@@ -117,8 +117,8 @@ const currencyFormatter = new Intl.NumberFormat('es-AR', {
 });
 
 const formatCurrency = (value) => {
-  const normalized = normalizeNumericInput(String(value ?? ''));
-  const amount = Number(normalized);
+  const normalized = normalizeCurrencyInput(String(value ?? ''));
+  const amount = Number.parseInt(normalized, 10);
   if (!Number.isFinite(amount)) return '$ 0';
   return `$ ${currencyFormatter.format(amount)}`;
 };
@@ -191,19 +191,24 @@ const normalizeNumericInput = (value) => {
   return `${integerPart}.${decimalParts.join('')}`;
 };
 
+const normalizeCurrencyInput = (value) => {
+  if (!value) return '';
+  return String(value).replace(/[^\d]/g, '');
+};
+
 const formatCurrencyInput = (value) => {
   if (value === null || value === undefined || value === '') return '';
-  const normalized = normalizeNumericInput(String(value));
+  const normalized = normalizeCurrencyInput(String(value));
   if (!normalized) return '';
-  const amount = Number(normalized);
+  const amount = Number.parseInt(normalized, 10);
   if (!Number.isFinite(amount)) return '';
   return `$ ${currencyFormatter.format(amount)}`;
 };
 
 const parseCurrencyInput = (value) => {
-  const normalized = normalizeNumericInput(String(value ?? ''));
+  const normalized = normalizeCurrencyInput(String(value ?? ''));
   if (!normalized) return null;
-  const amount = Number(normalized);
+  const amount = Number.parseInt(normalized, 10);
   return Number.isFinite(amount) ? amount : null;
 };
 
