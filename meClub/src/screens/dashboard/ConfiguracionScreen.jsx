@@ -647,19 +647,18 @@ export default function ConfiguracionScreen({ go }) {
                   className={FIELD_STYLES}
                 />
               </View>
-              <View className="flex-1 justify-center mt-4">
+              <View className="flex-1 justify-center mt-4 px-5">
                 <View className="flex-row items-center gap-4">
                   <View className="flex-row items-center gap-2">
                     <View className={`h-3 w-3 rounded-full ${planDotColorClass}`} />
-                    <Text className="text-white text-lg font-semibold">Plan actual:</Text>
+                    <Text className="text-white text-lg">Plan actual:</Text>
                     <Text className={`${planTextColorClass} text-lg font-semibold`}>
                       {planLabel}
                     </Text>
                   </View>
                   <Pressable
                     onPress={() => go?.('mejorar-plan')}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10"
-                  >
+                    className="rounded-full border border-white/10 bg-mc-warn px-3 py-1.5 hover:bg-mc-warn/80">
                     <Text className="text-white/80 text-xs font-semibold">Mejorar plan</Text>
                   </Pressable>
                 </View>
