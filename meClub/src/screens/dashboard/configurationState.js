@@ -280,6 +280,8 @@ export const buildFormState = (source = {}, fallback = {}) => {
     nombre: source?.nombre ?? fallback?.nombre ?? '',
     descripcion: source?.descripcion ?? fallback?.descripcion ?? '',
     foto_logo: source?.foto_logo ?? fallback?.foto_logo ?? '',
+    nivel_id: source?.nivel_id ?? fallback?.nivel_id ?? null,
+    nivel_nombre: source?.nivel_nombre ?? source?.nivel?.nombre ?? fallback?.nivel_nombre ?? '',
     provincia_id: source?.provincia_id ?? fallback?.provincia_id ?? null,
     localidad_id: source?.localidad_id ?? fallback?.localidad_id ?? null,
     localidad_nombre:

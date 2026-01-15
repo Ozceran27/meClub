@@ -172,6 +172,12 @@ export default function ConfiguracionScreen({ go }) {
     return 'Localidad seleccionada';
   }, [form.localidad_id, form.localidad_nombre, localities]);
 
+  const planLabel = useMemo(() => {
+    if (form.nivel_nombre) return form.nivel_nombre;
+    if (form.nivel_id) return `Nivel ${form.nivel_id}`;
+    return 'Sin plan';
+  }, [form.nivel_nombre, form.nivel_id]);
+
   const handleChange = (key, value) => {
     setForm((prev) => {
       if (key === 'provincia_id') {
@@ -623,6 +629,7 @@ export default function ConfiguracionScreen({ go }) {
                 placeholderTextColor="#94A3B8"
                 className={FIELD_STYLES}
               />
+              <Text className="text-white/50 text-xs mt-2">Plan actual: {planLabel}</Text>
             </View>
 
             <View className="flex-1">
