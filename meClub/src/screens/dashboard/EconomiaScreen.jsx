@@ -449,7 +449,7 @@ const getEconomyQueryOptions = ({ clubId, enabled }) =>
           mes: ingresosMensualesProyectados,
           semana: ingresosSemanalesProyectados,
         },
-        reservas: economy?.reservas ?? { mes: 0, semana: 0 },
+        reservas: economy?.reservas ?? { mes: 0, semana: 0, dia: 0 },
         ingresosMensualesHistoricos: normalizeMonthlyHistory(),
         ingresosDiarios: dailyIncome.items,
         ingresosDiariosTotal:
@@ -1082,6 +1082,7 @@ export default function EconomiaScreen() {
   const gastosSemanales = economy?.gastosSemana;
   const reservasMensuales = economy?.reservas?.mes;
   const reservasSemanales = economy?.reservas?.semana;
+  const reservasDiarias = economy?.reservas?.dia;
   const balanceMensual = economy?.balanceMensual;
   const currentMonthLabel = useMemo(
     () =>
@@ -1241,7 +1242,7 @@ export default function EconomiaScreen() {
                 className="gap-3"
                 accessibilityLabel={`Reservas del mes ${reservasMensuales ?? 0}, reservas de la semana ${
                   reservasSemanales ?? 0
-                }`}
+                }, reservas del día ${reservasDiarias ?? 0}`}
                 accessible
               >
                 <View className="gap-1">
@@ -1251,6 +1252,10 @@ export default function EconomiaScreen() {
                 <View className="gap-1">
                   <Text className="text-white text-3xl font-extrabold">{reservasSemanales ?? 0}</Text>
                   <Text className="text-white/60 text-sm uppercase tracking-[0.12em]">Total semanal</Text>
+                </View>
+                <View className="gap-1">
+                  <Text className="text-white text-3xl font-extrabold">{reservasDiarias ?? 0}</Text>
+                  <Text className="text-white/60 text-sm uppercase tracking-[0.12em]">Total del día</Text>
                 </View>
               </View>
             ) : null}

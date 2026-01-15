@@ -478,6 +478,13 @@ const extractEconomy = (payload) => {
   const reservasSemana = toNumberOrZero(
     data.reservas?.semana ?? data.reservasSemana ?? data.reservas_semana
   );
+  const reservasDia = toNumberOrZero(
+    data.reservas?.dia ??
+      data.reservasDia ??
+      data.reservas_dia ??
+      data.reservasHoy ??
+      data.reservas_hoy
+  );
 
   const economiaMensual = normalizeMonthlyEconomy(
     data.economiaMensual ?? data.flujoMensual ?? data.ingresosGastosMensuales
@@ -522,7 +529,7 @@ const extractEconomy = (payload) => {
 
   return {
     ingresos: { mes: ingresosMes, semana: ingresosSemana },
-    reservas: { mes: reservasMes, semana: reservasSemana },
+    reservas: { mes: reservasMes, semana: reservasSemana, dia: reservasDia },
     proyeccion: {
       mes: toNumberOrZero(data.proyeccion?.mes ?? data.proyeccionMes ?? data.proyeccion_mes),
       semana: toNumberOrZero(

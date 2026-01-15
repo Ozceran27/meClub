@@ -571,6 +571,15 @@ const ClubesModel = {
       [club_id]
     );
 
+    const reservasDiariasPromise = db.query(
+      `SELECT COUNT(*) AS total
+       FROM reservas r
+       JOIN canchas c ON c.cancha_id = r.cancha_id
+       WHERE c.club_id = ?
+         AND DATE(r.fecha) = CURDATE()`,
+      [club_id]
+    );
+
     const gastosMensualesPromise = GastosModel.obtenerTotalMes(club_id);
 
     const ingresosHistoricosPromise = db.query(
@@ -611,6 +620,7 @@ const ClubesModel = {
       [ingresosSemanalesSerieRows],
       [reservasMensualesRows],
       [reservasSemanalesRows],
+      [reservasDiariasRows],
       gastosMensuales,
       [ingresosHistoricosRows],
       [gastosHistoricosRows],
@@ -621,6 +631,7 @@ const ClubesModel = {
       ingresosSemanalesSeriePromise,
       reservasMensualesPromise,
       reservasSemanalesPromise,
+      reservasDiariasPromise,
       gastosMensualesPromise,
       ingresosHistoricosPromise,
       gastosHistoricosPromise,
@@ -646,6 +657,7 @@ const ClubesModel = {
 
     const reservasMes = Number(reservasMensualesRows?.[0]?.total) || 0;
     const reservasSemana = Number(reservasSemanalesRows?.[0]?.total) || 0;
+    const reservasDia = Number(reservasDiariasRows?.[0]?.total) || 0;
 
     const proyeccionMes = Object.values(ingresosMes).reduce((acc, val) => acc + val, 0);
     const ingresosRealesMes = (ingresosMes.pagado || 0) + (ingresosMes.senado || 0);
@@ -803,7 +815,7 @@ const ClubesModel = {
         semana: ingresosSemana,
       },
       ingresosSemanalesSerie,
-      reservas: { mes: reservasMes, semana: reservasSemana },
+      reservas: { mes: reservasMes, semana: reservasSemana, dia: reservasDia },
       proyeccion: { mes: proyeccionMes, semana: proyeccionSemana },
       gastos: { mes: gastosMensuales },
       balanceMensual,
