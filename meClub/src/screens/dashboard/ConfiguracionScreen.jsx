@@ -652,7 +652,7 @@ export default function ConfiguracionScreen({ go }) {
                   <View className="flex-row items-center gap-2">
                     <View className={`h-3 w-3 rounded-full ${planDotColorClass}`} />
                     <Text className="text-white text-lg">Plan actual:</Text>
-                    <Text className={`${planTextColorClass} text-lg font-semibold`}>
+                    <Text className={`${planTextColorClass} text-lg font-semibold mr-1`}>
                       {planLabel}
                     </Text>
                   </View>
