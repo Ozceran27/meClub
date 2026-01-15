@@ -1388,7 +1388,7 @@ export default function ServiciosScreen() {
         setErrorMessage('Seleccioná el tipo de descuento.');
         return;
       }
-      const valor = Number(promoForm.valor);
+      const valor = Number(normalizeNumericInput(promoForm.valor));
       if (!Number.isFinite(valor) || valor <= 0) {
         setErrorMessage('Ingresá un valor de descuento válido.');
         return;
@@ -2234,11 +2234,12 @@ export default function ServiciosScreen() {
           ) : (
             <Pressable
               onPress={() => handleOpenPromoDatePicker('fecha_inicio')}
-              className={`${FIELD_STYLES} flex-1 justify-center`}
+              className={`${FIELD_STYLES} flex-1 flex-row items-center justify-between`}
             >
               <Text className={promoForm.fecha_inicio ? 'text-white' : 'text-white/50'}>
                 {promoForm.fecha_inicio || 'Fecha inicio'}
               </Text>
+              <Ionicons name="calendar-outline" size={16} color="#E2E8F0" />
             </Pressable>
           )}
           <Pressable
@@ -2269,11 +2270,12 @@ export default function ServiciosScreen() {
           ) : (
             <Pressable
               onPress={() => handleOpenPromoDatePicker('fecha_fin')}
-              className={`${FIELD_STYLES} flex-1 justify-center`}
+              className={`${FIELD_STYLES} flex-1 flex-row items-center justify-between`}
             >
               <Text className={promoForm.fecha_fin ? 'text-white' : 'text-white/50'}>
                 {promoForm.fecha_fin || 'Fecha fin'}
               </Text>
+              <Ionicons name="calendar-outline" size={16} color="#E2E8F0" />
             </Pressable>
           )}
           <Pressable
@@ -2320,8 +2322,10 @@ export default function ServiciosScreen() {
           </Text>
         </Pressable>
         <TextInput
-          value={promoForm.valor}
-          onChangeText={(value) => setPromoForm((prev) => ({ ...prev, valor: value }))}
+          value={formatPercentValue(promoForm.valor)}
+          onChangeText={(value) =>
+            setPromoForm((prev) => ({ ...prev, valor: normalizeNumericInput(value) }))
+          }
           placeholder="Valor del descuento"
           placeholderTextColor="#94A3B8"
           keyboardType="numeric"
