@@ -40,6 +40,7 @@ describe('ClubesModel.obtenerEconomia', () => {
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ total: 12 }]])
       .mockResolvedValueOnce([[{ total: 4 }]])
+      .mockResolvedValueOnce([[{ total: 2 }]])
       .mockResolvedValueOnce([
         [
           { periodo: '2024-01', estado_pago: 'pagado', total: 200 },
@@ -68,7 +69,7 @@ describe('ClubesModel.obtenerEconomia', () => {
       return current.toISOString().slice(0, 10);
     });
 
-    expect(mockQuery).toHaveBeenCalledTimes(8);
+    expect(mockQuery).toHaveBeenCalledTimes(9);
     expect(GastosModel.obtenerTotalMes).toHaveBeenCalledWith(9);
 
     expect(data).toEqual({
@@ -76,7 +77,7 @@ describe('ClubesModel.obtenerEconomia', () => {
         mes: { pagado: 500, senado: 200, pendiente_pago: 400 },
         semana: { pagado: 150, senado: 0, pendiente_pago: 50 },
       },
-      reservas: { mes: 12, semana: 4 },
+      reservas: { mes: 12, semana: 4, dia: 2 },
       proyeccion: { mes: 1100, semana: 200 },
       gastos: { mes: 300 },
       balanceMensual: 400,
