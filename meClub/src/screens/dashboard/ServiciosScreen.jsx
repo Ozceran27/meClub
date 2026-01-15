@@ -706,6 +706,7 @@ export default function ServiciosScreen() {
   const [memberSearchLoading, setMemberSearchLoading] = useState(false);
   const [memberSearchError, setMemberSearchError] = useState('');
   const [memberLoadError, setMemberLoadError] = useState('');
+  const [memberListQuery, setMemberListQuery] = useState('');
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
   const [paymentSearchResults, setPaymentSearchResults] = useState([]);
   const [paymentSearchLoading, setPaymentSearchLoading] = useState(false);
@@ -720,8 +721,25 @@ export default function ServiciosScreen() {
   const [newServiceForm, setNewServiceForm] = useState(buildServiceDefaults());
   const serviceLimitReached = services.length >= MAX_SERVICES;
 
-  const displayedMembers = members.slice(0, 10);
-  const hasMoreMembers = members.length > 10;
+  const displayedMembers = members.slice(0, 5);
+  const hasMoreMembers = members.length > 5;
+  const hasMembers = members.length > 0;
+
+  const filteredMembers = useMemo(() => {
+    const term = memberListQuery.trim().toLowerCase();
+    if (!term) return members;
+    return members.filter((member) => {
+      const nombre = member.nombre?.toLowerCase() ?? '';
+      const apellido = member.apellido?.toLowerCase() ?? '';
+      const telefono = member.telefono?.toLowerCase() ?? '';
+      return (
+        nombre.includes(term) ||
+        apellido.includes(term) ||
+        telefono.includes(term) ||
+        `${nombre} ${apellido}`.trim().includes(term)
+      );
+    });
+  }, [members, memberListQuery]);
 
   const memberTotals = useMemo(() => {
     return members.reduce(
@@ -1677,14 +1695,21 @@ export default function ServiciosScreen() {
             <Card className="gap-4">
               <View className="flex-row items-center justify-between gap-3">
                 <CardTitle colorClass="text-mc-purpleAccent">Asociados</CardTitle>
-                {hasMoreMembers ? (
-                  <Pressable
-                    onPress={() => setShowAllMembersPanel(true)}
-                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2"
-                  >
-                    <Text className="text-white text-xs font-semibold">Ver todos</Text>
-                  </Pressable>
-                ) : null}
+                <Pressable
+                  onPress={() => {
+                    if (hasMembers) {
+                      setShowAllMembersPanel(true);
+                    }
+                  }}
+                  disabled={!hasMembers}
+                  className={`rounded-full border border-white/10 bg-white/5 px-4 py-2 ${
+                    !hasMembers ? 'opacity-40' : ''
+                  }`}
+                >
+                  <Text className="text-white text-xs font-semibold">
+                    {hasMoreMembers ? 'Ver todos' : 'Ver asociados'}
+                  </Text>
+                </Pressable>
               </View>
               <Text className="text-white/60">
                 Seguimiento rápido de pagos, altas y bajas de la membresía.
@@ -2399,10 +2424,28 @@ export default function ServiciosScreen() {
         subtitle="Listado completo de asociados."
         onClose={() => setShowAllMembersPanel(false)}
       >
+        <TextInput
+          value={memberListQuery}
+          onChangeText={setMemberListQuery}
+          placeholder="Buscar por nombre, apellido o teléfono"
+          placeholderTextColor="#94A3B8"
+          autoCapitalize="none"
+          className={FIELD_STYLES}
+        />
         {members.length ? (
-          <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
-            <View className="gap-3 pb-2">{members.map((member) => renderMemberCard(member))}</View>
-          </ScrollView>
+          filteredMembers.length ? (
+            <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
+              <View className="gap-3 pb-2">
+                {filteredMembers.map((member) => renderMemberCard(member))}
+              </View>
+            </ScrollView>
+          ) : (
+            <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <Text className="text-white/70 text-sm">
+                No encontramos asociados con ese criterio de búsqueda.
+              </Text>
+            </View>
+          )
         ) : (
           <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <Text className="text-white/70 text-sm">No hay asociados registrados todavía.</Text>
