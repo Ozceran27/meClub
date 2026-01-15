@@ -116,7 +116,7 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
           <View className="flex-1 min-w-[240px]">
             <View className="flex-row items-center gap-6">
               <ScreenHeader
-                className="py-0"
+                className="py-0 ml-6"
                 title={
                   <>
                     Hola, <Text className="text-mc-warn">{firstName}</Text>
@@ -135,7 +135,7 @@ export default function InicioScreen({ summary = {}, summaryLoading = false, sum
           </View>
 
           <View
-            className="flex-row items-center"
+            className="flex-row items-center mr-10"
             accessibilityRole="text"
             accessibilityLabel="Indicador de demanda"
           >
