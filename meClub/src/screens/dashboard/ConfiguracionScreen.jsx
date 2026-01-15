@@ -658,9 +658,9 @@ export default function ConfiguracionScreen({ go }) {
                   </View>
                   <Pressable
                     onPress={() => go?.('mejorar-plan')}
-                    className="rounded-full border border-white/10 bg-mc-warn px-3 py-1.5 hover:bg-mc-warn/80"
+                    className="rounded-full border bg-amber-500/20 border-amber-400/50 px-3 py-1.5 hover:bg-mc-warn/80"
                   >
-                    <Text className="text-white/80 text-xs font-semibold">Mejorar plan</Text>
+                    <Text className="text-amber-300 text-xs font-semibold">Mejorar plan</Text>
                   </Pressable>
                 </View>
               </View>
