@@ -35,20 +35,32 @@ import { SERVICE_COLORS, normalizeHexColor } from '../../constants/serviceColors
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
 
-const WebDateInput = ({ value, onChange, placeholder, className }) => (
-  <TextInput
-    value={value}
-    onChangeText={onChange}
-    placeholder={placeholder}
-    placeholderTextColor="#94A3B8"
-    className={className}
-    autoCorrect={false}
-    autoCapitalize="none"
-    {...(Platform.OS === 'web'
-      ? { type: 'date', inputMode: 'numeric', pattern: '\\d{4}-\\d{2}-\\d{2}' }
-      : {})}
-  />
-);
+const WebDateInput = ({ value, onChange, placeholder, className }) => {
+  if (Platform.OS === 'web') {
+    return (
+      <input
+        type="date"
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className={className}
+        autoComplete="off"
+      />
+    );
+  }
+
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor="#94A3B8"
+      className={className}
+      autoCorrect={false}
+      autoCapitalize="none"
+    />
+  );
+};
 
 const MAX_SERVICES = 10;
 
