@@ -35,6 +35,21 @@ import { SERVICE_COLORS, normalizeHexColor } from '../../constants/serviceColors
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
 
+const WebDateInput = ({ value, onChange, placeholder, className }) => (
+  <TextInput
+    value={value}
+    onChangeText={onChange}
+    placeholder={placeholder}
+    placeholderTextColor="#94A3B8"
+    className={className}
+    autoCorrect={false}
+    autoCapitalize="none"
+    {...(Platform.OS === 'web'
+      ? { type: 'date', inputMode: 'numeric', pattern: '\\d{4}-\\d{2}-\\d{2}' }
+      : {})}
+  />
+);
+
 const MAX_SERVICES = 10;
 
 const MODE_ACCESS_OPTIONS = [
@@ -1004,6 +1019,8 @@ export default function ServiciosScreen() {
       setMemberForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'type') {
       setTypeForm((prev) => ({ ...prev, [pickerState.field]: value }));
+    } else if (pickerState.context === 'promoTime') {
+      setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'promo') {
       setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'coupon') {
@@ -2159,40 +2176,76 @@ export default function ServiciosScreen() {
           className={FIELD_STYLES}
         />
         <View className="flex-row gap-3">
+          {Platform.OS === 'web' ? (
+            <WebDateInput
+              value={promoForm.fecha_inicio}
+              onChange={(value) => setPromoForm((prev) => ({ ...prev, fecha_inicio: value }))}
+              placeholder="YYYY-MM-DD"
+              className={`${FIELD_STYLES} flex-1`}
+            />
+          ) : (
+            <Pressable
+              onPress={() => handleOpenPromoDatePicker('fecha_inicio')}
+              className={`${FIELD_STYLES} flex-1 justify-center`}
+            >
+              <Text className={promoForm.fecha_inicio ? 'text-white' : 'text-white/50'}>
+                {promoForm.fecha_inicio || 'Fecha inicio'}
+              </Text>
+            </Pressable>
+          )}
           <Pressable
-            onPress={() => handleOpenPromoDatePicker('fecha_inicio')}
-            className={`${FIELD_STYLES} flex-1 justify-center`}
+            onPress={() =>
+              handleOpenPicker({
+                context: 'promoTime',
+                field: 'hora_inicio',
+                options: timeOptions,
+                title: 'Hora inicio',
+              })
+            }
+            className={`${FIELD_STYLES} flex-1 flex-row items-center justify-between`}
           >
-            <Text className={promoForm.fecha_inicio ? 'text-white' : 'text-white/50'}>
-              {promoForm.fecha_inicio || 'Fecha inicio'}
+            <Text className={promoForm.hora_inicio ? 'text-white' : 'text-white/50'}>
+              {promoForm.hora_inicio || 'Hora inicio'}
             </Text>
+            <Ionicons name="time-outline" size={16} color="#E2E8F0" />
           </Pressable>
-          <TextInput
-            value={promoForm.hora_inicio}
-            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_inicio: value }))}
-            placeholder="Hora inicio (HH:MM)"
-            placeholderTextColor="#94A3B8"
-            className={`${FIELD_STYLES} flex-1`}
-          />
         </View>
         <View className="flex-row gap-3">
+          {Platform.OS === 'web' ? (
+            <WebDateInput
+              value={promoForm.fecha_fin}
+              onChange={(value) => setPromoForm((prev) => ({ ...prev, fecha_fin: value }))}
+              placeholder="YYYY-MM-DD"
+              className={`${FIELD_STYLES} flex-1`}
+            />
+          ) : (
+            <Pressable
+              onPress={() => handleOpenPromoDatePicker('fecha_fin')}
+              className={`${FIELD_STYLES} flex-1 justify-center`}
+            >
+              <Text className={promoForm.fecha_fin ? 'text-white' : 'text-white/50'}>
+                {promoForm.fecha_fin || 'Fecha fin'}
+              </Text>
+            </Pressable>
+          )}
           <Pressable
-            onPress={() => handleOpenPromoDatePicker('fecha_fin')}
-            className={`${FIELD_STYLES} flex-1 justify-center`}
+            onPress={() =>
+              handleOpenPicker({
+                context: 'promoTime',
+                field: 'hora_fin',
+                options: timeOptions,
+                title: 'Hora fin',
+              })
+            }
+            className={`${FIELD_STYLES} flex-1 flex-row items-center justify-between`}
           >
-            <Text className={promoForm.fecha_fin ? 'text-white' : 'text-white/50'}>
-              {promoForm.fecha_fin || 'Fecha fin'}
+            <Text className={promoForm.hora_fin ? 'text-white' : 'text-white/50'}>
+              {promoForm.hora_fin || 'Hora fin'}
             </Text>
+            <Ionicons name="time-outline" size={16} color="#E2E8F0" />
           </Pressable>
-          <TextInput
-            value={promoForm.hora_fin}
-            onChangeText={(value) => setPromoForm((prev) => ({ ...prev, hora_fin: value }))}
-            placeholder="Hora fin (HH:MM)"
-            placeholderTextColor="#94A3B8"
-            className={`${FIELD_STYLES} flex-1`}
-          />
         </View>
-        {promoDatePicker.visible ? (
+        {promoDatePicker.visible && Platform.OS !== 'web' ? (
           <DateTimePicker
             mode="date"
             display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
