@@ -53,8 +53,8 @@ CREATE TABLE `asociados` (
   `direccion` varchar(200) DEFAULT NULL,
   `correo` varchar(200) DEFAULT NULL,
   `pagos_realizados` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `estado_pago_manual` varchar(20) DEFAULT NULL,
   `fecha_inscripcion` date NOT NULL,
+  `estado_pago_manual` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`asociado_id`),
   KEY `idx_asociados_club` (`club_id`),
   KEY `idx_asociados_tipo` (`tipo_asociado_id`),
@@ -62,7 +62,7 @@ CREATE TABLE `asociados` (
   CONSTRAINT `fk_asociados_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
   CONSTRAINT `fk_asociados_tipo` FOREIGN KEY (`tipo_asociado_id`) REFERENCES `tipos_asociado` (`tipo_asociado_id`),
   CONSTRAINT `fk_asociados_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -129,7 +129,6 @@ CREATE TABLE `club_servicios` (
   `hora_inicio` time DEFAULT NULL,
   `hora_fin` time DEFAULT NULL,
   `imagen_url` varchar(255) DEFAULT NULL,
-  `color` varchar(20) DEFAULT NULL,
   `ambiente` varchar(20) DEFAULT NULL,
   `precio_tipo` varchar(10) DEFAULT NULL,
   `precio_valor` decimal(10,2) DEFAULT NULL,
@@ -140,13 +139,14 @@ CREATE TABLE `club_servicios` (
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `color` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`servicio_id`),
   UNIQUE KEY `uniq_club_servicios_club_nombre` (`club_id`,`nombre`),
   KEY `idx_club_servicios_club` (`club_id`),
   KEY `idx_club_servicios_catalogo` (`servicio_catalogo_id`),
   CONSTRAINT `fk_club_servicios_catalogo` FOREIGN KEY (`servicio_catalogo_id`) REFERENCES `servicios` (`servicio_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_club_servicios_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -204,7 +204,7 @@ CREATE TABLE `clubes_horario` (
   PRIMARY KEY (`club_horario_id`),
   UNIQUE KEY `uq_club_dia` (`club_id`,`dia_semana`),
   CONSTRAINT `fk_ch_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=164 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=213 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -226,7 +226,7 @@ CREATE TABLE `clubes_impuestos` (
   PRIMARY KEY (`impuesto_id`),
   UNIQUE KEY `uq_clubes_impuestos_nombre` (`club_id`,`nombre`),
   CONSTRAINT `fk_clubesimpuestos_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -349,7 +349,7 @@ CREATE TABLE `gastos` (
   PRIMARY KEY (`gasto_id`),
   KEY `idx_gastos_club_fecha` (`club_id`,`fecha`),
   CONSTRAINT `fk_gastos_clubes` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -409,7 +409,7 @@ CREATE TABLE `messages` (
   PRIMARY KEY (`id`),
   KEY `idx_messages_club_date` (`club_id`,`created_at` DESC),
   CONSTRAINT `fk_messages_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -546,7 +546,7 @@ CREATE TABLE `reservas` (
   CONSTRAINT `fk_reservas_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `reservas_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `reservas_ibfk_2` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -624,7 +624,7 @@ CREATE TABLE `tipos_asociado` (
   PRIMARY KEY (`tipo_asociado_id`),
   KEY `idx_tipos_asociado_club` (`club_id`),
   CONSTRAINT `fk_tipos_asociado_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -649,7 +649,7 @@ CREATE TABLE `user_inbox` (
   CONSTRAINT `fk_inbox_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inbox_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inbox_user` FOREIGN KEY (`user_id`) REFERENCES `usuarios` (`usuario_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -692,4 +692,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-12-31 17:37:55
+-- Dump completed on 2026-01-14 23:46:26
