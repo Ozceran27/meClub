@@ -117,7 +117,8 @@ const currencyFormatter = new Intl.NumberFormat('es-AR', {
 });
 
 const formatCurrency = (value) => {
-  const amount = Number(value);
+  const normalized = normalizeNumericInput(String(value ?? ''));
+  const amount = Number(normalized);
   if (!Number.isFinite(amount)) return '$ 0';
   return `$ ${currencyFormatter.format(amount)}`;
 };
@@ -188,6 +189,22 @@ const normalizeNumericInput = (value) => {
   const [integerPart, ...decimalParts] = sanitized.split('.');
   if (!decimalParts.length) return integerPart;
   return `${integerPart}.${decimalParts.join('')}`;
+};
+
+const formatCurrencyInput = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  const normalized = normalizeNumericInput(String(value));
+  if (!normalized) return '';
+  const amount = Number(normalized);
+  if (!Number.isFinite(amount)) return '';
+  return `$ ${currencyFormatter.format(amount)}`;
+};
+
+const parseCurrencyInput = (value) => {
+  const normalized = normalizeNumericInput(String(value ?? ''));
+  if (!normalized) return null;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : null;
 };
 
 const formatPercentValue = (value) => (value ? `${value}%` : '');
@@ -345,7 +362,7 @@ const normalizeServiceEntry = (service) => {
     precio_tipo: service.precio_tipo ?? '',
     precio_valor:
       service.precio_valor !== null && service.precio_valor !== undefined
-        ? String(service.precio_valor)
+        ? formatCurrencyInput(service.precio_valor)
         : '',
     no_fumar: Boolean(service.no_fumar),
     mas_18: Boolean(service.mas_18),
@@ -609,7 +626,7 @@ function ServiceForm({
 
       <TextInput
         value={service.precio_valor}
-        onChangeText={(value) => onUpdate('precio_valor', value)}
+        onChangeText={(value) => onUpdate('precio_valor', formatCurrencyInput(value))}
         placeholder="Precio"
         placeholderTextColor="#94A3B8"
         keyboardType="numeric"
@@ -902,7 +919,7 @@ export default function ServiciosScreen() {
       color: service.color || null,
       ambiente: service.ambiente || null,
       precio_tipo: service.precio_tipo || null,
-      precio_valor: service.precio_valor ? Number(service.precio_valor) : null,
+      precio_valor: parseCurrencyInput(service.precio_valor),
       no_fumar: service.no_fumar,
       mas_18: service.mas_18,
       comida: service.comida,
@@ -1063,9 +1080,29 @@ export default function ServiciosScreen() {
     } else if (pickerState.context === 'promoTime') {
       setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
     } else if (pickerState.context === 'promo') {
-      setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
+      if (pickerState.field === 'tipo_descuento') {
+        setPromoForm((prev) => ({
+          ...prev,
+          tipo_descuento: value,
+          valor: value === 'nominal'
+            ? formatCurrencyInput(prev.valor)
+            : normalizeNumericInput(prev.valor),
+        }));
+      } else {
+        setPromoForm((prev) => ({ ...prev, [pickerState.field]: value }));
+      }
     } else if (pickerState.context === 'coupon') {
-      setCouponForm((prev) => ({ ...prev, [pickerState.field]: value }));
+      if (pickerState.field === 'tipo_descuento') {
+        setCouponForm((prev) => ({
+          ...prev,
+          tipo_descuento: value,
+          valor: value === 'nominal'
+            ? formatCurrencyInput(prev.valor)
+            : normalizeNumericInput(prev.valor),
+        }));
+      } else {
+        setCouponForm((prev) => ({ ...prev, [pickerState.field]: value }));
+      }
     } else if (pickerState.context === 'memberStatus') {
       await handleUpdateMemberStatus(pickerState.id, value);
     }
@@ -1149,7 +1186,7 @@ export default function ServiciosScreen() {
     setTypeForm({
       nombre: type.nombre || '',
       cuota_mensual: type.cuota_mensual !== null && type.cuota_mensual !== undefined
-        ? String(type.cuota_mensual)
+        ? formatCurrencyInput(type.cuota_mensual)
         : '',
       fecha_pago: type.fecha_pago !== null && type.fecha_pago !== undefined ? String(type.fecha_pago) : '',
       dias_gracia:
@@ -1171,7 +1208,7 @@ export default function ServiciosScreen() {
         setErrorMessage('El nombre del tipo de asociado es obligatorio.');
         return;
       }
-      const cuota = Number(typeForm.cuota_mensual);
+      const cuota = parseCurrencyInput(typeForm.cuota_mensual);
       const fechaPago = Number(typeForm.fecha_pago);
       const diasGracia = Number(typeForm.dias_gracia);
       if (!Number.isFinite(cuota) || cuota < 0) {
@@ -1287,7 +1324,7 @@ export default function ServiciosScreen() {
       setPaymentSearchError('Seleccioná un asociado primero.');
       return;
     }
-    const amount = Number(paymentAmount);
+    const amount = parseCurrencyInput(paymentAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setPaymentSearchError('Ingresá un monto válido.');
       return;
@@ -1878,7 +1915,9 @@ export default function ServiciosScreen() {
         <View className="flex-row gap-3">
           <TextInput
             value={typeForm.cuota_mensual}
-            onChangeText={(value) => setTypeForm((prev) => ({ ...prev, cuota_mensual: value }))}
+            onChangeText={(value) =>
+              setTypeForm((prev) => ({ ...prev, cuota_mensual: formatCurrencyInput(value) }))
+            }
             placeholder="Cuota mensual"
             placeholderTextColor="#94A3B8"
             keyboardType="numeric"
@@ -2187,7 +2226,7 @@ export default function ServiciosScreen() {
           <Text className="text-white/60 text-xs">Monto a pagar</Text>
           <TextInput
             value={paymentAmount}
-            onChangeText={(value) => setPaymentAmount(value)}
+            onChangeText={(value) => setPaymentAmount(formatCurrencyInput(value))}
             placeholder="Ingresar monto"
             placeholderTextColor="#94A3B8"
             keyboardType="numeric"
@@ -2322,9 +2361,19 @@ export default function ServiciosScreen() {
           </Text>
         </Pressable>
         <TextInput
-          value={formatPercentValue(promoForm.valor)}
+          value={
+            promoForm.tipo_descuento === 'nominal'
+              ? formatCurrencyInput(promoForm.valor)
+              : formatPercentValue(normalizeNumericInput(promoForm.valor))
+          }
           onChangeText={(value) =>
-            setPromoForm((prev) => ({ ...prev, valor: normalizeNumericInput(value) }))
+            setPromoForm((prev) => ({
+              ...prev,
+              valor:
+                promoForm.tipo_descuento === 'nominal'
+                  ? formatCurrencyInput(value)
+                  : normalizeNumericInput(value),
+            }))
           }
           placeholder="Valor del descuento"
           placeholderTextColor="#94A3B8"
@@ -2417,9 +2466,19 @@ export default function ServiciosScreen() {
           </Text>
         </Pressable>
         <TextInput
-          value={formatPercentValue(couponForm.valor)}
+          value={
+            couponForm.tipo_descuento === 'nominal'
+              ? formatCurrencyInput(couponForm.valor)
+              : formatPercentValue(normalizeNumericInput(couponForm.valor))
+          }
           onChangeText={(value) =>
-            setCouponForm((prev) => ({ ...prev, valor: normalizeNumericInput(value) }))
+            setCouponForm((prev) => ({
+              ...prev,
+              valor:
+                couponForm.tipo_descuento === 'nominal'
+                  ? formatCurrencyInput(value)
+                  : normalizeNumericInput(value),
+            }))
           }
           placeholder="Valor del descuento"
           placeholderTextColor="#94A3B8"
