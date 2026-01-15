@@ -635,8 +635,8 @@ export default function ConfiguracionScreen({ go }) {
 
       <Card className="mt-8 mx-4 md:mx-0 p-6">
         <View className="gap-6">
-          <View className="flex-row gap-6">
-            <View className="flex-1">
+          <View className="flex-col gap-6 lg:flex-row">
+            <View className="w-full lg:flex-1">
               <View>
                 <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
                 <TextInput
@@ -647,8 +647,8 @@ export default function ConfiguracionScreen({ go }) {
                   className={FIELD_STYLES}
                 />
               </View>
-              <View className="flex-1 justify-center mt-4 px-5">
-                <View className="flex-row items-center gap-4">
+              <View className="flex-1 justify-center mt-4 px-2 sm:px-5">
+                <View className="flex-row flex-wrap items-center gap-4">
                   <View className="flex-row items-center gap-2">
                     <View className={`h-3 w-3 rounded-full ${planDotColorClass}`} />
                     <Text className="text-white text-lg">Plan actual:</Text>
@@ -658,14 +658,15 @@ export default function ConfiguracionScreen({ go }) {
                   </View>
                   <Pressable
                     onPress={() => go?.('mejorar-plan')}
-                    className="rounded-full border border-white/10 bg-mc-warn px-3 py-1.5 hover:bg-mc-warn/80">
+                    className="rounded-full border border-white/10 bg-mc-warn px-3 py-1.5 hover:bg-mc-warn/80"
+                  >
                     <Text className="text-white/80 text-xs font-semibold">Mejorar plan</Text>
                   </Pressable>
                 </View>
               </View>
             </View>
 
-            <View className="flex-1">
+            <View className="w-full lg:flex-1">
               <Text className="text-white/70 text-sm mb-2">Descripción</Text>
               <TextInput
                 value={form.descripcion}
@@ -678,7 +679,7 @@ export default function ConfiguracionScreen({ go }) {
               />
             </View>
 
-            <View className="flex-1">
+            <View className="w-full lg:flex-1">
               <Text className="text-white/70 text-sm mb-2">Logo</Text>
               <View className="flex-row items-center gap-4">
                 <View className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 overflow-hidden items-center justify-center">
