@@ -186,7 +186,14 @@ const ClubesModel = {
   },
 
   obtenerClubPorPropietario: async (usuario_id) => {
-    const [rows] = await db.query('SELECT * FROM clubes WHERE usuario_id = ? LIMIT 1', [usuario_id]);
+    const [rows] = await db.query(
+      `SELECT c.*, n.nombre AS nivel_nombre
+       FROM clubes c
+       LEFT JOIN niveles n ON n.nivel_id = c.nivel_id
+       WHERE c.usuario_id = ?
+       LIMIT 1`,
+      [usuario_id]
+    );
     return mapClubRow(rows[0] || null);
   },
 
@@ -228,7 +235,13 @@ const ClubesModel = {
   },
 
   obtenerClubPorId: async (club_id) => {
-    const [rows] = await db.query(`SELECT * FROM clubes WHERE club_id = ?`, [club_id]);
+    const [rows] = await db.query(
+      `SELECT c.*, n.nombre AS nivel_nombre
+       FROM clubes c
+       LEFT JOIN niveles n ON n.nivel_id = c.nivel_id
+       WHERE c.club_id = ?`,
+      [club_id]
+    );
     return mapClubRow(rows[0] || null);
   },
 
