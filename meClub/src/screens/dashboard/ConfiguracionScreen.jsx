@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,6 @@ import {
   ScrollView,
   Image,
   Platform,
-  Animated,
-  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -78,51 +76,6 @@ export default function ConfiguracionScreen({ go }) {
     hora_nocturna_inicio: '',
     hora_nocturna_fin: '',
   });
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1400,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: 1400,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    const glow = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 1600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 1600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-      ]),
-    );
-
-    pulse.start();
-    glow.start();
-
-    return () => {
-      pulse.stop();
-      glow.stop();
-    };
-  }, [glowAnim, pulseAnim]);
 
   useEffect(() => {
     let alive = true;
@@ -240,49 +193,6 @@ export default function ConfiguracionScreen({ go }) {
     if (planLevel === 3) return 'bg-fuchsia-400';
     return 'bg-amber-400';
   }, [planLevel]);
-
-  const planPulseStyle = useMemo(() => {
-    const scale = pulseAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1, 1.4],
-    });
-    const opacity = pulseAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.6, 1],
-    });
-    return {
-      transform: [{ scale }],
-      opacity,
-    };
-  }, [pulseAnim]);
-
-  const glowBorderStyle = useMemo(() => {
-    const borderColor = glowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['rgba(255, 255, 255, 0.2)', 'rgba(255, 244, 214, 0.9)'],
-    });
-    const shadowOpacity = glowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.15, 0.6],
-    });
-    const shadowRadius = glowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [4, 12],
-    });
-    const elevation = glowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [2, 8],
-    });
-    return {
-      borderWidth: 1,
-      borderColor,
-      shadowColor: 'rgba(255, 244, 214, 1)',
-      shadowOpacity,
-      shadowRadius,
-      shadowOffset: { width: 0, height: 0 },
-      elevation,
-    };
-  }, [glowAnim]);
 
   const handleChange = (key, value) => {
     setForm((prev) => {
@@ -740,24 +650,17 @@ export default function ConfiguracionScreen({ go }) {
               <View className="flex-1 justify-center mt-4 px-5">
                 <View className="flex-row items-center gap-4">
                   <View className="flex-row items-center gap-2">
-                    <Animated.View
-                      className={`h-3 w-3 rounded-full ${planDotColorClass}`}
-                      style={planPulseStyle}
-                    />
+                    <View className={`h-3 w-3 rounded-full ${planDotColorClass}`} />
                     <Text className="text-white text-lg">Plan actual:</Text>
                     <Text className={`${planTextColorClass} text-lg font-semibold`}>
                       {planLabel}
                     </Text>
                   </View>
-                  <Animated.View style={glowBorderStyle} className="rounded-full">
-                    <Pressable
-                      onPress={() => go?.('mejorar-plan')}
-                      className="rounded-full bg-mc-warn px-3 py-1.5 hover:bg-mc-warn/80">
-                      <Text className="text-white/80 text-xs font-semibold">
-                        Mejorar plan
-                      </Text>
-                    </Pressable>
-                  </Animated.View>
+                  <Pressable
+                    onPress={() => go?.('mejorar-plan')}
+                    className="rounded-full border border-white/10 bg-mc-warn px-3 py-1.5 hover:bg-mc-warn/80">
+                    <Text className="text-white/80 text-xs font-semibold">Mejorar plan</Text>
+                  </Pressable>
                 </View>
               </View>
             </View>
