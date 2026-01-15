@@ -169,6 +169,17 @@ const formatDateInput = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const normalizeNumericInput = (value) => {
+  if (!value) return '';
+  const sanitized = value.replace(/[^\d.]/g, '');
+  if (!sanitized) return '';
+  const [integerPart, ...decimalParts] = sanitized.split('.');
+  if (!decimalParts.length) return integerPart;
+  return `${integerPart}.${decimalParts.join('')}`;
+};
+
+const formatPercentValue = (value) => (value ? `${value}%` : '');
+
 const parseDateInput = (value) => {
   if (!isValidDate(value)) return null;
   const [year, month, day] = String(value).split('-').map(Number);
@@ -1399,7 +1410,7 @@ export default function ServiciosScreen() {
         setErrorMessage('Seleccioná el tipo de descuento del cupón.');
         return;
       }
-      const valor = Number(couponForm.valor);
+      const valor = Number(normalizeNumericInput(couponForm.valor));
       if (!Number.isFinite(valor) || valor <= 0) {
         setErrorMessage('Ingresá un valor de descuento válido.');
         return;
@@ -2365,8 +2376,10 @@ export default function ServiciosScreen() {
           </Text>
         </Pressable>
         <TextInput
-          value={couponForm.valor}
-          onChangeText={(value) => setCouponForm((prev) => ({ ...prev, valor: value }))}
+          value={formatPercentValue(couponForm.valor)}
+          onChangeText={(value) =>
+            setCouponForm((prev) => ({ ...prev, valor: normalizeNumericInput(value) }))
+          }
           placeholder="Valor del descuento"
           placeholderTextColor="#94A3B8"
           keyboardType="numeric"
