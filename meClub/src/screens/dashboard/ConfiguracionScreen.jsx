@@ -613,64 +613,70 @@ export default function ConfiguracionScreen({ go }) {
 
       <Card className="mt-8 mx-4 md:mx-0 p-6">
         <View className="gap-6">
-          <View>
-            <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
-            <TextInput
-              value={form.nombre}
-              onChangeText={(text) => handleChange('nombre', text)}
-              placeholder="Club meClub"
-              placeholderTextColor="#94A3B8"
-              className={FIELD_STYLES}
-            />
-          </View>
+          <View className="flex-row gap-6">
+            <View className="flex-1">
+              <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
+              <TextInput
+                value={form.nombre}
+                onChangeText={(text) => handleChange('nombre', text)}
+                placeholder="Club meClub"
+                placeholderTextColor="#94A3B8"
+                className={FIELD_STYLES}
+              />
+            </View>
 
-          <View>
-            <Text className="text-white/70 text-sm mb-2">Descripción</Text>
-            <TextInput
-              value={form.descripcion}
-              onChangeText={(text) => handleChange('descripcion', text)}
-              placeholder="Contale al mundo sobre tu club"
-              placeholderTextColor="#94A3B8"
-              className={`${FIELD_STYLES} min-h-[96px]`}
-              multiline
-              textAlignVertical="top"
-            />
-          </View>
+            <View className="flex-1">
+              <Text className="text-white/70 text-sm mb-2">Descripción</Text>
+              <TextInput
+                value={form.descripcion}
+                onChangeText={(text) => handleChange('descripcion', text)}
+                placeholder="Contale al mundo sobre tu club"
+                placeholderTextColor="#94A3B8"
+                className={`${FIELD_STYLES} min-h-[96px]`}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
 
-          <View>
-            <Text className="text-white/70 text-sm mb-2">Logo</Text>
-            <View className="flex-row items-center gap-4">
-              <View className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 overflow-hidden items-center justify-center">
-                {logoPreviewUri ? (
-                  <Image source={{ uri: logoPreviewUri }} className="h-full w-full" resizeMode="cover" />
-                ) : (
-                  <Ionicons name="image-outline" size={28} color="#94A3B8" />
-                )}
-              </View>
-              <View className="flex-1 gap-2">
-                <Pressable
-                  onPress={handlePickLogo}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10"
-                  disabled={saving}
-                >
-                  <Text className="text-white/80 text-sm font-medium">
-                    {logoPreviewUri ? 'Cambiar logo' : 'Seleccionar logo'}
-                  </Text>
-                </Pressable>
-                {Boolean(logoPreviewUri) && (
+            <View className="flex-1">
+              <Text className="text-white/70 text-sm mb-2">Logo</Text>
+              <View className="flex-row items-center gap-4">
+                <View className="h-20 w-20 rounded-2xl border border-white/10 bg-white/5 overflow-hidden items-center justify-center">
+                  {logoPreviewUri ? (
+                    <Image
+                      source={{ uri: logoPreviewUri }}
+                      className="h-full w-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Ionicons name="image-outline" size={28} color="#94A3B8" />
+                  )}
+                </View>
+                <View className="flex-1 gap-2">
                   <Pressable
-                    onPress={handleClearLogo}
-                    className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 hover:bg-white/10"
+                    onPress={handlePickLogo}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 hover:bg-white/10"
                     disabled={saving}
                   >
-                    <Text className="text-red-200 text-xs font-medium">Quitar logo</Text>
+                    <Text className="text-white/80 text-sm font-medium">
+                      {logoPreviewUri ? 'Cambiar logo' : 'Seleccionar logo'}
+                    </Text>
                   </Pressable>
-                )}
+                  {Boolean(logoPreviewUri) && (
+                    <Pressable
+                      onPress={handleClearLogo}
+                      className="rounded-2xl border border-white/10 bg-transparent px-4 py-3 hover:bg-white/10"
+                      disabled={saving}
+                    >
+                      <Text className="text-red-200 text-xs font-medium">Quitar logo</Text>
+                    </Pressable>
+                  )}
+                </View>
               </View>
+              <Text className="text-white/40 text-xs mt-2">
+                Formatos PNG, JPG o WEBP. Tamaño máximo 2MB.
+              </Text>
             </View>
-            <Text className="text-white/40 text-xs mt-2">
-              Formatos PNG, JPG o WEBP. Tamaño máximo 2MB.
-            </Text>
           </View>
 
           <View className="grid gap-6 md:grid-cols-2">
