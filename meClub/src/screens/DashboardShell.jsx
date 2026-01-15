@@ -13,6 +13,7 @@ import {
   EconomiaScreen,
   BuzonScreen,
   ServiciosScreen,
+  MejorarPlanScreen,
 } from './dashboard';
 import WorkInProgressScreen from './WorkInProgressScreen';
 
@@ -298,6 +299,7 @@ export default function DashboardShell() {
     economia: EconomiaScreen,
     buzon: BuzonScreen,
     servicios: ServiciosScreen,
+    'mejorar-plan': MejorarPlanScreen,
   };
   const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
   const screenProps = {

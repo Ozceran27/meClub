@@ -178,6 +178,22 @@ export default function ConfiguracionScreen({ go }) {
     return 'Sin plan';
   }, [form.nivel_nombre, form.nivel_id]);
 
+  const planLevel = useMemo(() => {
+    const parsed = Number(form.nivel_id ?? 1);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }, [form.nivel_id]);
+
+  const planTextColorClass = useMemo(
+    () => (planLevel === 1 ? 'text-emerald-300' : 'text-amber-300'),
+    [planLevel],
+  );
+
+  const planDotColorClass = useMemo(() => {
+    if (planLevel === 1) return 'bg-emerald-400';
+    if (planLevel === 3) return 'bg-fuchsia-400';
+    return 'bg-amber-400';
+  }, [planLevel]);
+
   const handleChange = (key, value) => {
     setForm((prev) => {
       if (key === 'provincia_id') {
@@ -621,15 +637,33 @@ export default function ConfiguracionScreen({ go }) {
         <View className="gap-6">
           <View className="flex-row gap-6">
             <View className="flex-1">
-              <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
-              <TextInput
-                value={form.nombre}
-                onChangeText={(text) => handleChange('nombre', text)}
-                placeholder="Club meClub"
-                placeholderTextColor="#94A3B8"
-                className={FIELD_STYLES}
-              />
-              <Text className="text-white/50 text-xs mt-2">Plan actual: {planLabel}</Text>
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Nombre del club</Text>
+                <TextInput
+                  value={form.nombre}
+                  onChangeText={(text) => handleChange('nombre', text)}
+                  placeholder="Club meClub"
+                  placeholderTextColor="#94A3B8"
+                  className={FIELD_STYLES}
+                />
+              </View>
+              <View className="flex-1 justify-center mt-4">
+                <View className="flex-row items-center gap-4">
+                  <View className="flex-row items-center gap-2">
+                    <View className={`h-3 w-3 rounded-full ${planDotColorClass}`} />
+                    <Text className="text-white text-lg font-semibold">Plan actual:</Text>
+                    <Text className={`${planTextColorClass} text-lg font-semibold`}>
+                      {planLabel}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => go?.('mejorar-plan')}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 hover:bg-white/10"
+                  >
+                    <Text className="text-white/80 text-xs font-semibold">Mejorar plan</Text>
+                  </Pressable>
+                </View>
+              </View>
             </View>
 
             <View className="flex-1">
