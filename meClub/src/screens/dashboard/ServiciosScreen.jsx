@@ -1590,9 +1590,12 @@ export default function ServiciosScreen() {
             <View className="grid grid-cols-3 gap-3 self-end">
               <ActionButton
                 onPress={() => setShowPaymentPanel(true)}
+                disabled={serviceLimitReached || !hasProAccess}
                 icon="cash-outline"
                 label="Cargar pago de cuota"
-                backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
+                badge={hasProAccess ? null : PRO_BADGE}
+                backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
+                className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
               <ActionButton
                 onPress={() => setShowPromoPanel(true)}
@@ -1612,7 +1615,7 @@ export default function ServiciosScreen() {
                 icon="add-circle-outline"
                 label="Nuevo servicio"
                 badge={hasProAccess ? null : PRO_BADGE}
-                backgroundClassName={hasProAccess ? undefined : 'bg-white/10'}
+                backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
               <ActionButton
@@ -1625,7 +1628,7 @@ export default function ServiciosScreen() {
                 icon="people-outline"
                 label="Crear plan de asociado"
                 badge={hasProAccess ? null : PRO_BADGE}
-                backgroundClassName={hasProAccess ? undefined : 'bg-white/10'}
+                backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
               <ActionButton
@@ -1634,7 +1637,7 @@ export default function ServiciosScreen() {
                 icon="person-add-outline"
                 label="Alta de asociado"
                 badge={hasProAccess ? null : PRO_BADGE}
-                backgroundClassName={hasProAccess ? undefined : 'bg-white/10'}
+                backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
             </View>

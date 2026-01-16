@@ -23,13 +23,13 @@ export default function ActionButton({
       ? (
         <View
           className={`rounded-full px-2 py-[2px] border ${
-            isProBadge ? 'bg-amber-500/20 border-amber-400/50' : 'bg-rose-500/20 border-rose-400/60'
+            isProBadge ? 'bg-amber-500/20 border-amber-400/50' : 'bg-amber-500/20 border-amber-400/50'
           }`}
           accessible
           accessibilityLabel={isProBadge ? 'Funcionalidad PRO' : `Etiqueta ${badgeText}`}
           aria-label={isProBadge ? 'Funcionalidad PRO' : `Etiqueta ${badgeText}`}
         >
-          <Text className={`text-[10px] font-semibold ${isProBadge ? 'text-amber-300' : 'text-rose-100'}`}>
+          <Text className={`text-[10px] font-semibold ${isProBadge ? 'text-amber-300' : 'text-amber-300'}`}>
             {badgeText}
           </Text>
         </View>
@@ -41,7 +41,7 @@ export default function ActionButton({
       onPress={onPress}
       disabled={disabled}
       className={`flex-row items-center gap-2 rounded-2xl px-4 py-2 ${resolvedBackgroundClassName} ${
-        disabled ? 'opacity-50' : ''
+        disabled ? 'opacity-99' : ''
       } ${className}`.trim()}
     >
       <Ionicons name={icon} size={iconSize} color="#0A0F1D" />
