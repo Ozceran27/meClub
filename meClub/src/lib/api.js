@@ -73,11 +73,6 @@ export const resolveAssetUrl = (assetPath) => {
   return `${API_ORIGIN.replace(/\/$/, '')}/${str.replace(/^\/+/, '')}`;
 };
 
-export const authApi = {
-  forgot: (email) => api.post('/auth/forgot', { email }),
-  reset: (token, password) => api.post('/auth/reset', { token, password }),
-};
-
 function extractClub(payload) {
   if (!payload || typeof payload !== 'object') return {};
   const club = payload.club ?? payload.data ?? payload;

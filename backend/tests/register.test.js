@@ -122,6 +122,8 @@ describe('register controller', () => {
         email: 'club@example.com',
         contrasena: '123456',
         rol: 'club',
+        nombre_club: 'Club Test',
+        cuit: '20-12345678-3',
       },
     };
 
@@ -169,6 +171,8 @@ describe('register controller', () => {
         email: 'club-fail@example.com',
         contrasena: '123456',
         rol: 'club',
+        nombre_club: 'Club Test',
+        cuit: '20-12345678-3',
       },
     };
 
@@ -181,4 +185,3 @@ describe('register controller', () => {
     expect(mockConnection.release).toHaveBeenCalledTimes(1);
   });
 });
-

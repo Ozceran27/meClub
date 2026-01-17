@@ -113,6 +113,7 @@ const normalizeNullableTime = (value, fieldName) => {
 const ClubesModel = {
   crearClub: async ({
     nombre,
+    cuit = null,
     descripcion,
     usuario_id,
     nivel_id = 1,
@@ -130,6 +131,7 @@ const ClubesModel = {
   }, connection = null) => {
     const { value: logoValue } = prepareLogoValue(foto_logo === undefined ? null : foto_logo);
     const descripcionValue = normalizeNullableTrimmedString(descripcion, 'descripcion');
+    const cuitValue = normalizeNullableTrimmedString(cuit, 'cuit');
     const telefonoValue = normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto');
     const emailValue = normalizeNullableTrimmedString(email_contacto, 'email_contacto');
     const precioGrabacionValue = normalizeNullableFloat(precio_grabacion, 'precio_grabacion');
@@ -143,11 +145,12 @@ const ClubesModel = {
     const executor = connection || db;
     const [result] = await executor.query(
       `INSERT INTO clubes
-       (nombre, descripcion, telefono_contacto, email_contacto, precio_grabacion, direccion, latitud, longitud, google_place_id,
+       (nombre, cuit, descripcion, telefono_contacto, email_contacto, precio_grabacion, direccion, latitud, longitud, google_place_id,
         usuario_id, nivel_id, foto_logo, foto_portada, provincia_id, localidad_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         nombre,
+        cuitValue,
         descripcionValue,
         telefonoValue,
         emailValue,
@@ -168,6 +171,7 @@ const ClubesModel = {
     return mapClubRow({
       club_id: result.insertId,
       nombre,
+      cuit: cuitValue,
       descripcion: descripcionValue,
       usuario_id,
       nivel_id,

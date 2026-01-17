@@ -161,6 +161,7 @@ CREATE TABLE `clubes` (
   `club_id` int NOT NULL AUTO_INCREMENT,
   `usuario_id` int NOT NULL,
   `nombre` varchar(100) NOT NULL,
+  `cuit` varchar(20) DEFAULT NULL,
   `descripcion` text,
   `telefono_contacto` varchar(25) DEFAULT NULL,
   `email_contacto` varchar(150) DEFAULT NULL,

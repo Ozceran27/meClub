@@ -3,8 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../features/auth/useAuth';
-import { authApi } from '../lib/api';
-import logger from '../utils/logger';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
@@ -21,46 +19,46 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Mínimo 6 caracteres'),
   rol: z.enum(['deportista', 'club']).default('deportista'),
   nombre_club: z.string().optional(),
-  descripcion_club: z.string().optional(),
-  foto_logo: z.string().optional(),
-  nivel_id: z.string().optional(),
+  cuit: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.rol === 'club') {
+    if (!data.nombre_club || !data.nombre_club.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Ingresá el nombre del club', path: ['nombre_club'] });
+    }
+    const cuitDigits = (data.cuit || '').replace(/\D/g, '');
+    if (cuitDigits.length !== 11) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Ingresá un CUIT válido', path: ['cuit'] });
+    }
+  }
 });
 
-const forgotSchema = z.object({
-  email: z.string().email('Email inválido'),
-});
-
-const resetSchema = z.object({
-  token: z.string().min(10, 'Token inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
-  confirm: z.string().min(6, 'Mínimo 6 caracteres'),
-}).refine((d) => d.password === d.confirm, {
-  message: 'Las contraseñas no coinciden',
-  path: ['confirm'],
-});
+const formatCuit = (value = '') => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 10) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
+};
 
 export default function LoginScreen() {
   const nav  = useNavigation();
   const { login, register } = useAuth();
 
-  // 'login' | 'register' | 'forgot' | 'reset'
+  // 'login' | 'register' | 'success'
   const [mode, setMode] = useState('login');
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState('');
-  const [ok,   setOk]   = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const resolver = useMemo(() => {
     switch (mode) {
       case 'login':    return zodResolver(loginSchema);
       case 'register': return zodResolver(registerSchema);
-      case 'forgot':   return zodResolver(forgotSchema);
-      case 'reset':    return zodResolver(resetSchema);
       default:         return zodResolver(loginSchema);
     }
   }, [mode]);
 
   const {
-    control, handleSubmit, reset, setValue, watch,
+    control, handleSubmit, reset, watch,
     formState: { errors }
   } = useForm({
     resolver,
@@ -68,47 +66,27 @@ export default function LoginScreen() {
       // login
       email: '', password: '',
       // register
-      nombre: '', apellido: '', rol: 'deportista', nombre_club: '', descripcion_club: '', foto_logo: '', nivel_id: '',
-      // reset
-      token: '', confirm: '',
+      nombre: '', apellido: '', rol: 'deportista', nombre_club: '', cuit: '',
     },
   });
 
   const rol = watch('rol');
 
-  // Leer ?token= de la URL (web) para ir directo a reset
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      const params = new URLSearchParams(window.location.search);
-      const t = params.get('token');
-      if (t) {
-        setMode('reset');
-        setValue('token', t);
-      }
-    }
-  }, [setValue]);
-
   // Limpiar estado al cambiar de modo
   useEffect(() => {
-    setErr(''); setOk('');
+    setErr('');
+    if (mode !== 'success') {
+      setSuccessMessage('');
+    }
     if (mode === 'login') {
       reset({ email: '', password: '' });
     } else if (mode === 'register') {
-      reset({ nombre: '', apellido: '', email: '', password: '', rol: 'deportista', nombre_club: '', descripcion_club: '', foto_logo: '', nivel_id: '' });
-    } else if (mode === 'forgot') {
-      reset({ email: '' });
-    } else if (mode === 'reset') {
-      reset({ token: '', password: '', confirm: '' });
-      if (Platform.OS === 'web') {
-        const params = new URLSearchParams(window.location.search);
-        const t = params.get('token');
-        if (t) setValue('token', t);
-      }
+      reset({ nombre: '', apellido: '', email: '', password: '', rol: 'deportista', nombre_club: '', cuit: '' });
     }
-  }, [mode, reset, setValue]);
+  }, [mode, reset]);
 
   const submitLogin = async ({ email, password }) => {
-    setBusy(true); setErr(''); setOk('');
+    setBusy(true); setErr('');
     try {
       await login({ email, password });
     } catch (e) {
@@ -117,50 +95,18 @@ export default function LoginScreen() {
   };
 
   const submitRegister = async (data) => {
-    setBusy(true); setErr(''); setOk('');
+    setBusy(true); setErr('');
     try {
       await register(data);
-      nav.reset({ index: 0, routes: [{ name: 'Login' }] });
-      setOk('Usuario creado, por favor inicia sesión');
+      setSuccessMessage('Tu cuenta fue creada correctamente.');
+      setMode('success');
     } catch (e) {
       setErr(e.message || 'No se pudo registrar');
     } finally { setBusy(false); }
   };
 
-  const submitForgot = async ({ email }) => {
-    setBusy(true); setErr(''); setOk('');
-    try {
-      const r = await authApi.forgot(email);
-      setOk('Si el email existe, enviamos instrucciones a tu correo.');
-      // En dev, puede venir {token, link}
-      if (r?.token) {
-        logger.debug('Token de reseteo recibido para pruebas de desarrollo.');
-      }
-    } catch (e) {
-      setErr(e.message || 'No se pudo procesar la solicitud');
-    } finally { setBusy(false); }
-  };
-
-  const submitReset = async ({ token, password }) => {
-    setBusy(true); setErr(''); setOk('');
-    try {
-      await authApi.reset(token, password);
-      setOk('Contraseña actualizada. Ahora podés iniciar sesión.');
-      setMode('login');
-      if (Platform.OS === 'web' && window?.history?.replaceState) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('token');
-        window.history.replaceState({}, '', url.toString());
-      }
-    } catch (e) {
-      setErr(e.message || 'No se pudo restablecer la contraseña');
-    } finally { setBusy(false); }
-  };
-
   const toggleMode = () => setMode(m => (m === 'login' ? 'register' : 'login'));
 
-  const goForgot = () => setMode('forgot');
-  const goReset  = () => setMode('reset');
   const goLogin  = () => setMode('login');
 
   const safeBack = () => {
@@ -196,8 +142,7 @@ export default function LoginScreen() {
             {{
               login:    'Iniciar sesión',
               register: 'Crear cuenta',
-              forgot:   'Olvidé mi contraseña',
-              reset:    'Restablecer contraseña',
+              success:  'Cuenta creada',
             }[mode]}
           </Text>
 
@@ -205,8 +150,7 @@ export default function LoginScreen() {
             {{
               login:    'Ingresá tus datos para continuar',
               register: 'Completá tus datos para unirte a meClub',
-              forgot:   'Ingresá tu email y te enviaremos instrucciones',
-              reset:    'Pegá el token y elegí tu nueva contraseña',
+              success:  'Tu registro fue exitoso, ya podés iniciar sesión.',
             }[mode]}
           </Text>
 
@@ -254,19 +198,22 @@ export default function LoginScreen() {
                   control={control}
                   name="rol"
                   render={({ field: { onChange, value } }) => (
-                    <View className="flex-row gap-3 items-center">
-                      <Pressable
-                        onPress={() => onChange('deportista')}
-                        className={`px-4 py-2 rounded-xl2 border ${value === 'deportista' ? 'border-mc-info shadow-[0_0_14px_rgba(76,201,240,0.25)]' : 'border-mc-stroke'}`}
-                      >
-                        <Text className="text-mc-text">Deportista</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => onChange('club')}
-                        className={`px-4 py-2 rounded-xl2 border ${value === 'club' ? 'border-mc-info shadow-[0_0_14px_rgba(76,201,240,0.25)]' : 'border-mc-stroke'}`}
-                      >
-                        <Text className="text-mc-text">Club</Text>
-                      </Pressable>
+                    <View>
+                      <Text className="text-mc-textDim mb-2">Soy un...</Text>
+                      <View className="flex-row gap-3 items-center">
+                        <Pressable
+                          onPress={() => onChange('deportista')}
+                          className={`px-4 py-2 rounded-xl2 border ${value === 'deportista' ? 'border-mc-info shadow-[0_0_14px_rgba(76,201,240,0.25)]' : 'border-mc-stroke'}`}
+                        >
+                          <Text className="text-mc-text">Jugador/Deportista</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => onChange('club')}
+                          className={`px-4 py-2 rounded-xl2 border ${value === 'club' ? 'border-mc-info shadow-[0_0_14px_rgba(76,201,240,0.25)]' : 'border-mc-stroke'}`}
+                        >
+                          <Text className="text-mc-text">Club</Text>
+                        </Pressable>
+                      </View>
                     </View>
                   )}
                 />
@@ -286,58 +233,28 @@ export default function LoginScreen() {
                             value={value}
                             onChangeText={onChange}
                           />
+                          {errors.nombre_club && (
+                            <Text className="text-red-400 mt-1">{errors.nombre_club.message}</Text>
+                          )}
                         </View>
                       )}
                     />
 
                     <Controller
                       control={control}
-                      name="descripcion_club"
+                      name="cuit"
                       render={({ field: { onChange, value } }) => (
                         <View>
-                          <Text className="text-mc-textDim mb-2">Descripción del club (opcional)</Text>
+                          <Text className="text-mc-textDim mb-2">CUIT</Text>
                           <TextInput
                             className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                            placeholder="Breve descripción"
-                            placeholderTextColor="#7789a6"
-                            value={value}
-                            onChangeText={onChange}
-                          />
-                        </View>
-                      )}
-                    />
-
-                    <Controller
-                      control={control}
-                      name="foto_logo"
-                      render={({ field: { onChange, value } }) => (
-                        <View>
-                          <Text className="text-mc-textDim mb-2">Logo del club (URL opcional)</Text>
-                          <TextInput
-                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                            placeholder="https://..."
-                            placeholderTextColor="#7789a6"
-                            value={value}
-                            onChangeText={onChange}
-                          />
-                        </View>
-                      )}
-                    />
-
-                    <Controller
-                      control={control}
-                      name="nivel_id"
-                      render={({ field: { onChange, value } }) => (
-                        <View>
-                          <Text className="text-mc-textDim mb-2">Nivel del club (opcional)</Text>
-                          <TextInput
-                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                            placeholder="ID de nivel"
+                            placeholder="20-12345678-3"
                             placeholderTextColor="#7789a6"
                             keyboardType="numeric"
                             value={value}
-                            onChangeText={onChange}
+                            onChangeText={(text) => onChange(formatCuit(text))}
                           />
+                          {errors.cuit && <Text className="text-red-400 mt-1">{errors.cuit.message}</Text>}
                         </View>
                       )}
                     />
@@ -346,8 +263,8 @@ export default function LoginScreen() {
               </>
             )}
 
-            {/* LOGIN / FORGOT: email */}
-            {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+            {/* LOGIN / REGISTER: email */}
+            {(mode === 'login' || mode === 'register') && (
               <Controller
                 control={control}
                 name="email"
@@ -393,107 +310,53 @@ export default function LoginScreen() {
               />
             )}
 
-            {/* RESET: token + nueva password + confirm */}
-            {mode === 'reset' && (
-              <>
-                <Controller
-                  control={control}
-                  name="token"
-                  render={({ field: { onChange, value } }) => (
-                    <View>
-                      <Text className="text-mc-textDim mb-2">Token</Text>
-                      <TextInput
-                        className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                        placeholder="Pegá aquí el token"
-                        placeholderTextColor="#7789a6"
-                        autoCapitalize="none"
-                        value={value}
-                        onChangeText={onChange}
-                      />
-                      {errors.token && <Text className="text-red-400 mt-1">{errors.token.message}</Text>}
-                    </View>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, value } }) => (
-                    <View>
-                      <Text className="text-mc-textDim mb-2">Nueva contraseña</Text>
-                      <TextInput
-                        className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                        placeholder="Nueva contraseña"
-                        placeholderTextColor="#7789a6"
-                        secureTextEntry
-                        value={value}
-                        onChangeText={onChange}
-                      />
-                      {errors.password && <Text className="text-red-400 mt-1">{errors.password.message}</Text>}
-                    </View>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="confirm"
-                  render={({ field: { onChange, value } }) => (
-                    <View>
-                      <Text className="text-mc-textDim mb-2">Confirmar contraseña</Text>
-                      <TextInput
-                        className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
-                        placeholder="Repetí la contraseña"
-                        placeholderTextColor="#7789a6"
-                        secureTextEntry
-                        value={value}
-                        onChangeText={onChange}
-                      />
-                      {errors.confirm && <Text className="text-red-400 mt-1">{errors.confirm.message}</Text>}
-                    </View>
-                  )}
-                />
-              </>
-            )}
-
             {!!err &&  <Text className="text-red-400">{err}</Text>}
-            {!!ok &&   <Text className="text-emerald-400">{ok}</Text>}
 
             {/* CTA principal */}
-            <Pressable
-              disabled={busy}
-              onPress={() => {
-                Keyboard.dismiss();
-                handleSubmit(
-                  mode === 'login'    ? submitLogin :
-                  mode === 'register' ? submitRegister :
-                  mode === 'forgot'   ? submitForgot :
-                  submitReset
-                )();
-              }}
-              className="bg-mc-primary rounded-xl2 py-3 items-center mt-2
-                         transition-transform duration-150 hover:-translate-y-0.5
-                         hover:shadow-[0_12px_28px_rgba(43,130,128,0.35)]
-                         active:opacity-95"
-            >
-              {busy ? <ActivityIndicator color="#fff" /> :
-                <Text className="text-white font-semibold">
-                  {{
-                    login:    'Entrar',
-                    register: 'Crear cuenta',
-                    forgot:   'Enviar instrucciones',
-                    reset:    'Actualizar contraseña',
-                  }[mode]}
-                </Text>
-              }
-            </Pressable>
+            {(mode === 'login' || mode === 'register') && (
+              <Pressable
+                disabled={busy}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  handleSubmit(
+                    mode === 'login' ? submitLogin : submitRegister
+                  )();
+                }}
+                className="bg-mc-primary rounded-xl2 py-3 items-center mt-2
+                           transition-transform duration-150 hover:-translate-y-0.5
+                           hover:shadow-[0_12px_28px_rgba(43,130,128,0.35)]
+                           active:opacity-95"
+              >
+                {busy ? <ActivityIndicator color="#fff" /> :
+                  <Text className="text-white font-semibold">
+                    {{ login: 'Entrar', register: 'Crear cuenta' }[mode]}
+                  </Text>
+                }
+              </Pressable>
+            )}
+
+            {mode === 'success' && (
+              <View className="items-center gap-4">
+                <Text className="text-emerald-400 text-center">{successMessage}</Text>
+                <Pressable
+                  onPress={goLogin}
+                  className="bg-mc-primary rounded-xl2 py-3 px-6 items-center
+                             transition-transform duration-150 hover:-translate-y-0.5
+                             hover:shadow-[0_12px_28px_rgba(43,130,128,0.35)]
+                             active:opacity-95"
+                >
+                  <Text className="text-white font-semibold">Volver a Iniciar sesión</Text>
+                </Pressable>
+              </View>
+            )}
 
             {/* Links secundarios */}
             {mode === 'login' && (
               <View className="mt-3 items-center gap-2">
                 <Pressable onPress={toggleMode}><Text className="text-mc-textDim underline">¿No tenés cuenta? Crear cuenta</Text></Pressable>
-                <Pressable onPress={goForgot}><Text className="text-mc-textDim underline">Olvidé mi contraseña</Text></Pressable>
-                <Pressable onPress={goReset}><Text className="text-mc-textDim underline">Ya tengo un token</Text></Pressable>
               </View>
             )}
-            {(mode === 'register' || mode === 'forgot' || mode === 'reset') && (
+            {mode === 'register' && (
               <View className="mt-3 items-center">
                 <Pressable onPress={goLogin}><Text className="text-mc-textDim underline">Volver a Iniciar sesión</Text></Pressable>
               </View>
