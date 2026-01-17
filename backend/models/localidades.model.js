@@ -1,5 +1,14 @@
 const db = require('../config/db');
 
+const LOCALIDADES_TABLES = ['localidades', 'localidad'];
+const ID_COLUMNS = ['localidad_id', 'id'];
+
+const shouldRetrySchemaError = (err) =>
+  err &&
+  (err.code === 'ER_BAD_FIELD_ERROR' ||
+    err.code === 'ER_NO_SUCH_TABLE' ||
+    /Unknown column|doesn't exist/i.test(err.message || ''));
+
 const LocalidadesModel = {
   listarPorProvincia: async (provinciaId, search = null) => {
     const provinciaNumeric = Number(provinciaId);
@@ -7,23 +16,50 @@ const LocalidadesModel = {
       throw new Error('provinciaId inválido');
     }
 
-    let sql = `
-      SELECT localidad_id, provincia_id, nombre, codigo_postal
-      FROM localidades
-      WHERE provincia_id = ? AND activo = 1
-    `;
+    const valuesBase = [provinciaNumeric];
+    let lastError;
 
-    const values = [provinciaNumeric];
+    for (const table of LOCALIDADES_TABLES) {
+      for (const idColumn of ID_COLUMNS) {
+        for (const includeActivo of [true, false]) {
+          let sql = `
+            SELECT ${idColumn === 'id' ? 'id AS localidad_id' : 'localidad_id'},
+              provincia_id, nombre, codigo_postal
+            FROM ${table}
+            WHERE provincia_id = ?
+          `;
 
-    if (search && typeof search === 'string') {
-      sql += ' AND nombre LIKE ?';
-      values.push(`%${search}%`);
+          const values = [...valuesBase];
+
+          if (includeActivo) {
+            sql += ' AND activo = 1';
+          }
+
+          if (search && typeof search === 'string') {
+            sql += ' AND nombre LIKE ?';
+            values.push(`%${search}%`);
+          }
+
+          sql += ' ORDER BY nombre ASC';
+
+          try {
+            const [rows] = await db.query(sql, values);
+            return rows;
+          } catch (err) {
+            lastError = err;
+            if (!shouldRetrySchemaError(err)) {
+              throw err;
+            }
+          }
+        }
+      }
     }
 
-    sql += ' ORDER BY nombre ASC';
+    if (lastError) {
+      throw lastError;
+    }
 
-    const [rows] = await db.query(sql, values);
-    return rows;
+    return [];
   },
 
   existe: async (localidadId) => {
@@ -32,12 +68,31 @@ const LocalidadesModel = {
       return false;
     }
 
-    const [rows] = await db.query(
-      'SELECT 1 FROM localidades WHERE localidad_id = ? LIMIT 1',
-      [localidadNumeric]
-    );
+    let lastError;
 
-    return rows.length > 0;
+    for (const table of LOCALIDADES_TABLES) {
+      for (const idColumn of ID_COLUMNS) {
+        const column = idColumn === 'id' ? 'id' : 'localidad_id';
+        try {
+          const [rows] = await db.query(
+            `SELECT 1 FROM ${table} WHERE ${column} = ? LIMIT 1`,
+            [localidadNumeric]
+          );
+          return rows.length > 0;
+        } catch (err) {
+          lastError = err;
+          if (!shouldRetrySchemaError(err)) {
+            throw err;
+          }
+        }
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    return false;
   },
 
   perteneceAProvincia: async (localidadId, provinciaId) => {
@@ -48,15 +103,41 @@ const LocalidadesModel = {
       return false;
     }
 
-    const [rows] = await db.query(
-      `SELECT 1
-       FROM localidades
-       WHERE localidad_id = ? AND provincia_id = ? AND activo = 1
-       LIMIT 1`,
-      [localidadNumeric, provinciaNumeric]
-    );
+    let lastError;
 
-    return rows.length > 0;
+    for (const table of LOCALIDADES_TABLES) {
+      for (const idColumn of ID_COLUMNS) {
+        for (const includeActivo of [true, false]) {
+          const column = idColumn === 'id' ? 'id' : 'localidad_id';
+          let sql = `SELECT 1
+             FROM ${table}
+             WHERE ${column} = ? AND provincia_id = ?`;
+          const values = [localidadNumeric, provinciaNumeric];
+
+          if (includeActivo) {
+            sql += ' AND activo = 1';
+          }
+
+          sql += ' LIMIT 1';
+
+          try {
+            const [rows] = await db.query(sql, values);
+            return rows.length > 0;
+          } catch (err) {
+            lastError = err;
+            if (!shouldRetrySchemaError(err)) {
+              throw err;
+            }
+          }
+        }
+      }
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    return false;
   },
 };
 
