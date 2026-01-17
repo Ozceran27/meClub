@@ -84,7 +84,7 @@ export default function LandingScreen() {
                   android_ripple={{ color: 'rgba(43,130,128,0.2)' }}
                 >
                   <Text style={{ fontFamily: 'Inter_600SemiBold' }} className="text-white text-base">
-                    Empezar ahora
+                    Crear cuenta
                   </Text>
                 </Pressable>
 
