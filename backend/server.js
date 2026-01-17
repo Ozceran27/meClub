@@ -35,7 +35,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('/*', cors(corsOptions));
 app.use(express.json());
 app.use(logosPublicPath, express.static(logosDir));
 const authRoutes = require('./routes/auth.routes');
