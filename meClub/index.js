@@ -15,8 +15,8 @@ const applyChromeDesktopZoom = () => {
   const isChrome = /Chrome/i.test(userAgent) && !/Edg|OPR|Brave/i.test(userAgent);
 
   if (isDesktop && isChrome) {
-    document.documentElement.style.zoom = "0.8";
-    document.body.style.zoom = "0.8";
+    document.documentElement.style.zoom = "0.99";
+    document.body.style.zoom = "0.99";
   }
 };
 
