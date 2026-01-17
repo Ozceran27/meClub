@@ -345,6 +345,15 @@ export default function DashboardShell() {
           </Text>
         </View>
 
+        <View className="mr-3">
+          <Pressable
+            onPress={() => go('mejorar-plan')}
+            className="rounded-full border bg-amber-500/20 border-amber-400/50 px-3 py-1.5 hover:bg-mc-warn/80"
+          >
+            <Text className="text-amber-300 text-xs font-semibold">Mejorar plan</Text>
+          </Pressable>
+        </View>
+
         <View className="relative z-50" style={{ elevation: 60, zIndex: 60 }}>
           <Pressable
             onPress={() => setProfileMenuOpen((prev) => !prev)}
