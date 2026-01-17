@@ -8,8 +8,34 @@ const app = express();
 const PORT = process.env.PORT || 3006;
 const PasswordResetsModel = require('./models/passwordResets.model');
 
+const normalizeOrigins = (raw) =>
+  raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const corsOrigins = process.env.CORS_ORIGIN
+  ? normalizeOrigins(process.env.CORS_ORIGIN)
+  : ['*'];
+
 // MIDDLEWARES ------------------------------------------------------------------------------------
-app.use(cors());
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || corsOrigins.includes('*')) {
+      return callback(null, true);
+    }
+    if (corsOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS not allowed'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(logosPublicPath, express.static(logosDir));
 const authRoutes = require('./routes/auth.routes');
@@ -57,6 +83,6 @@ setInterval(async () => {
 }, PURGE_INTERVAL_MS);
 
 // RUN SERVER -------------------------------------------------------------------------------------
-app.listen(PORT, () => {
-  logger.info(`Servidor backend escuchando en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  logger.info(`Servidor backend escuchando en http://0.0.0.0:${PORT}`);
 });
