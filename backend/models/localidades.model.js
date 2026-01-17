@@ -3,12 +3,44 @@ const db = require('../config/db');
 const LOCALIDADES_TABLES = ['localidades', 'localidad'];
 const ID_COLUMNS = ['localidad_id', 'id'];
 const POSTAL_COLUMNS = ['codigo_postal', 'codigopostal', null];
+let clubesLocalidadRefCache = null;
+let clubesLocalidadRefChecked = false;
 
 const shouldRetrySchemaError = (err) =>
   err &&
   (err.code === 'ER_BAD_FIELD_ERROR' ||
     err.code === 'ER_NO_SUCH_TABLE' ||
     /Unknown column|doesn't exist/i.test(err.message || ''));
+
+const getClubesLocalidadReference = async () => {
+  if (clubesLocalidadRefChecked) return clubesLocalidadRefCache;
+  clubesLocalidadRefChecked = true;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT REFERENCED_TABLE_NAME AS table_name, REFERENCED_COLUMN_NAME AS column_name
+       FROM information_schema.KEY_COLUMN_USAGE
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'clubes'
+         AND COLUMN_NAME = 'localidad_id'
+         AND REFERENCED_TABLE_NAME IS NOT NULL
+       LIMIT 1`
+    );
+    const row = rows?.[0];
+    if (row?.table_name && row?.column_name) {
+      clubesLocalidadRefCache = {
+        table: row.table_name,
+        column: row.column_name,
+      };
+    }
+  } catch (err) {
+    if (!shouldRetrySchemaError(err)) {
+      console.error('Error obteniendo referencia de localidades para clubes', err);
+    }
+  }
+
+  return clubesLocalidadRefCache;
+};
 
 const LocalidadesModel = {
   listarPorProvincia: async (provinciaId, search = null) => {
@@ -79,6 +111,21 @@ const LocalidadesModel = {
     }
 
     let lastError;
+    const clubesReference = await getClubesLocalidadReference();
+    if (clubesReference?.table && clubesReference?.column) {
+      try {
+        const [rows] = await db.query(
+          `SELECT 1 FROM ${clubesReference.table} WHERE ${clubesReference.column} = ? LIMIT 1`,
+          [localidadNumeric]
+        );
+        return rows.length > 0;
+      } catch (err) {
+        lastError = err;
+        if (!shouldRetrySchemaError(err)) {
+          throw err;
+        }
+      }
+    }
 
     for (const table of LOCALIDADES_TABLES) {
       for (const idColumn of ID_COLUMNS) {
@@ -114,6 +161,24 @@ const LocalidadesModel = {
     }
 
     let lastError;
+    const clubesReference = await getClubesLocalidadReference();
+    if (clubesReference?.table && clubesReference?.column) {
+      try {
+        const [rows] = await db.query(
+          `SELECT 1
+           FROM ${clubesReference.table}
+           WHERE ${clubesReference.column} = ? AND provincia_id = ?
+           LIMIT 1`,
+          [localidadNumeric, provinciaNumeric]
+        );
+        return rows.length > 0;
+      } catch (err) {
+        lastError = err;
+        if (!shouldRetrySchemaError(err)) {
+          throw err;
+        }
+      }
+    }
 
     for (const table of LOCALIDADES_TABLES) {
       for (const idColumn of ID_COLUMNS) {
