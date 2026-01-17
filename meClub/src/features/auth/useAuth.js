@@ -125,8 +125,8 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const register = async ({ nombre, apellido, email, password, rol, nombre_club, cuit }) => {
-    const payload = { nombre, apellido, email, contrasena: password, rol, nombre_club };
+  const register = async ({ nombre, apellido, email, password, telefono, rol, nombre_club, cuit }) => {
+    const payload = { nombre, apellido, email, contrasena: password, telefono, rol, nombre_club };
     if (rol === 'club') {
       payload.cuit = cuit;
     }
