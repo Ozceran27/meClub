@@ -517,6 +517,9 @@ router.patch('/mis-datos', async (req, res) => {
     res.json({ mensaje: 'Datos del club actualizados', club: clubActualizado });
   } catch (err) {
     console.error(err);
+    if (err.statusCode === 400) {
+      return res.status(400).json({ mensaje: err.message });
+    }
     res.status(500).json({ mensaje: 'Error interno del servidor' });
   }
 });
