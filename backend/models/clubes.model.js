@@ -4,6 +4,7 @@ const { normalizeCourtImage } = require('../utils/courtImage');
 const { normalizeHour } = require('../utils/datetime');
 const { normalizarEstadoPago } = require('../constants/reservasEstados');
 const GastosModel = require('./gastos.model');
+const { getPrecioGrabacionDefault } = require('../config/settings');
 
 const toNullableNumber = (value) => {
   if (value === undefined || value === null) return null;
@@ -134,7 +135,12 @@ const ClubesModel = {
     const cuitValue = normalizeNullableTrimmedString(cuit, 'cuit');
     const telefonoValue = normalizeNullableTrimmedString(telefono_contacto, 'telefono_contacto');
     const emailValue = normalizeNullableTrimmedString(email_contacto, 'email_contacto');
-    const precioGrabacionValue = normalizeNullableFloat(precio_grabacion, 'precio_grabacion');
+    const precioGrabacionValue = normalizeNullableFloat(
+      precio_grabacion === undefined || precio_grabacion === null || precio_grabacion === ''
+        ? getPrecioGrabacionDefault()
+        : precio_grabacion,
+      'precio_grabacion'
+    );
     const direccionValue = normalizeNullableTrimmedString(direccion, 'direccion');
     const latitudValue = normalizeNullableFloat(latitud, 'latitud');
     const longitudValue = normalizeNullableFloat(longitud, 'longitud');

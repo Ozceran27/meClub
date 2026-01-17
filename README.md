@@ -17,6 +17,14 @@ Podés agregar estas variables en un archivo `.env` ubicado en la raíz del proy
 
 Al iniciar la aplicación con esas variables definidas, el mapa mostrará la ubicación actual y permitirá arrastrar el marcador o hacer clic para seleccionar nuevas coordenadas. Con el `EXPO_PUBLIC_GOOGLE_MAPS_MAP_ID` configurado, la aplicación utilizará los **Advanced Markers**; si omitís esa variable se mostrará el marcador clásico automáticamente.
 
+## Configuración de precios de grabación (backend)
+
+Para definir el precio estándar que se asigna automáticamente a los clubes nuevos, configurá la variable de entorno `PRECIO_GRABACION_DEFAULT` antes de iniciar el backend. Si no se define, el valor por defecto es **3000**.
+
+```bash
+export PRECIO_GRABACION_DEFAULT=3000
+```
+
 ## API de usuarios
 
 ### `GET /api/usuarios/buscar`
