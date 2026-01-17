@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   Pressable,
+  Modal,
   ActivityIndicator,
   ScrollView,
   Image,
@@ -76,6 +77,30 @@ export default function ConfiguracionScreen({ go }) {
     hora_nocturna_inicio: '',
     hora_nocturna_fin: '',
   });
+  const provinceTriggerRef = useRef(null);
+  const localityTriggerRef = useRef(null);
+  const [provinceMenuLayout, setProvinceMenuLayout] = useState(null);
+  const [localityMenuLayout, setLocalityMenuLayout] = useState(null);
+
+  useEffect(() => {
+    if (!showProvinceMenu) return;
+    const node = provinceTriggerRef.current;
+    if (node?.measureInWindow) {
+      node.measureInWindow((x, y, width, height) => {
+        setProvinceMenuLayout({ x, y, width, height });
+      });
+    }
+  }, [showProvinceMenu]);
+
+  useEffect(() => {
+    if (!showLocalityMenu) return;
+    const node = localityTriggerRef.current;
+    if (node?.measureInWindow) {
+      node.measureInWindow((x, y, width, height) => {
+        setLocalityMenuLayout({ x, y, width, height });
+      });
+    }
+  }, [showLocalityMenu]);
 
   useEffect(() => {
     let alive = true;
@@ -729,117 +754,147 @@ export default function ConfiguracionScreen({ go }) {
             <View className="mt-4 grid gap-6 md:grid-cols-3">
               <View>
                 <Text className="text-white/70 text-sm mb-2">Provincia</Text>
-                <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
-                  <Pressable
-                    onPress={() => setShowProvinceMenu((prev) => !prev)}
-                    className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-[#0B152E] px-4 py-3 transition-colors hover:bg-white/10"
-                  >
-                    <Text className="text-white/90 text-base">{provinceName}</Text>
-                    <Ionicons
-                      name={showProvinceMenu ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color="#E2E8F0"
+                <Pressable
+                  ref={provinceTriggerRef}
+                  onPress={() => {
+                    setShowLocalityMenu(false);
+                    setShowProvinceMenu((prev) => !prev);
+                  }}
+                  className={`${FIELD_STYLES} flex-row items-center justify-between`}
+                >
+                  <Text className="text-white/90 text-base">{provinceName}</Text>
+                  <Ionicons name="chevron-down" size={18} color="#E2E8F0" />
+                </Pressable>
+                <Modal
+                  transparent
+                  visible={showProvinceMenu}
+                  onRequestClose={() => setShowProvinceMenu(false)}
+                >
+                  <View style={{ flex: 1 }} pointerEvents="box-none">
+                    <Pressable
+                      onPress={() => setShowProvinceMenu(false)}
+                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
                     />
-                  </Pressable>
-                  {showProvinceMenu && (
-                    <View
-                      className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
-                      style={{ zIndex: 60, elevation: 60 }}
-                    >
-                      <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
-                        {(provinces || []).map((prov) => {
-                          const isSelected = String(prov.id) === String(form.provincia_id);
-                          return (
-                            <Pressable
-                              key={prov.id}
-                              onPress={() => {
-                                handleChange('provincia_id', prov.id);
-                                setShowProvinceMenu(false);
-                              }}
-                              className={`px-4 py-3 transition-colors ${
-                                isSelected ? 'bg-white/10' : ''
-                              } hover:bg-white/10`}
-                            >
-                              <Text className="text-white/90 text-base">{prov.nombre}</Text>
-                            </Pressable>
-                          );
-                        })}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              <View>
-                <Text className="text-white/70 text-sm mb-2">Localidad</Text>
-                <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
-                  <Pressable
-                    onPress={() => {
-                      if (!form.provincia_id) return;
-                      setShowLocalityMenu((prev) => !prev);
-                    }}
-                    className={`flex-row items-center justify-between rounded-2xl border px-4 py-3 transition-colors ${
-                      form.provincia_id
-                        ? 'border-white/10 bg-[#0B152E] hover:bg-white/10'
-                        : 'border-white/5 bg-[#121B33]'
-                    }`}
-                  >
-                    <Text className="text-white/90 text-base">
-                      {form.provincia_id ? localityName : 'Seleccioná primero una provincia'}
-                    </Text>
-                    <Ionicons
-                      name={showLocalityMenu ? 'chevron-up' : 'chevron-down'}
-                      size={18}
-                      color="#E2E8F0"
-                    />
-                  </Pressable>
-                  {showLocalityMenu && (
-                    <View
-                      className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
-                      style={{ zIndex: 60, elevation: 60 }}
-                    >
-                      <View className="border-b border-white/10 bg-[#101C36] px-4 py-3">
-                        <TextInput
-                          value={localityQuery}
-                          onChangeText={setLocalityQuery}
-                          placeholder="Buscar localidad"
-                          placeholderTextColor="#94A3B8"
-                          className="rounded-xl border border-white/10 bg-[#16274A] px-3 py-2 text-white"
-                        />
-                      </View>
-                      {localitiesLoading ? (
-                        <View className="flex-row items-center justify-center gap-2 px-4 py-4">
-                          <ActivityIndicator color="#F59E0B" />
-                          <Text className="text-white/70 text-sm">Cargando...</Text>
-                        </View>
-                      ) : (
+                    {provinceMenuLayout ? (
+                      <View
+                        className="rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl"
+                        style={{
+                          position: 'absolute',
+                          left: provinceMenuLayout.x,
+                          top: provinceMenuLayout.y + provinceMenuLayout.height + 8,
+                          width: provinceMenuLayout.width,
+                          zIndex: 9999,
+                          elevation: 9999,
+                        }}
+                      >
                         <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
-                          {(localities || []).map((loc) => {
-                            const isSelected = String(loc.id) === String(form.localidad_id);
+                          {(provinces || []).map((prov) => {
+                            const isSelected = String(prov.id) === String(form.provincia_id);
                             return (
                               <Pressable
-                                key={loc.id}
-                                onPress={() => handleSelectLocality(loc)}
+                                key={prov.id}
+                                onPress={() => {
+                                  handleChange('provincia_id', prov.id);
+                                  setShowProvinceMenu(false);
+                                }}
                                 className={`px-4 py-3 transition-colors ${
                                   isSelected ? 'bg-white/10' : ''
                                 } hover:bg-white/10`}
                               >
-                                <Text className="text-white/90 text-base">{loc.nombre}</Text>
+                                <Text className="text-white/90 text-base">{prov.nombre}</Text>
                               </Pressable>
                             );
                           })}
-                          {(!localities || localities.length === 0) && (
-                            <View className="px-4 py-4">
-                              <Text className="text-white/60 text-sm">
-                                {localityError || 'No encontramos localidades para esta provincia'}
-                              </Text>
-                            </View>
-                          )}
                         </ScrollView>
-                      )}
-                    </View>
-                  )}
-                </View>
+                      </View>
+                    ) : null}
+                  </View>
+                </Modal>
+              </View>
+
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Localidad</Text>
+                <Pressable
+                  ref={localityTriggerRef}
+                  onPress={() => {
+                    if (!form.provincia_id) return;
+                    setShowProvinceMenu(false);
+                    setShowLocalityMenu((prev) => !prev);
+                  }}
+                  className={`${FIELD_STYLES} flex-row items-center justify-between ${
+                    form.provincia_id ? '' : 'opacity-60'
+                  }`}
+                >
+                  <Text className="text-white/90 text-base">
+                    {form.provincia_id ? localityName : 'Seleccioná primero una provincia'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#E2E8F0" />
+                </Pressable>
+                <Modal
+                  transparent
+                  visible={showLocalityMenu}
+                  onRequestClose={() => setShowLocalityMenu(false)}
+                >
+                  <View style={{ flex: 1 }} pointerEvents="box-none">
+                    <Pressable
+                      onPress={() => setShowLocalityMenu(false)}
+                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                    />
+                    {localityMenuLayout ? (
+                      <View
+                        className="rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl"
+                        style={{
+                          position: 'absolute',
+                          left: localityMenuLayout.x,
+                          top: localityMenuLayout.y + localityMenuLayout.height + 8,
+                          width: localityMenuLayout.width,
+                          zIndex: 9999,
+                          elevation: 9999,
+                        }}
+                      >
+                        <View className="border-b border-white/10 bg-[#101C36] px-4 py-3">
+                          <TextInput
+                            value={localityQuery}
+                            onChangeText={setLocalityQuery}
+                            placeholder="Buscar localidad"
+                            placeholderTextColor="#94A3B8"
+                            className="rounded-xl border border-white/10 bg-[#16274A] px-3 py-2 text-white"
+                          />
+                        </View>
+                        {localitiesLoading ? (
+                          <View className="flex-row items-center justify-center gap-2 px-4 py-4">
+                            <ActivityIndicator color="#F59E0B" />
+                            <Text className="text-white/70 text-sm">Cargando...</Text>
+                          </View>
+                        ) : (
+                          <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
+                            {(localities || []).map((loc) => {
+                              const isSelected = String(loc.id) === String(form.localidad_id);
+                              return (
+                                <Pressable
+                                  key={loc.id}
+                                  onPress={() => handleSelectLocality(loc)}
+                                  className={`px-4 py-3 transition-colors ${
+                                    isSelected ? 'bg-white/10' : ''
+                                  } hover:bg-white/10`}
+                                >
+                                  <Text className="text-white/90 text-base">{loc.nombre}</Text>
+                                </Pressable>
+                              );
+                            })}
+                            {(!localities || localities.length === 0) && (
+                              <View className="px-4 py-4">
+                                <Text className="text-white/60 text-sm">
+                                  {localityError || 'No encontramos localidades para esta provincia'}
+                                </Text>
+                              </View>
+                            )}
+                          </ScrollView>
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
+                </Modal>
               </View>
 
               <View>
