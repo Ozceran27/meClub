@@ -125,11 +125,11 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const register = async ({ nombre, apellido, email, password, rol, nombre_club, descripcion_club, foto_logo, nivel_id }) => {
+  const register = async ({ nombre, apellido, email, password, rol, nombre_club, cuit }) => {
     const payload = { nombre, apellido, email, contrasena: password, rol, nombre_club };
-    if (descripcion_club) payload.descripcion_club = descripcion_club;
-    if (foto_logo) payload.foto_logo = foto_logo;
-    if (nivel_id) payload.nivel_id = nivel_id;
+    if (rol === 'club') {
+      payload.cuit = cuit;
+    }
     const data = await api.post('/auth/register', payload, { auth: false });
     // Devolver solo el mensaje y asegurarse de cerrar cualquier sesión previa
     const { mensaje } = data || {};

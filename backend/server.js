@@ -6,7 +6,6 @@ const { initAsociadosTablesCheck } = require('./utils/asociadosTablesGuard');
 const { logosDir, logosPublicPath } = require('./utils/logoStorage');
 const app = express();
 const PORT = process.env.PORT || 3006;
-const PasswordResetsModel = require('./models/passwordResets.model');
 
 const normalizeOrigins = (raw) =>
   raw
@@ -71,16 +70,6 @@ app.get('/', (req, res) => {
 });
 
 initAsociadosTablesCheck();
-
-// PURGA DE TOKENS EXPIRADOS -----------------------------------------------------------------------
-const PURGE_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
-setInterval(async () => {
-  try {
-    await PasswordResetsModel.deleteExpired();
-  } catch (err) {
-    logger.error('Error purgando tokens de reseteo:', err);
-  }
-}, PURGE_INTERVAL_MS);
 
 // RUN SERVER -------------------------------------------------------------------------------------
 app.listen(PORT, '0.0.0.0', () => {

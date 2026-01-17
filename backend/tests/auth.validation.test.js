@@ -25,22 +25,4 @@ describe('Auth routes validation', () => {
     expect(res.body).toHaveProperty('mensaje');
   });
 
-  it('rejects invalid email on forgot password', async () => {
-    const res = await request(app)
-      .post('/forgot')
-      .send({ email: 'invalid' });
-
-    expect(res.status).toBe(400);
-    expect(res.body).toHaveProperty('mensaje');
-  });
-
-  it('rejects missing token on reset password', async () => {
-    const res = await request(app)
-      .post('/reset')
-      .send({ token: '', password: '123456' });
-
-    expect(res.status).toBe(400);
-    expect(res.body).toHaveProperty('mensaje');
-  });
 });
-

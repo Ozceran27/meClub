@@ -1,23 +1,18 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const UsuariosModel = require('../models/usuarios.model');
 const ClubesModel = require('../models/clubes.model');
 const MessagesModel = require('../models/messages.model');
-const PasswordResetsModel = require('../models/passwordResets.model');
 const logger = require('../utils/logger');
-const { prepareLogoValue } = require('../utils/logoStorage');
 const db = require('../config/db');
-
-const RESET_TTL_MS = 15 * 60 * 1000; // 15 minutos
-const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
 const mapClubResponse = (club) => {
   if (!club) return null;
   const {
     club_id,
     nombre,
+    cuit = null,
     descripcion = null,
     nivel_id = null,
     foto_logo = null,
@@ -29,6 +24,7 @@ const mapClubResponse = (club) => {
   return {
     club_id,
     nombre,
+    cuit,
     descripcion,
     nivel_id,
     foto_logo,
@@ -36,6 +32,13 @@ const mapClubResponse = (club) => {
     provincia_id,
     localidad_id,
   };
+};
+
+const normalizeCuit = (value) => {
+  if (!value) return null;
+  const digits = String(value).replace(/\D/g, '');
+  if (digits.length !== 11) return null;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
 };
 
 exports.register = async (req, res) => {
@@ -46,10 +49,18 @@ exports.register = async (req, res) => {
   const {
     nombre, apellido, email, contrasena,
     rol = 'deportista',
-    nombre_club, descripcion_club, foto_logo, nivel_id
+    nombre_club, cuit
   } = req.body;
 
-  const uploadedLogoBuffer = req.file ? req.file.buffer : null;
+  const normalizedCuit = rol === 'club' ? normalizeCuit(cuit) : null;
+  if (rol === 'club') {
+    if (!nombre_club || !String(nombre_club).trim()) {
+      return res.status(400).json({ mensaje: 'Nombre del club requerido' });
+    }
+    if (!normalizedCuit) {
+      return res.status(400).json({ mensaje: 'CUIT inválido' });
+    }
+  }
 
   let connection;
   try {
@@ -73,15 +84,11 @@ exports.register = async (req, res) => {
 
     let clubCreado = null;
     if (rol === 'club') {
-      const nivel = parseInt(nivel_id, 10);
       clubCreado = await ClubesModel.crearClub({
-        nombre: nombre_club || `Club de ${nombre}`,
-        descripcion: descripcion_club || null,
+        nombre: nombre_club,
+        cuit: normalizedCuit,
         usuario_id: nuevoUsuario.usuario_id,
-        nivel_id: isNaN(nivel) ? 1 : nivel,
-        foto_logo:
-          uploadedLogoBuffer ??
-          (foto_logo !== undefined ? prepareLogoValue(foto_logo).value : null),
+        nivel_id: 1,
       }, connection);
 
       if (clubCreado?.club_id) {
@@ -112,8 +119,7 @@ exports.register = async (req, res) => {
         email: nuevoUsuario.email,
         rol: nuevoUsuario.rol,
       },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
     );
 
     const clubInfo = mapClubResponse(clubCreado);
@@ -168,8 +174,7 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign(
       { usuario_id: usuario.usuario_id, email: usuario.email, rol: usuario.rol },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
     );
 
     // Si el usuario es un club, buscamos los datos básicos del club
@@ -208,74 +213,5 @@ exports.login = async (req, res) => {
   } catch (error) {
     logger.error('Error en login:', error);
     res.status(500).json({ mensaje: error.message || 'Error en el servidor' });
-  }
-};
-
-// ====== Solicitud de reseteo ===========================
-exports.forgot = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ mensaje: errors.array()[0].msg });
-  }
-  const { email } = req.body;
-
-  try {
-    const usuarios = await UsuariosModel.buscarPorEmail(email);
-    if (usuarios.length === 0) {
-      return res.json({ mensaje: 'Si el email existe, enviamos instrucciones' });
-    }
-
-    const user = usuarios[0];
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = hashToken(rawToken);
-    const expira = new Date(Date.now() + RESET_TTL_MS);
-    await PasswordResetsModel.insert(tokenHash, user.usuario_id, expira);
-
-    const frontBase = process.env.FRONT_BASE_URL || 'http://localhost:19006';
-    const link = `${frontBase}/reset?token=${rawToken}`;
-
-    // En modo desarrollo se devuelve el token/link para pruebas.
-    if (process.env.NODE_ENV === 'development') {
-      logger.debug('Link de reseteo generado para el usuario:', user.email);
-      return res.json({ mensaje: 'Instrucciones enviadas', token: rawToken, link });
-    }
-    return res.json({ mensaje: 'Instrucciones enviadas' });
-  } catch (error) {
-    logger.error('Error en forgot:', error);
-    res.status(500).json({ mensaje: 'Error en el servidor' });
-  }
-};
-
-// ====== Reset con token ================================
-exports.reset = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ mensaje: errors.array()[0].msg });
-  }
-  const { token, password } = req.body;
-
-  try {
-    const tokenHash = hashToken(token);
-    const entry = await PasswordResetsModel.findByHash(tokenHash);
-    if (!entry || new Date(entry.expira) < new Date()) {
-      if (entry) await PasswordResetsModel.delete(tokenHash);
-      return res.status(400).json({ mensaje: 'Token inválido o expirado' });
-    }
-
-    const hashed = await bcrypt.hash(password, 10);
-
-    // IMPORTANTE: tu modelo debería exponer actualizarContrasena(usuario_id, contrasenaHasheada)
-    if (typeof UsuariosModel.actualizarContrasena !== 'function') {
-      logger.error('Falta UsuariosModel.actualizarContrasena(usuario_id, hash)');
-      return res.status(500).json({ mensaje: 'No se pudo actualizar la contraseña (método inexistente)' });
-    }
-
-    await UsuariosModel.actualizarContrasena(entry.usuario_id, hashed);
-    await PasswordResetsModel.delete(tokenHash);
-
-    return res.json({ mensaje: 'Contraseña actualizada' });
-  } catch (error) {
-    logger.error('Error en reset:', error);
-    res.status(500).json({ mensaje: 'Error en el servidor' });
   }
 };
