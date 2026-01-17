@@ -5,12 +5,77 @@ const ID_COLUMNS = ['localidad_id', 'id'];
 const POSTAL_COLUMNS = ['codigo_postal', 'codigopostal', null];
 let clubesLocalidadRefCache = null;
 let clubesLocalidadRefChecked = false;
+const tableColumnCache = new Map();
 
 const shouldRetrySchemaError = (err) =>
   err &&
   (err.code === 'ER_BAD_FIELD_ERROR' ||
     err.code === 'ER_NO_SUCH_TABLE' ||
     /Unknown column|doesn't exist/i.test(err.message || ''));
+
+const getTableColumns = async (tableName) => {
+  if (tableColumnCache.has(tableName)) {
+    return tableColumnCache.get(tableName);
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT COLUMN_NAME AS name
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = ?`,
+      [tableName]
+    );
+    const columns = new Set(rows.map((row) => row.name));
+    tableColumnCache.set(tableName, columns);
+    return columns;
+  } catch (err) {
+    if (!shouldRetrySchemaError(err)) {
+      console.error(`Error obteniendo columnas de ${tableName}`, err);
+    }
+    return null;
+  }
+};
+
+const fetchLocalidadRow = async (tableName, idColumn, localidadId) => {
+  const columns = await getTableColumns(tableName);
+  if (!columns || !columns.has(idColumn)) {
+    return null;
+  }
+
+  const selectColumns = [`${idColumn} AS localidad_id`];
+  if (columns.has('provincia_id')) {
+    selectColumns.push('provincia_id');
+  }
+  if (columns.has('nombre')) {
+    selectColumns.push('nombre');
+  }
+  if (columns.has('codigo_postal')) {
+    selectColumns.push('codigo_postal');
+  }
+  if (columns.has('codigopostal')) {
+    selectColumns.push('codigopostal');
+  }
+  if (columns.has('activo')) {
+    selectColumns.push('activo');
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT ${selectColumns.join(', ')}
+       FROM ${tableName}
+       WHERE ${idColumn} = ?
+       LIMIT 1`,
+      [localidadId]
+    );
+    return rows?.[0] || null;
+  } catch (err) {
+    if (!shouldRetrySchemaError(err)) {
+      throw err;
+    }
+    return null;
+  }
+};
 
 const getClubesLocalidadReference = async () => {
   if (clubesLocalidadRefChecked) return clubesLocalidadRefCache;
@@ -40,6 +105,91 @@ const getClubesLocalidadReference = async () => {
   }
 
   return clubesLocalidadRefCache;
+};
+
+const ensureLocalidadInReference = async (localidadId, reference) => {
+  if (!reference?.table || !reference?.column) return false;
+
+  const referenceColumns = await getTableColumns(reference.table);
+  if (!referenceColumns || !referenceColumns.has(reference.column)) {
+    return false;
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT 1 FROM ${reference.table} WHERE ${reference.column} = ? LIMIT 1`,
+      [localidadId]
+    );
+    if (rows.length > 0) {
+      return true;
+    }
+  } catch (err) {
+    if (!shouldRetrySchemaError(err)) {
+      throw err;
+    }
+    return false;
+  }
+
+  let sourceRow = null;
+  for (const table of LOCALIDADES_TABLES) {
+    if (table === reference.table) continue;
+    for (const idColumn of ID_COLUMNS) {
+      sourceRow = await fetchLocalidadRow(table, idColumn, localidadId);
+      if (sourceRow) break;
+    }
+    if (sourceRow) break;
+  }
+
+  if (!sourceRow) {
+    return false;
+  }
+
+  const insertColumns = [reference.column];
+  const insertValues = [localidadId];
+
+  if (referenceColumns.has('provincia_id') && sourceRow.provincia_id !== undefined) {
+    insertColumns.push('provincia_id');
+    insertValues.push(sourceRow.provincia_id);
+  }
+  if (referenceColumns.has('nombre') && sourceRow.nombre !== undefined) {
+    insertColumns.push('nombre');
+    insertValues.push(sourceRow.nombre);
+  }
+  if (referenceColumns.has('codigo_postal')) {
+    const postalValue = sourceRow.codigo_postal ?? sourceRow.codigopostal ?? null;
+    if (postalValue !== undefined) {
+      insertColumns.push('codigo_postal');
+      insertValues.push(postalValue);
+    }
+  } else if (referenceColumns.has('codigopostal')) {
+    const postalValue = sourceRow.codigopostal ?? sourceRow.codigo_postal ?? null;
+    if (postalValue !== undefined) {
+      insertColumns.push('codigopostal');
+      insertValues.push(postalValue);
+    }
+  }
+  if (referenceColumns.has('activo') && sourceRow.activo !== undefined) {
+    insertColumns.push('activo');
+    insertValues.push(sourceRow.activo);
+  }
+
+  try {
+    const placeholders = insertColumns.map(() => '?').join(', ');
+    await db.query(
+      `INSERT INTO ${reference.table} (${insertColumns.join(', ')})
+       VALUES (${placeholders})`,
+      insertValues
+    );
+    return true;
+  } catch (err) {
+    if (err && err.code === 'ER_DUP_ENTRY') {
+      return true;
+    }
+    if (!shouldRetrySchemaError(err)) {
+      console.error('Error sincronizando localidad', err);
+    }
+    return false;
+  }
 };
 
 const LocalidadesModel = {
@@ -118,7 +268,16 @@ const LocalidadesModel = {
           `SELECT 1 FROM ${clubesReference.table} WHERE ${clubesReference.column} = ? LIMIT 1`,
           [localidadNumeric]
         );
-        return rows.length > 0;
+        if (rows.length > 0) {
+          return true;
+        }
+
+        const ensured = await ensureLocalidadInReference(localidadNumeric, clubesReference);
+        if (ensured) {
+          return true;
+        }
+
+        return false;
       } catch (err) {
         lastError = err;
         if (!shouldRetrySchemaError(err)) {
