@@ -720,156 +720,151 @@ export default function ConfiguracionScreen({ go }) {
             </View>
           </View>
 
-          <View className="grid gap-6 md:grid-cols-2">
-            <View>
-              <Text className="text-white/70 text-sm mb-2">Provincia</Text>
-              <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
-                <Pressable
-                  onPress={() => setShowProvinceMenu((prev) => !prev)}
-                  className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-[#0B152E] px-4 py-3 transition-colors hover:bg-white/10"
-                >
-                  <Text className="text-white/90 text-base">{provinceName}</Text>
-                  <Ionicons
-                    name={showProvinceMenu ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color="#E2E8F0"
-                  />
-                </Pressable>
-                {showProvinceMenu && (
-                  <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
-                    style={{ zIndex: 60, elevation: 60 }}
-                  >
-                    <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
-                      {(provinces || []).map((prov) => {
-                        const isSelected = String(prov.id) === String(form.provincia_id);
-                        return (
-                          <Pressable
-                            key={prov.id}
-                            onPress={() => {
-                              handleChange('provincia_id', prov.id);
-                              setShowProvinceMenu(false);
-                            }}
-                            className={`px-4 py-3 transition-colors ${
-                              isSelected ? 'bg-white/10' : ''
-                            } hover:bg-white/10`}
-                          >
-                            <Text className="text-white/90 text-base">{prov.nombre}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-            </View>
-
-            <View>
-              <Text className="text-white/70 text-sm mb-2">Localidad</Text>
-              <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
-                <Pressable
-                  onPress={() => {
-                    if (!form.provincia_id) return;
-                    setShowLocalityMenu((prev) => !prev);
-                  }}
-                  className={`flex-row items-center justify-between rounded-2xl border px-4 py-3 transition-colors ${
-                    form.provincia_id
-                      ? 'border-white/10 bg-[#0B152E] hover:bg-white/10'
-                      : 'border-white/5 bg-[#121B33]'
-                  }`}
-                >
-                  <Text className="text-white/90 text-base">
-                    {form.provincia_id ? localityName : 'Seleccioná primero una provincia'}
-                  </Text>
-                  <Ionicons
-                    name={showLocalityMenu ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color="#E2E8F0"
-                  />
-                </Pressable>
-                {showLocalityMenu && (
-                  <View
-                    className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
-                    style={{ zIndex: 60, elevation: 60 }}
-                  >
-                    <View className="border-b border-white/10 bg-[#101C36] px-4 py-3">
-                      <TextInput
-                        value={localityQuery}
-                        onChangeText={setLocalityQuery}
-                        placeholder="Buscar localidad"
-                        placeholderTextColor="#94A3B8"
-                        className="rounded-xl border border-white/10 bg-[#16274A] px-3 py-2 text-white"
-                      />
-                    </View>
-                    {localitiesLoading ? (
-                      <View className="flex-row items-center justify-center gap-2 px-4 py-4">
-                        <ActivityIndicator color="#F59E0B" />
-                        <Text className="text-white/70 text-sm">Cargando...</Text>
-                      </View>
-                    ) : (
-                      <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
-                        {(localities || []).map((loc) => {
-                          const isSelected = String(loc.id) === String(form.localidad_id);
-                          return (
-                            <Pressable
-                              key={loc.id}
-                              onPress={() => handleSelectLocality(loc)}
-                              className={`px-4 py-3 transition-colors ${
-                                isSelected ? 'bg-white/10' : ''
-                              } hover:bg-white/10`}
-                            >
-                              <Text className="text-white/90 text-base">{loc.nombre}</Text>
-                            </Pressable>
-                          );
-                        })}
-                        {(!localities || localities.length === 0) && (
-                          <View className="px-4 py-4">
-                            <Text className="text-white/60 text-sm">
-                              {localityError || 'No encontramos localidades para esta provincia'}
-                            </Text>
-                          </View>
-                        )}
-                      </ScrollView>
-                    )}
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View className="grid gap-6 md:grid-cols-2">
-            <View>
-              <Text className="text-white/70 text-sm mb-2">Teléfono de contacto</Text>
-              <TextInput
-                value={form.telefono_contacto}
-                onChangeText={(text) => handleChange('telefono_contacto', text)}
-                placeholder="Ej. +54 9 11 1234 5678"
-                placeholderTextColor="#94A3B8"
-                keyboardType="phone-pad"
-                className={FIELD_STYLES}
-              />
-            </View>
-            <View>
-              <Text className="text-white/70 text-sm mb-2">Email de contacto</Text>
-              <TextInput
-                value={form.email_contacto}
-                onChangeText={(text) => handleChange('email_contacto', text)}
-                placeholder="contacto@club.com"
-                placeholderTextColor="#94A3B8"
-                keyboardType="email-address"
-                className={FIELD_STYLES}
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
           <View>
             <Text className="text-white text-lg font-semibold">Tarifas nocturnas</Text>
             <Text className="text-white/60 text-sm mt-1">
               Indicá desde qué hora comienza la tarifa nocturna y hasta cuándo se aplica. Los valores usan el
               formato HH:MM en horario 24 h.
             </Text>
-            <View className="mt-4 grid gap-6 md:grid-cols-2">
+            <View className="mt-4 grid gap-6 md:grid-cols-3">
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Provincia</Text>
+                <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
+                  <Pressable
+                    onPress={() => setShowProvinceMenu((prev) => !prev)}
+                    className="flex-row items-center justify-between rounded-2xl border border-white/10 bg-[#0B152E] px-4 py-3 transition-colors hover:bg-white/10"
+                  >
+                    <Text className="text-white/90 text-base">{provinceName}</Text>
+                    <Ionicons
+                      name={showProvinceMenu ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color="#E2E8F0"
+                    />
+                  </Pressable>
+                  {showProvinceMenu && (
+                    <View
+                      className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
+                      style={{ zIndex: 60, elevation: 60 }}
+                    >
+                      <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
+                        {(provinces || []).map((prov) => {
+                          const isSelected = String(prov.id) === String(form.provincia_id);
+                          return (
+                            <Pressable
+                              key={prov.id}
+                              onPress={() => {
+                                handleChange('provincia_id', prov.id);
+                                setShowProvinceMenu(false);
+                              }}
+                              className={`px-4 py-3 transition-colors ${
+                                isSelected ? 'bg-white/10' : ''
+                              } hover:bg-white/10`}
+                            >
+                              <Text className="text-white/90 text-base">{prov.nombre}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Localidad</Text>
+                <View className="relative z-50" style={{ zIndex: 60, elevation: 60 }}>
+                  <Pressable
+                    onPress={() => {
+                      if (!form.provincia_id) return;
+                      setShowLocalityMenu((prev) => !prev);
+                    }}
+                    className={`flex-row items-center justify-between rounded-2xl border px-4 py-3 transition-colors ${
+                      form.provincia_id
+                        ? 'border-white/10 bg-[#0B152E] hover:bg-white/10'
+                        : 'border-white/5 bg-[#121B33]'
+                    }`}
+                  >
+                    <Text className="text-white/90 text-base">
+                      {form.provincia_id ? localityName : 'Seleccioná primero una provincia'}
+                    </Text>
+                    <Ionicons
+                      name={showLocalityMenu ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color="#E2E8F0"
+                    />
+                  </Pressable>
+                  {showLocalityMenu && (
+                    <View
+                      className="absolute left-0 right-0 top-[110%] rounded-2xl border border-white/10 bg-[#0B152E] shadow-xl z-50"
+                      style={{ zIndex: 60, elevation: 60 }}
+                    >
+                      <View className="border-b border-white/10 bg-[#101C36] px-4 py-3">
+                        <TextInput
+                          value={localityQuery}
+                          onChangeText={setLocalityQuery}
+                          placeholder="Buscar localidad"
+                          placeholderTextColor="#94A3B8"
+                          className="rounded-xl border border-white/10 bg-[#16274A] px-3 py-2 text-white"
+                        />
+                      </View>
+                      {localitiesLoading ? (
+                        <View className="flex-row items-center justify-center gap-2 px-4 py-4">
+                          <ActivityIndicator color="#F59E0B" />
+                          <Text className="text-white/70 text-sm">Cargando...</Text>
+                        </View>
+                      ) : (
+                        <ScrollView style={{ maxHeight: 240 }} className="bg-[#0B152E]">
+                          {(localities || []).map((loc) => {
+                            const isSelected = String(loc.id) === String(form.localidad_id);
+                            return (
+                              <Pressable
+                                key={loc.id}
+                                onPress={() => handleSelectLocality(loc)}
+                                className={`px-4 py-3 transition-colors ${
+                                  isSelected ? 'bg-white/10' : ''
+                                } hover:bg-white/10`}
+                              >
+                                <Text className="text-white/90 text-base">{loc.nombre}</Text>
+                              </Pressable>
+                            );
+                          })}
+                          {(!localities || localities.length === 0) && (
+                            <View className="px-4 py-4">
+                              <Text className="text-white/60 text-sm">
+                                {localityError || 'No encontramos localidades para esta provincia'}
+                              </Text>
+                            </View>
+                          )}
+                        </ScrollView>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Teléfono de contacto</Text>
+                <TextInput
+                  value={form.telefono_contacto}
+                  onChangeText={(text) => handleChange('telefono_contacto', text)}
+                  placeholder="Ej. +54 9 11 1234 5678"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="phone-pad"
+                  className={FIELD_STYLES}
+                />
+              </View>
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Email de contacto</Text>
+                <TextInput
+                  value={form.email_contacto}
+                  onChangeText={(text) => handleChange('email_contacto', text)}
+                  placeholder="contacto@club.com"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="email-address"
+                  className={FIELD_STYLES}
+                  autoCapitalize="none"
+                />
+              </View>
               <View>
                 <Text className="text-white/70 text-sm mb-2">Inicio horario nocturno</Text>
                 <TextInput
