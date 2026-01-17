@@ -345,7 +345,7 @@ export default function DashboardShell() {
           </Text>
         </View>
 
-        <View className="mr-3">
+        <View className="mr-10">
           <Pressable
             onPress={() => go('mejorar-plan')}
             className="rounded-full border bg-amber-500/20 border-amber-400/50 px-3 py-1.5 hover:bg-mc-warn/80"
