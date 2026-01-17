@@ -336,7 +336,16 @@ const ClubesModel = {
     const sql = `UPDATE clubes SET ${updates.join(', ')} WHERE club_id = ?`;
     values.push(club_id);
 
-    await db.query(sql, values);
+    try {
+      await db.query(sql, values);
+    } catch (err) {
+      if (err && err.code === 'ER_NO_REFERENCED_ROW_2') {
+        const error = new Error('La localidad especificada no existe');
+        error.statusCode = 400;
+        throw error;
+      }
+      throw err;
+    }
 
     const actualizado = await ClubesModel.obtenerClubPorId(club_id);
 
