@@ -2,6 +2,7 @@ const db = require('../config/db');
 
 const LOCALIDADES_TABLES = ['localidades', 'localidad'];
 const ID_COLUMNS = ['localidad_id', 'id'];
+const POSTAL_COLUMNS = ['codigo_postal', 'codigopostal', null];
 
 const shouldRetrySchemaError = (err) =>
   err &&
@@ -21,34 +22,43 @@ const LocalidadesModel = {
 
     for (const table of LOCALIDADES_TABLES) {
       for (const idColumn of ID_COLUMNS) {
-        for (const includeActivo of [true, false]) {
-          let sql = `
-            SELECT ${idColumn === 'id' ? 'id AS localidad_id' : 'localidad_id'},
-              provincia_id, nombre, codigo_postal
-            FROM ${table}
-            WHERE provincia_id = ?
-          `;
+        for (const postalColumn of POSTAL_COLUMNS) {
+          for (const includeActivo of [true, false]) {
+            const idSelect = idColumn === 'id' ? 'id' : 'localidad_id';
+            const postalSelect = postalColumn
+              ? `${postalColumn} AS codigo_postal`
+              : 'NULL AS codigo_postal';
+            let sql = `
+              SELECT ${idSelect} AS localidad_id,
+                ${idSelect} AS id,
+                provincia_id,
+                nombre,
+                ${postalSelect}
+              FROM ${table}
+              WHERE provincia_id = ?
+            `;
 
-          const values = [...valuesBase];
+            const values = [...valuesBase];
 
-          if (includeActivo) {
-            sql += ' AND activo = 1';
-          }
+            if (includeActivo) {
+              sql += ' AND activo = 1';
+            }
 
-          if (search && typeof search === 'string') {
-            sql += ' AND nombre LIKE ?';
-            values.push(`%${search}%`);
-          }
+            if (search && typeof search === 'string') {
+              sql += ' AND nombre LIKE ?';
+              values.push(`%${search}%`);
+            }
 
-          sql += ' ORDER BY nombre ASC';
+            sql += ' ORDER BY nombre ASC';
 
-          try {
-            const [rows] = await db.query(sql, values);
-            return rows;
-          } catch (err) {
-            lastError = err;
-            if (!shouldRetrySchemaError(err)) {
-              throw err;
+            try {
+              const [rows] = await db.query(sql, values);
+              return rows;
+            } catch (err) {
+              lastError = err;
+              if (!shouldRetrySchemaError(err)) {
+                throw err;
+              }
             }
           }
         }
