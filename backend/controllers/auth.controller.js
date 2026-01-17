@@ -47,7 +47,7 @@ exports.register = async (req, res) => {
     return res.status(400).json({ mensaje: errors.array()[0].msg });
   }
   const {
-    nombre, apellido, email, contrasena,
+    nombre, apellido, email, contrasena, telefono,
     rol = 'deportista',
     nombre_club, cuit
   } = req.body;
@@ -79,6 +79,7 @@ exports.register = async (req, res) => {
       apellido,
       email,
       contrasena: hashedPassword,
+      telefono,
       rol,
     }, connection);
 

@@ -84,6 +84,7 @@ describe('register controller', () => {
         apellido: 'User',
         email: 'test@example.com',
         contrasena: '123456',
+        telefono: '1234567',
       },
     };
 
@@ -121,6 +122,7 @@ describe('register controller', () => {
         apellido: 'Owner',
         email: 'club@example.com',
         contrasena: '123456',
+        telefono: '1234567',
         rol: 'club',
         nombre_club: 'Club Test',
         cuit: '20-12345678-3',
@@ -170,6 +172,7 @@ describe('register controller', () => {
         apellido: 'Owner',
         email: 'club-fail@example.com',
         contrasena: '123456',
+        telefono: '1234567',
         rol: 'club',
         nombre_club: 'Club Test',
         cuit: '20-12345678-3',

@@ -10,7 +10,28 @@ describe('Auth routes validation', () => {
   it('rejects invalid email on register', async () => {
     const res = await request(app)
       .post('/register')
-      .send({ nombre: 'Test', apellido: 'User', email: 'invalid', contrasena: '123456' });
+      .send({
+        nombre: 'Test',
+        apellido: 'User',
+        email: 'invalid',
+        contrasena: '123456',
+        telefono: '1234567',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('mensaje');
+  });
+
+  it('rejects invalid phone on register', async () => {
+    const res = await request(app)
+      .post('/register')
+      .send({
+        nombre: 'Test',
+        apellido: 'User',
+        email: 'test@example.com',
+        contrasena: '123456',
+        telefono: 'abc',
+      });
 
     expect(res.status).toBe(400);
     expect(res.body).toHaveProperty('mensaje');

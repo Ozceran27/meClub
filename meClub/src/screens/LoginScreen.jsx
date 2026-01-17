@@ -17,6 +17,17 @@ const registerSchema = z.object({
   apellido: z.string().min(2, 'Ingresá tu apellido'),
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
+  codigo_area: z
+    .string()
+    .min(1, 'Seleccioná un código de área')
+    .refine((value) => ['+54', '+55', '+595'].includes(value), {
+      message: 'Seleccioná un código de área válido',
+    }),
+  telefono: z
+    .string()
+    .min(6, 'Ingresá un teléfono válido')
+    .max(20, 'Ingresá un teléfono válido')
+    .regex(/^[0-9\s()-]+$/, 'Usá un formato telefónico válido'),
   rol: z.enum(['deportista', 'club']).default('deportista'),
   nombre_club: z.string().optional(),
   cuit: z.string().optional(),
@@ -39,6 +50,14 @@ const formatCuit = (value = '') => {
   return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
 };
 
+const AREA_CODE_OPTIONS = [
+  { label: 'Argentina (+54)', value: '+54' },
+  { label: 'Brasil (+55)', value: '+55' },
+  { label: 'Paraguay (+595)', value: '+595' },
+];
+
+const formatPhoneInput = (value = '') => value.replace(/[^0-9\s()-]/g, '');
+
 export default function LoginScreen() {
   const nav  = useNavigation();
   const { login, register } = useAuth();
@@ -48,6 +67,7 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showAreaOptions, setShowAreaOptions] = useState(false);
 
   const resolver = useMemo(() => {
     switch (mode) {
@@ -66,7 +86,7 @@ export default function LoginScreen() {
       // login
       email: '', password: '',
       // register
-      nombre: '', apellido: '', rol: 'deportista', nombre_club: '', cuit: '',
+      nombre: '', apellido: '', telefono: '', codigo_area: '+54', rol: 'deportista', nombre_club: '', cuit: '',
     },
   });
 
@@ -81,8 +101,19 @@ export default function LoginScreen() {
     if (mode === 'login') {
       reset({ email: '', password: '' });
     } else if (mode === 'register') {
-      reset({ nombre: '', apellido: '', email: '', password: '', rol: 'deportista', nombre_club: '', cuit: '' });
+      reset({
+        nombre: '',
+        apellido: '',
+        email: '',
+        password: '',
+        telefono: '',
+        codigo_area: '+54',
+        rol: 'deportista',
+        nombre_club: '',
+        cuit: '',
+      });
     }
+    setShowAreaOptions(false);
   }, [mode, reset]);
 
   const submitLogin = async ({ email, password }) => {
@@ -193,6 +224,70 @@ export default function LoginScreen() {
                     </View>
                   )}
                 />
+
+                <View>
+                  <Text className="text-mc-textDim mb-2">Teléfono</Text>
+                  <View className="flex-row gap-3">
+                    <Controller
+                      control={control}
+                      name="codigo_area"
+                      render={({ field: { onChange, value } }) => (
+                        <View className="flex-1">
+                          <Pressable
+                            onPress={() => setShowAreaOptions((prev) => !prev)}
+                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                          >
+                            <Text className="text-mc-text">
+                              {AREA_CODE_OPTIONS.find((option) => option.value === value)?.label ?? 'Seleccioná'}
+                            </Text>
+                          </Pressable>
+                          {showAreaOptions && (
+                            <View className="mt-2 rounded-xl2 border border-mc-stroke bg-mc-surface">
+                              {AREA_CODE_OPTIONS.map((option) => {
+                                const isSelected = option.value === value;
+                                return (
+                                  <Pressable
+                                    key={option.value}
+                                    onPress={() => {
+                                      onChange(option.value);
+                                      setShowAreaOptions(false);
+                                    }}
+                                    className={`px-4 py-2 ${isSelected ? 'bg-white/10' : ''}`}
+                                  >
+                                    <Text className="text-mc-text">{option.label}</Text>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          )}
+                          {errors.codigo_area && (
+                            <Text className="text-red-400 mt-1">{errors.codigo_area.message}</Text>
+                          )}
+                        </View>
+                      )}
+                    />
+
+                    <Controller
+                      control={control}
+                      name="telefono"
+                      render={({ field: { onChange, value } }) => (
+                        <View className="flex-[1.2]">
+                          <TextInput
+                            className="bg-mc-surface text-mc-text rounded-xl2 px-4 py-3 border border-mc-stroke"
+                            placeholder="Tu teléfono"
+                            placeholderTextColor="#7789a6"
+                            keyboardType="phone-pad"
+                            value={value}
+                            onChangeText={(text) => onChange(formatPhoneInput(text))}
+                          />
+                          {errors.telefono && (
+                            <Text className="text-red-400 mt-1">{errors.telefono.message}</Text>
+                          )}
+                        </View>
+                      )}
+                    />
+                  </View>
+                </View>
 
                 <Controller
                   control={control}
