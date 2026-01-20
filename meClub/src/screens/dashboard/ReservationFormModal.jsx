@@ -17,13 +17,7 @@ import { calculateBaseAmount, toNumberOrNull } from './pricing';
 const FIELD_STYLES =
   'w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-mc-warn';
 
-const RESERVATION_TYPES = [
-  { value: 'relacionada', label: 'Reserva relacionada' },
-  { value: 'privada', label: 'Reserva privada' },
-];
-
 const DEFAULT_VALUES = {
-  tipo_reserva: 'privada',
   cancha_id: null,
   fecha: null,
   hora_inicio: null,
@@ -80,7 +74,6 @@ function useInitialValues(initialValues) {
 
     return {
       ...safe,
-      tipo_reserva: safe.tipo_reserva === 'relacionada' ? 'relacionada' : 'privada',
       cancha_id: safe.cancha_id ?? null,
       fecha: safe.fecha ?? null,
       hora_inicio: safe.hora_inicio ?? null,
@@ -180,6 +173,8 @@ export default function ReservationFormModal({
   const [playerResults, setPlayerResults] = useState([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
   const [playerSearchError, setPlayerSearchError] = useState('');
+  const [showManualCustomer, setShowManualCustomer] = useState(false);
+  const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
 
   const handleFormInteraction = useCallback(() => {
     if (submissionError) {
@@ -194,6 +189,8 @@ export default function ReservationFormModal({
     setPlayerQuery('');
     setPlayerResults([]);
     setPlayerSearchError('');
+    setShowManualCustomer(false);
+    setShowPlayerDropdown(false);
     setShowCourtPicker(false);
     setShowDatePicker(false);
     setShowStartPicker(false);
@@ -313,13 +310,11 @@ export default function ReservationFormModal({
   }, [baseAmount, cameraFee, form.con_grabacion, promotionDiscount]);
 
   useEffect(() => {
-    if (form.tipo_reserva !== 'relacionada') {
-      return;
-    }
     const trimmed = playerQuery.trim();
     if (trimmed.length < 2) {
       setPlayerResults([]);
       setPlayerSearchError('');
+      setSearchingPlayers(false);
       return;
     }
     let cancelled = false;
@@ -349,7 +344,7 @@ export default function ReservationFormModal({
     return () => {
       cancelled = true;
     };
-  }, [fetchPlayers, form.tipo_reserva, playerQuery]);
+  }, [fetchPlayers, playerQuery]);
 
   const handleChange = (key, value) => {
     handleFormInteraction();
@@ -362,31 +357,20 @@ export default function ReservationFormModal({
     setErrors((prev) => ({ ...prev, [key]: null }));
   };
 
-  const handleTypeChange = (value) => {
+  const handleManualCustomerSelect = () => {
     handleFormInteraction();
-    setForm((prev) => ({
-      ...prev,
-      tipo_reserva: value,
-      jugador: value === 'relacionada' ? prev.jugador : null,
-      contacto_nombre: value === 'privada' ? prev.contacto_nombre : '',
-      contacto_apellido: value === 'privada' ? prev.contacto_apellido : '',
-      contacto_telefono: value === 'privada' ? prev.contacto_telefono : '',
-      contacto_email: value === 'privada' ? prev.contacto_email : '',
-    }));
-    setErrors((prev) => ({
-      ...prev,
-      jugador: null,
-      contacto_nombre: null,
-      contacto_apellido: null,
-      contacto_telefono: null,
-    }));
+    setShowManualCustomer(true);
+    setForm((prev) => ({ ...prev, jugador: null }));
+    setErrors((prev) => ({ ...prev, jugador: null }));
+    setPlayerQuery('');
+    setPlayerResults([]);
+    setPlayerSearchError('');
+    setSearchingPlayers(false);
+    setShowPlayerDropdown(false);
   };
 
   const validate = () => {
     const nextErrors = {};
-    if (!form.tipo_reserva) {
-      nextErrors.tipo_reserva = 'Seleccioná un tipo de reserva';
-    }
 
     if (!form.cancha_id) {
       nextErrors.cancha_id = 'Seleccioná una cancha';
@@ -407,22 +391,26 @@ export default function ReservationFormModal({
       nextErrors.duracion_horas = 'La duración debe ser un entero entre 1 y 8 horas';
     }
 
-    if (form.tipo_reserva === 'privada') {
-      if (!form.contacto_nombre || !String(form.contacto_nombre).trim()) {
-        nextErrors.contacto_nombre = 'Ingresá un nombre de contacto';
-      }
-      if (!form.contacto_apellido || !String(form.contacto_apellido).trim()) {
-        nextErrors.contacto_apellido = 'Ingresá un apellido de contacto';
-      }
-      if (!form.contacto_telefono || !String(form.contacto_telefono).trim()) {
-        nextErrors.contacto_telefono = 'Ingresá un teléfono de contacto';
-      }
+    const jugadorId = form.jugador?.id ?? form.jugador?.jugador_id;
+    const contactoNombre = form.contacto_nombre ? String(form.contacto_nombre).trim() : '';
+    const contactoApellido = form.contacto_apellido ? String(form.contacto_apellido).trim() : '';
+    const contactoTelefono = form.contacto_telefono ? String(form.contacto_telefono).trim() : '';
+    const contactoEmail = form.contacto_email ? String(form.contacto_email).trim() : '';
+    const hasManualContact = !!(contactoNombre && contactoApellido && contactoTelefono);
+
+    if (!jugadorId && !hasManualContact) {
+      nextErrors.jugador = 'Seleccioná un jugador o cargá un cliente';
     }
 
-    if (form.tipo_reserva === 'relacionada') {
-      const jugadorId = form.jugador?.id ?? form.jugador?.jugador_id;
-      if (!jugadorId) {
-        nextErrors.jugador = 'Seleccioná un jugador';
+    if (!jugadorId && (showManualCustomer || contactoNombre || contactoApellido || contactoTelefono || contactoEmail)) {
+      if (!contactoNombre) {
+        nextErrors.contacto_nombre = 'Ingresá un nombre de contacto';
+      }
+      if (!contactoApellido) {
+        nextErrors.contacto_apellido = 'Ingresá un apellido de contacto';
+      }
+      if (!contactoTelefono) {
+        nextErrors.contacto_telefono = 'Ingresá un teléfono de contacto';
       }
     }
 
@@ -436,16 +424,12 @@ export default function ReservationFormModal({
     if (!validate()) return;
 
     const payload = {
-      tipo_reserva: form.tipo_reserva,
+      tipo_reserva: 'relacionada',
       cancha_id: form.cancha_id ? Number(form.cancha_id) : null,
       fecha: form.fecha,
       hora_inicio: form.hora_inicio,
       duracion_horas: form.duracion_horas ? Number(form.duracion_horas) : null,
       grabacion_solicitada: !!form.con_grabacion,
-      contacto_nombre: form.contacto_nombre?.trim() || '',
-      contacto_apellido: form.contacto_apellido?.trim() || '',
-      contacto_telefono: form.contacto_telefono?.trim() || '',
-      contacto_email: form.contacto_email?.trim() || '',
     };
 
     const resolvedBaseAmount = Number(baseAmount);
@@ -458,8 +442,14 @@ export default function ReservationFormModal({
       payload.monto = resolvedTotalAmount;
     }
 
-    if (form.tipo_reserva === 'relacionada') {
-      payload.jugador_usuario_id = form.jugador?.id ?? form.jugador?.jugador_id ?? null;
+    const jugadorId = form.jugador?.id ?? form.jugador?.jugador_id ?? null;
+    if (jugadorId) {
+      payload.jugador_usuario_id = jugadorId;
+    } else {
+      payload.contacto_nombre = form.contacto_nombre?.trim() || '';
+      payload.contacto_apellido = form.contacto_apellido?.trim() || '';
+      payload.contacto_telefono = form.contacto_telefono?.trim() || '';
+      payload.contacto_email = form.contacto_email?.trim() || '';
     }
 
     onSubmit?.(payload);
@@ -513,36 +503,44 @@ export default function ReservationFormModal({
   };
 
   const renderPlayerResults = () => {
-    if (form.tipo_reserva !== 'relacionada') return null;
-    if (playerQuery.trim().length < 2) return null;
-
-    if (searchingPlayers) {
-      return (
-        <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex-row items-center gap-2">
-          <ActivityIndicator color="#FACC15" />
-          <Text className="text-white/70 text-sm">Buscando jugadores...</Text>
-        </View>
-      );
-    }
-
-    if (playerSearchError) {
-      return (
-        <View className="mt-2 rounded-2xl border border-mc-warn/40 bg-mc-warn/10 px-4 py-3">
-          <Text className="text-mc-warn text-sm">{playerSearchError}</Text>
-        </View>
-      );
-    }
-
-    if (playerResults.length === 0) {
-      return (
-        <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <Text className="text-white/60 text-sm">No encontramos jugadores con esa búsqueda</Text>
-        </View>
-      );
-    }
+    const trimmedQuery = playerQuery.trim();
+    const shouldShowResults =
+      showPlayerDropdown ||
+      trimmedQuery.length >= 2 ||
+      searchingPlayers ||
+      playerSearchError ||
+      playerResults.length > 0;
+    if (!shouldShowResults) return null;
 
     return (
       <View className="mt-2 rounded-2xl border border-white/10 bg-white/5">
+        <Pressable
+          onPress={handleManualCustomerSelect}
+          className="px-4 py-3 border-b border-white/5"
+        >
+          <Text className="text-mc-warn text-sm font-medium">+ cargar cliente</Text>
+        </Pressable>
+        {searchingPlayers ? (
+          <View className="px-4 py-3 flex-row items-center gap-2">
+            <ActivityIndicator color="#FACC15" />
+            <Text className="text-white/70 text-sm">Buscando jugadores...</Text>
+          </View>
+        ) : null}
+        {playerSearchError ? (
+          <View className="px-4 py-3">
+            <Text className="text-mc-warn text-sm">{playerSearchError}</Text>
+          </View>
+        ) : null}
+        {!searchingPlayers && !playerSearchError && trimmedQuery.length < 2 ? (
+          <View className="px-4 py-3">
+            <Text className="text-white/60 text-sm">Escribí al menos 2 caracteres para buscar</Text>
+          </View>
+        ) : null}
+        {!searchingPlayers && !playerSearchError && trimmedQuery.length >= 2 && playerResults.length === 0 ? (
+          <View className="px-4 py-3">
+            <Text className="text-white/60 text-sm">No encontramos jugadores con esa búsqueda</Text>
+          </View>
+        ) : null}
         {playerResults.map((player) => {
           const value = player.id ?? player.jugador_id;
           const active = form.jugador && String(form.jugador.id ?? form.jugador.jugador_id) === String(value);
@@ -550,8 +548,24 @@ export default function ReservationFormModal({
             <Pressable
               key={value}
               onPress={() => {
-                handleChange('jugador', player);
-                setErrors((prev) => ({ ...prev, jugador: null }));
+                handleFormInteraction();
+                setForm((prev) => ({
+                  ...prev,
+                  jugador: player,
+                  contacto_nombre: '',
+                  contacto_apellido: '',
+                  contacto_telefono: '',
+                  contacto_email: '',
+                }));
+                setShowManualCustomer(false);
+                setErrors((prev) => ({
+                  ...prev,
+                  jugador: null,
+                  contacto_nombre: null,
+                  contacto_apellido: null,
+                  contacto_telefono: null,
+                }));
+                setShowPlayerDropdown(false);
               }}
               className={`px-4 py-3 border-b border-white/5 ${active ? 'bg-white/10' : 'bg-transparent'}`}
             >
@@ -594,29 +608,6 @@ export default function ReservationFormModal({
           <ScrollView className="flex-1" contentContainerClassName="pb-6" showsVerticalScrollIndicator={false}>
             <View className="gap-6">
               <View>
-                <Text className="text-white/70 text-sm mb-3">Tipo de reserva</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {RESERVATION_TYPES.map((type) => {
-                    const active = form.tipo_reserva === type.value;
-                    return (
-                      <Pressable
-                        key={type.value}
-                        onPress={() => handleTypeChange(type.value)}
-                        className={`rounded-2xl px-4 py-2 border text-sm font-medium ${
-                          active ? 'border-mc-warn bg-mc-warn/20 text-mc-warn' : 'border-white/10 bg-white/5 text-white/80'
-                        }`}
-                      >
-                        <Text className={active ? 'text-mc-warn' : 'text-white/80'}>{type.label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {errors.tipo_reserva ? (
-                  <Text className="text-mc-warn text-xs mt-1">{errors.tipo_reserva}</Text>
-                ) : null}
-              </View>
-
-              <View>
                 <Text className="text-white/70 text-sm mb-2">Cancha *</Text>
                 <Pressable
                   onPress={() => setShowCourtPicker(true)}
@@ -630,6 +621,105 @@ export default function ReservationFormModal({
                 </Pressable>
                 {errors.cancha_id ? (
                   <Text className="text-mc-warn text-xs mt-1">{errors.cancha_id}</Text>
+                ) : null}
+              </View>
+
+              <View>
+                <Text className="text-white/70 text-sm mb-2">Buscar jugador/deportista *</Text>
+                <TextInput
+                  value={playerQuery}
+                  onChangeText={(text) => {
+                    handleFormInteraction();
+                    setPlayerQuery(text);
+                  }}
+                  onFocus={() => setShowPlayerDropdown(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowPlayerDropdown(false), 150);
+                  }}
+                  placeholder="Buscá por nombre o email"
+                  placeholderTextColor="#94A3B8"
+                  className={FIELD_STYLES}
+                  autoCapitalize="none"
+                />
+                {errors.jugador ? (
+                  <Text className="text-mc-warn text-xs mt-1">{errors.jugador}</Text>
+                ) : null}
+                {form.jugador ? (
+                  <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <Text className="text-white text-sm font-medium">
+                      Jugador seleccionado: {form.jugador.nombre ?? form.jugador.name}
+                    </Text>
+                    {form.jugador.email ? (
+                      <Text className="text-white/60 text-xs mt-1">{form.jugador.email}</Text>
+                    ) : null}
+                    <Pressable
+                      onPress={() => {
+                        handleFormInteraction();
+                        handleChange('jugador', null);
+                      }}
+                      className="mt-3 self-start rounded-xl border border-white/10 bg-white/5 px-3 py-1"
+                    >
+                      <Text className="text-white/70 text-xs">Limpiar selección</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+                {renderPlayerResults()}
+                {showManualCustomer ? (
+                  <View className="mt-4 gap-4">
+                    <Text className="text-white/70 text-sm">Datos de contacto</Text>
+                    <View>
+                      <Text className="text-white/70 text-xs mb-1">Nombre *</Text>
+                      <TextInput
+                        value={form.contacto_nombre}
+                        onChangeText={(text) => handleChange('contacto_nombre', text)}
+                        placeholder="Nombre"
+                        placeholderTextColor="#94A3B8"
+                        className={FIELD_STYLES}
+                      />
+                      {errors.contacto_nombre ? (
+                        <Text className="text-mc-warn text-xs mt-1">{errors.contacto_nombre}</Text>
+                      ) : null}
+                    </View>
+                    <View>
+                      <Text className="text-white/70 text-xs mb-1">Apellido *</Text>
+                      <TextInput
+                        value={form.contacto_apellido}
+                        onChangeText={(text) => handleChange('contacto_apellido', text)}
+                        placeholder="Apellido"
+                        placeholderTextColor="#94A3B8"
+                        className={FIELD_STYLES}
+                      />
+                      {errors.contacto_apellido ? (
+                        <Text className="text-mc-warn text-xs mt-1">{errors.contacto_apellido}</Text>
+                      ) : null}
+                    </View>
+                    <View>
+                      <Text className="text-white/70 text-xs mb-1">Teléfono *</Text>
+                      <TextInput
+                        value={form.contacto_telefono}
+                        onChangeText={(text) => handleChange('contacto_telefono', text)}
+                        keyboardType="phone-pad"
+                        placeholder="Ej: 3511234567"
+                        placeholderTextColor="#94A3B8"
+                        className={FIELD_STYLES}
+                      />
+                      {errors.contacto_telefono ? (
+                        <Text className="text-mc-warn text-xs mt-1">{errors.contacto_telefono}</Text>
+                      ) : null}
+                    </View>
+                    <View>
+                      <Text className="text-white/70 text-xs mb-1">Email</Text>
+                      <TextInput
+                        value={form.contacto_email}
+                        onChangeText={(text) => handleChange('contacto_email', text)}
+                        keyboardType="email-address"
+                        placeholder="nombre@correo.com"
+                        placeholderTextColor="#94A3B8"
+                        className={FIELD_STYLES}
+                        autoCapitalize="none"
+                      />
+                    </View>
+                  </View>
                 ) : null}
               </View>
 
@@ -734,100 +824,6 @@ export default function ReservationFormModal({
                 </View>
               </View>
 
-              {form.tipo_reserva === 'privada' ? (
-                <View className="gap-4">
-                  <Text className="text-white/70 text-sm">Datos de contacto</Text>
-                  <View>
-                    <Text className="text-white/70 text-xs mb-1">Nombre *</Text>
-                    <TextInput
-                      value={form.contacto_nombre}
-                      onChangeText={(text) => handleChange('contacto_nombre', text)}
-                      placeholder="Nombre"
-                      placeholderTextColor="#94A3B8"
-                      className={FIELD_STYLES}
-                    />
-                    {errors.contacto_nombre ? (
-                      <Text className="text-mc-warn text-xs mt-1">{errors.contacto_nombre}</Text>
-                    ) : null}
-                  </View>
-                  <View>
-                    <Text className="text-white/70 text-xs mb-1">Apellido *</Text>
-                    <TextInput
-                      value={form.contacto_apellido}
-                      onChangeText={(text) => handleChange('contacto_apellido', text)}
-                      placeholder="Apellido"
-                      placeholderTextColor="#94A3B8"
-                      className={FIELD_STYLES}
-                    />
-                    {errors.contacto_apellido ? (
-                      <Text className="text-mc-warn text-xs mt-1">{errors.contacto_apellido}</Text>
-                    ) : null}
-                  </View>
-                  <View>
-                    <Text className="text-white/70 text-xs mb-1">Teléfono *</Text>
-                    <TextInput
-                      value={form.contacto_telefono}
-                      onChangeText={(text) => handleChange('contacto_telefono', text)}
-                      keyboardType="phone-pad"
-                      placeholder="Ej: 3511234567"
-                      placeholderTextColor="#94A3B8"
-                      className={FIELD_STYLES}
-                    />
-                    {errors.contacto_telefono ? (
-                      <Text className="text-mc-warn text-xs mt-1">{errors.contacto_telefono}</Text>
-                    ) : null}
-                  </View>
-                  <View>
-                    <Text className="text-white/70 text-xs mb-1">Email</Text>
-                    <TextInput
-                      value={form.contacto_email}
-                      onChangeText={(text) => handleChange('contacto_email', text)}
-                      keyboardType="email-address"
-                      placeholder="nombre@correo.com"
-                      placeholderTextColor="#94A3B8"
-                      className={FIELD_STYLES}
-                      autoCapitalize="none"
-                    />
-                  </View>
-                </View>
-              ) : null}
-
-              {form.tipo_reserva === 'relacionada' ? (
-                <View>
-                  <Text className="text-white/70 text-sm mb-2">Buscar jugador/deportista *</Text>
-                  <TextInput
-                    value={playerQuery}
-                    onChangeText={(text) => {
-                      handleFormInteraction();
-                      setPlayerQuery(text);
-                    }}
-                    placeholder="Buscá por nombre o email"
-                    placeholderTextColor="#94A3B8"
-                    className={FIELD_STYLES}
-                    autoCapitalize="none"
-                  />
-                  {errors.jugador ? (
-                    <Text className="text-mc-warn text-xs mt-1">{errors.jugador}</Text>
-                  ) : null}
-                  {form.jugador ? (
-                    <View className="mt-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <Text className="text-white text-sm font-medium">
-                        Jugador seleccionado: {form.jugador.nombre ?? form.jugador.name}
-                      </Text>
-                      {form.jugador.email ? (
-                        <Text className="text-white/60 text-xs mt-1">{form.jugador.email}</Text>
-                      ) : null}
-                      <Pressable
-                        onPress={() => handleChange('jugador', null)}
-                        className="mt-3 self-start rounded-xl border border-white/10 bg-white/5 px-3 py-1"
-                      >
-                        <Text className="text-white/70 text-xs">Limpiar selección</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                  {renderPlayerResults()}
-                </View>
-              ) : null}
             </View>
           </ScrollView>
 
