@@ -7,6 +7,82 @@ const TWO_DIGITS = (value) => String(value).padStart(2, '0');
 const isFiniteNumber = (value) => Number.isFinite(value);
 
 const toSeconds = (hours, minutes, seconds) => hours * 3600 + minutes * 60 + seconds;
+const formatDate = (date) =>
+  `${date.getFullYear()}-${TWO_DIGITS(date.getMonth() + 1)}-${TWO_DIGITS(date.getDate())}`;
+const formatTime = (date) =>
+  `${TWO_DIGITS(date.getHours())}:${TWO_DIGITS(date.getMinutes())}:${TWO_DIGITS(date.getSeconds())}`;
+
+const buildDateFromParts = (parts) =>
+  new Date(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+
+const getPartsFromTimeZone = (date, timeZone) => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const values = {};
+  parts.forEach((part) => {
+    if (part.type !== 'literal') values[part.type] = part.value;
+  });
+  return values;
+};
+
+const formatDateTimeFromParts = (parts) => ({
+  date: `${parts.year}-${parts.month}-${parts.day}`,
+  time: `${parts.hour}:${parts.minute}:${parts.second}`,
+  dateObj: buildDateFromParts(parts),
+});
+
+/**
+ * Obtiene la fecha y hora "local" según un timezone o offset del cliente.
+ * @param {object} options
+ * @param {Date} [options.baseDate]
+ * @param {string} [options.timeZone]
+ * @param {string|number} [options.timeZoneOffset]
+ * @returns {{date: string, time: string, dateObj: Date}}
+ */
+function getLocalDateTime({ baseDate = new Date(), timeZone, timeZoneOffset } = {}) {
+  if (timeZone) {
+    try {
+      const parts = getPartsFromTimeZone(baseDate, timeZone);
+      if (parts?.year && parts?.month && parts?.day) {
+        return formatDateTimeFromParts(parts);
+      }
+    } catch {
+      // Ignore invalid timeZone values and fallback to offset/local time.
+    }
+  }
+
+  const offsetMinutes = Number.parseInt(timeZoneOffset, 10);
+  if (Number.isFinite(offsetMinutes)) {
+    const adjusted = new Date(baseDate.getTime() - offsetMinutes * 60 * 1000);
+    return {
+      date: formatDate(adjusted),
+      time: formatTime(adjusted),
+      dateObj: adjusted,
+    };
+  }
+
+  return {
+    date: formatDate(baseDate),
+    time: formatTime(baseDate),
+    dateObj: baseDate,
+  };
+}
 
 /**
  * Devuelve el número de día de la semana (1=Lunes ... 7=Domingo) para una fecha ISO.
@@ -110,8 +186,8 @@ function isTimeInRange(time, start, end) {
  * @param {string} hhmmss - Hora en formato HH:MM:SS.
  * @returns {boolean} true si la fecha y hora están en el pasado.
  */
-function isPastDateTime(yyyy_mm_dd, hhmmss) {
-  const now = new Date();
+function isPastDateTime(yyyy_mm_dd, hhmmss, referenceDate = new Date()) {
+  const now = referenceDate;
   const dt = new Date(`${yyyy_mm_dd}T${hhmmss}`);
   return dt.getTime() < now.getTime();
 }
@@ -120,6 +196,7 @@ module.exports = {
   diaSemana1a7,
   addHoursHHMMSS,
   isPastDateTime,
+  getLocalDateTime,
   normalizeHour,
   isTimeInRange,
 };
