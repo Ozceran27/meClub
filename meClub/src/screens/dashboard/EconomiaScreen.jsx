@@ -1388,11 +1388,11 @@ export default function EconomiaScreen() {
                     setEditingExpense(null);
                     setShowExpenseModal(true);
                   }}
-                  className="rounded-full bg-emerald-400 hover:bg-emerald-400/80 px-4 py-1.5"
+                  className="rounded-xl bg-emerald-400 hover:bg-emerald-400/80 px-4 py-2"
                   accessibilityRole="button"
                   accessibilityLabel="Agregar gasto"
                 >
-                  <Text className="text-white font-semibold">Agregar gasto</Text>
+                  <Text className="font-semibold">Agregar gasto</Text>
                 </TouchableOpacity>
                 {expenseToDelete ? (
                   <TouchableOpacity
