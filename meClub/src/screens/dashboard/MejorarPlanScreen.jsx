@@ -20,14 +20,14 @@ export default function MejorarPlanScreen({ go }) {
       id: 2,
       name: 'Avanzado',
       description: 'Más visibilidad y control sobre tus membresías.',
-      price: '$14.990',
+      price: '$34.900',
       benefits: ['Gestión de socios', 'Reportes mensuales', 'Promociones'],
     },
     {
       id: 3,
       name: 'Pro',
       description: 'La experiencia completa para clubes en crecimiento.',
-      price: '$29.990',
+      price: '$49.900',
       benefits: ['Automatizaciones', 'Integraciones premium', 'Soporte prioritario'],
     },
   ];
