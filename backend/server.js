@@ -30,7 +30,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Timezone', 'X-Client-Timezone-Offset'],
 };
 
 app.use(cors(corsOptions));

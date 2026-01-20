@@ -19,12 +19,32 @@ try {
   }
 }
 
+const getClientTimeZone = () => {
+  try {
+    return Intl?.DateTimeFormat?.().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
+};
+
+const getClientTimeZoneOffset = () => {
+  try {
+    return String(new Date().getTimezoneOffset());
+  } catch {
+    return '';
+  }
+};
+
 async function request(path, { method = 'GET', body, headers, auth = true } = {}) {
   const token = auth ? await getItem(tokenKey) : null;
   let res;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const timeZone = getClientTimeZone();
+  const timeZoneOffset = getClientTimeZoneOffset();
   const baseHeaders = {
     ...(auth && token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(timeZone ? { 'X-Client-Timezone': timeZone } : {}),
+    ...(timeZoneOffset ? { 'X-Client-Timezone-Offset': timeZoneOffset } : {}),
     ...(headers || {}),
   };
 

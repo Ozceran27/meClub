@@ -10,7 +10,7 @@ const TarifasModel = require('../models/tarifas.model');
 const ClubesHorarioModel = require('../models/clubesHorario.model');
 const ClubesModel = require('../models/clubes.model');
 const UsuariosModel = require('../models/usuarios.model');
-const { diaSemana1a7, addHoursHHMMSS, isPastDateTime } = require('../utils/datetime');
+const { diaSemana1a7, addHoursHHMMSS, isPastDateTime, getLocalDateTime } = require('../utils/datetime');
 const { calculateBaseAmount, determineRateType, toNumberOrNull } = require('../utils/pricing');
 const { getUserId } = require('../utils/auth');
 const {
@@ -140,7 +140,10 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
     if (!Number.isInteger(duracionHorasNumero) || duracionHorasNumero < 1 || duracionHorasNumero > 8) {
       return res.status(400).json({ mensaje: 'duracion_horas debe ser entero entre 1 y 8' });
     }
-    if (isPastDateTime(fecha, hora_inicio)) {
+    const clientTimeZone = typeof req.headers['x-client-timezone'] === 'string' ? req.headers['x-client-timezone'] : '';
+    const clientOffset = req.headers['x-client-timezone-offset'];
+    const clientNow = getLocalDateTime({ timeZone: clientTimeZone, timeZoneOffset: clientOffset });
+    if (isPastDateTime(fecha, hora_inicio, clientNow.dateObj)) {
       return res.status(400).json({ mensaje: 'No se puede reservar en el pasado' });
     }
 
@@ -347,11 +350,14 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
 
 router.get('/panel', verifyToken, requireRole('club'), loadClub, async (req, res) => {
   try {
-    const hoy = new Date();
-    const horaActual = formatTime(hoy);
+    const clientTimeZone = typeof req.headers['x-client-timezone'] === 'string' ? req.headers['x-client-timezone'] : '';
+    const clientOffset = req.headers['x-client-timezone-offset'];
+    const clientNow = getLocalDateTime({ timeZone: clientTimeZone, timeZoneOffset: clientOffset });
+    const hoy = clientNow.dateObj;
+    const horaActual = clientNow.time;
     const { fecha: fechaQuery } = req.query;
     let fechaReferencia = hoy;
-    let fechaSeleccionada = formatDate(hoy);
+    let fechaSeleccionada = clientNow.date;
 
     if (typeof fechaQuery === 'string' && fechaQuery.trim()) {
       const fechaParseada = parseFechaYYYYMMDD(fechaQuery);
