@@ -794,7 +794,7 @@ export default function ReservationFormModal({
 
               {form.tipo_reserva === 'relacionada' ? (
                 <View>
-                  <Text className="text-white/70 text-sm mb-2">Buscar jugador *</Text>
+                  <Text className="text-white/70 text-sm mb-2">Buscar jugador/deportista *</Text>
                   <TextInput
                     value={playerQuery}
                     onChangeText={(text) => {
