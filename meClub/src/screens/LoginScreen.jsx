@@ -60,7 +60,7 @@ const formatPhoneInput = (value = '') => value.replace(/[^0-9\s()-]/g, '');
 
 export default function LoginScreen() {
   const nav  = useNavigation();
-  const { login, register } = useAuth();
+  const { login, register, isLogged, isClub, ready } = useAuth();
 
   // 'login' | 'register' | 'success'
   const [mode, setMode] = useState('login');
@@ -144,6 +144,12 @@ export default function LoginScreen() {
     if (nav.canGoBack && nav.canGoBack()) nav.goBack();
     else nav.reset({ index: 0, routes: [{ name: 'Landing' }] });
   };
+
+  useEffect(() => {
+    if (!ready || !isLogged) return;
+    const destination = isClub ? 'Dashboard' : 'WorkInProgress';
+    nav.reset({ index: 0, routes: [{ name: destination }] });
+  }, [ready, isLogged, isClub, nav]);
 
   return (
     <View className="flex-1 bg-mc-bg">

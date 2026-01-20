@@ -2,6 +2,7 @@
 import { NavigationContainer, getPathFromState as getPathFromStateBase, getStateFromPath as getStateFromPathBase } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, Platform } from 'react-native';
+import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -19,6 +20,19 @@ const toWebQueryPath = (path) => {
   const normalized = String(path ?? '').replace(/^\/+/, '');
   if (!normalized) return '/';
   return `/?${webScreenParam}=${encodeURIComponent(normalized)}`;
+};
+
+const normalizeWebLocation = () => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  const { pathname = '/', search = '' } = window.location;
+  const params = new URLSearchParams(search);
+  if (params.get(webScreenParam)) return;
+  const normalizedPath = String(pathname ?? '').replace(/^\/+/, '');
+  if (!normalizedPath) return;
+  params.set(webScreenParam, normalizedPath);
+  const nextSearch = params.toString();
+  const nextUrl = nextSearch ? `/?${nextSearch}` : '/';
+  window.history.replaceState(window.history.state, '', nextUrl);
 };
 
 const getStateFromPath = (path, config) => {
@@ -59,6 +73,10 @@ const linking = {
 
 export default function RootNavigator() {
   const { ready, isLogged, isClub } = useAuth();
+
+  useEffect(() => {
+    normalizeWebLocation();
+  }, []);
 
   if (!ready) {
     return (
