@@ -14,6 +14,7 @@ import {
   BuzonScreen,
   ServiciosScreen,
   MejorarPlanScreen,
+  SoporteScreen,
 } from './dashboard';
 import WorkInProgressScreen from './WorkInProgressScreen';
 
@@ -270,6 +271,12 @@ export default function DashboardShell() {
         case 'logout':
           handleLogout();
           break;
+        case 'mejorar-plan':
+          go('mejorar-plan');
+          break;
+        case 'soporte':
+          go('soporte');
+          break;
         default:
           setProfileMenuOpen(false);
           break;
@@ -300,6 +307,7 @@ export default function DashboardShell() {
     buzon: BuzonScreen,
     servicios: ServiciosScreen,
     'mejorar-plan': MejorarPlanScreen,
+    soporte: SoporteScreen,
   };
   const ScreenComponent = screenMap[activeKey] || WorkInProgressScreen;
   const screenProps = {
@@ -386,14 +394,14 @@ export default function DashboardShell() {
               </Pressable>
               <View className="h-px bg-white/10 my-1" />
               <Pressable
-                onPress={() => setProfileMenuOpen(false)}
+                onPress={() => handleMenuAction('mejorar-plan')}
                 className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
               >
                 <Ionicons name="sparkles-outline" size={18} color="#E2E8F0" />
                 <Text className="text-white/90 text-sm">Mejorar</Text>
               </Pressable>
               <Pressable
-                onPress={() => setProfileMenuOpen(false)}
+                onPress={() => handleMenuAction('soporte')}
                 className="flex-row items-center gap-3 px-4 py-2 hover:bg-white/10"
               >
                 <Ionicons name="help-circle-outline" size={18} color="#E2E8F0" />

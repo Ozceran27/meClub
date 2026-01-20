@@ -6,3 +6,4 @@ export { default as EconomiaScreen } from './EconomiaScreen';
 export { default as BuzonScreen } from './BuzonScreen';
 export { default as ServiciosScreen } from './ServiciosScreen';
 export { default as MejorarPlanScreen } from './MejorarPlanScreen';
+export { default as SoporteScreen } from './SoporteScreen';
