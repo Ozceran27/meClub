@@ -1388,7 +1388,7 @@ export default function EconomiaScreen() {
                     setEditingExpense(null);
                     setShowExpenseModal(true);
                   }}
-                  className="rounded-xl bg-emerald-500 px-4 py-3"
+                  className="rounded-full bg-emerald-400 hover:bg-emerald-400/80 px-2 py-2"
                   accessibilityRole="button"
                   accessibilityLabel="Agregar gasto"
                 >
