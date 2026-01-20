@@ -103,7 +103,7 @@ export default function MejorarPlanScreen({ go }) {
                       : 'bg-white/10 hover:bg-white/15'
                   }`}
                 >
-                  <Text className="text-white text-sm font-semibold">
+                  <Text className="text-white text-sm font-semibold text-center">
                     {isActive ? 'Plan seleccionado' : 'Seleccionar plan'}
                   </Text>
                 </Pressable>
