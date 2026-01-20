@@ -504,12 +504,7 @@ export default function ReservationFormModal({
 
   const renderPlayerResults = () => {
     const trimmedQuery = playerQuery.trim();
-    const shouldShowResults =
-      showPlayerDropdown ||
-      trimmedQuery.length >= 2 ||
-      searchingPlayers ||
-      playerSearchError ||
-      playerResults.length > 0;
+    const shouldShowResults = showPlayerDropdown;
     if (!shouldShowResults) return null;
 
     return (
