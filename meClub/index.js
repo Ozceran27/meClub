@@ -20,8 +20,22 @@ const applyChromeDesktopZoom = () => {
   }
 };
 
+const normalizeWebLocation = () => {
+  if (typeof window === "undefined") return;
+  const { pathname = "/", search = "" } = window.location;
+  const params = new URLSearchParams(search);
+  if (params.get("screen")) return;
+  const normalizedPath = String(pathname ?? "").replace(/^\/+/, "");
+  if (!normalizedPath) return;
+  params.set("screen", normalizedPath);
+  const nextSearch = params.toString();
+  const nextUrl = nextSearch ? `/?${nextSearch}` : "/";
+  window.history.replaceState(window.history.state, "", nextUrl);
+};
+
 if (Platform.OS === 'web') {
   require('./global.css');
+  normalizeWebLocation();
   applyChromeDesktopZoom();
 }
 

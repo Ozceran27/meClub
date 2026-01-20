@@ -2,7 +2,7 @@
 import { NavigationContainer, getPathFromState as getPathFromStateBase, getStateFromPath as getStateFromPathBase } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -73,10 +73,13 @@ const linking = {
 
 export default function RootNavigator() {
   const { ready, isLogged, isClub } = useAuth();
-
-  useEffect(() => {
+  const syncWebLocation = useCallback(() => {
     normalizeWebLocation();
   }, []);
+
+  useEffect(() => {
+    syncWebLocation();
+  }, [syncWebLocation]);
 
   if (!ready) {
     return (
@@ -89,7 +92,13 @@ export default function RootNavigator() {
   const initialRouteName = isLogged ? (isClub ? 'Dashboard' : 'WorkInProgress') : 'Landing';
 
   return (
-    <NavigationContainer ref={navigationRef} theme={theme} linking={linking}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={theme}
+      linking={linking}
+      onReady={syncWebLocation}
+      onStateChange={syncWebLocation}
+    >
       <Stack.Navigator
         key={isLogged ? 'auth' : 'guest'}
         initialRouteName={initialRouteName}
