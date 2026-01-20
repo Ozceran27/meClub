@@ -13,6 +13,13 @@ export const useAuth = () => {
 };
 
 const userKey = 'mc_user';
+const webScreenParam = 'screen';
+
+const toWebQueryPath = (path) => {
+  const normalized = String(path ?? '').replace(/^\/+/, '');
+  if (!normalized) return '/';
+  return `/?${webScreenParam}=${encodeURIComponent(normalized)}`;
+};
 
 const resolveNivelId = (club, usuario) => {
   const rawNivel = club?.nivel_id ?? club?.nivel ?? usuario?.nivel_id ?? usuario?.nivel;
@@ -106,16 +113,16 @@ export function AuthProvider({ children }) {
         if (navigationRef.isReady()) {
           navigationRef.reset({ index: 0, routes: [{ name: destination }] });
         } else if (Platform.OS === 'web') {
-          const webPath = destination === 'Dashboard' ? '/dashboard' : '/working';
-          window.location.assign(webPath);
+          const webPath = destination === 'Dashboard' ? 'dashboard' : 'working';
+          window.location.assign(toWebQueryPath(webPath));
         } else {
           setTimeout(ensureNavigation, 50);
         }
       } catch {
         if (Platform.OS === 'web') {
           try {
-            const webPath = destination === 'Dashboard' ? '/dashboard' : '/working';
-            window.location.assign(webPath);
+            const webPath = destination === 'Dashboard' ? 'dashboard' : 'working';
+            window.location.assign(toWebQueryPath(webPath));
           } catch {}
         }
       }
@@ -146,11 +153,11 @@ export function AuthProvider({ children }) {
       if (navigationRef.isReady()) {
         navigationRef.reset({ index: 0, routes: [{ name: 'Login' }] });
       } else if (Platform.OS === 'web') {
-        window.location.assign('/login');
+        window.location.assign(toWebQueryPath('login'));
       }
     } catch {
       if (Platform.OS === 'web') {
-        try { window.location.assign('/login'); } catch {}
+        try { window.location.assign(toWebQueryPath('login')); } catch {}
       }
     }
   };
