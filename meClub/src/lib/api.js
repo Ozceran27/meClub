@@ -737,6 +737,9 @@ function extractReservationsPanel(payload) {
         precio: toNumberOrNull(item?.precio),
         precioDia: toNumberOrNull(item?.precio_dia ?? item?.precioDia),
         precioNoche: toNumberOrNull(item?.precio_noche ?? item?.precioNoche),
+        capacidad: toNumberOrNull(item?.capacidad ?? item?.capacidad_jugadores ?? item?.jugadores),
+        techada: toBoolean(item?.techada ?? item?.techadaBool ?? item?.techada_bool),
+        iluminacion: toBoolean(item?.iluminacion ?? item?.iluminada ?? item?.iluminacionBool),
         reservas: normalizeReservationList(item?.reservas),
       }))
     : [];
