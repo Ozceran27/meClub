@@ -488,12 +488,6 @@ function TimelineEmptySlotCard({
   const rateIconName = rateType === 'night' ? 'moon-outline' : rateType === 'day' ? 'sunny-outline' : 'cash-outline';
   const rateIconColor =
     rateType === 'night' ? '#FACC15' : rateType === 'day' ? '#38BDF8' : '#E2E8F0';
-  const techadaLabel = court?.techada ? 'Techada' : 'Descubierta';
-  const iluminacionLabel = court?.iluminacion ? 'Con luz' : 'Sin luz';
-  const capacityLabel =
-    court?.capacidad !== null && court?.capacidad !== undefined
-      ? `${court.capacidad} jugadores`
-      : 'Capacidad sin definir';
 
   return (
     <View
@@ -509,35 +503,13 @@ function TimelineEmptySlotCard({
         }`}
       >
         {hovered ? (
-          <View className="items-center justify-center gap-3 px-3">
-            <Text className="text-white text-base font-semibold tracking-widest">LIBRE</Text>
-            <View className="flex-row items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-              <Ionicons name={rateIconName} size={14} color={rateIconColor} />
-              <Text className="text-white/80 text-xs">{rateLabel}</Text>
+          <View className="items-center justify-center gap-2 px-2">
+            <Text className="text-white text-sm font-semibold tracking-widest">LIBRE</Text>
+            <View className="flex-row items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+              <Ionicons name={rateIconName} size={12} color={rateIconColor} />
+              <Text className="text-white/80 text-[10px]">{rateLabel}</Text>
               <View className="h-3 w-px bg-white/10" />
-              <Text className="text-white text-sm font-semibold">{formatCurrency(price)}</Text>
-            </View>
-            <View className="flex-row flex-wrap items-center justify-center gap-2">
-              <View
-                className={`flex-row items-center gap-1 rounded-full border px-2 py-1 ${
-                  court?.techada ? 'border-emerald-400/40 bg-emerald-400/10' : 'border-white/10 bg-white/5'
-                }`}
-              >
-                <Ionicons name="home-outline" size={12} color={court?.techada ? '#34D399' : '#94A3B8'} />
-                <Text className="text-white/80 text-[11px]">{techadaLabel}</Text>
-              </View>
-              <View
-                className={`flex-row items-center gap-1 rounded-full border px-2 py-1 ${
-                  court?.iluminacion ? 'border-amber-300/40 bg-amber-300/10' : 'border-white/10 bg-white/5'
-                }`}
-              >
-                <Ionicons name="bulb-outline" size={12} color={court?.iluminacion ? '#FBBF24' : '#94A3B8'} />
-                <Text className="text-white/80 text-[11px]">{iluminacionLabel}</Text>
-              </View>
-              <View className="flex-row items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                <Ionicons name="people-outline" size={12} color="#93C5FD" />
-                <Text className="text-white/80 text-[11px]">{capacityLabel}</Text>
-              </View>
+              <Text className="text-white text-xs font-semibold">{formatCurrency(price)}</Text>
             </View>
           </View>
         ) : null}
