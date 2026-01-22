@@ -855,7 +855,7 @@ function getReservationSegments(reservations, slots, slotMinutes = SLOT_MINUTES)
 
   slots.forEach((slot, index) => {
     if (skip.has(index)) {
-      segments.push({ type: 'spacer', key: `skip-${index}` });
+      segments.push({ type: 'skip', key: `skip-${index}` });
       return;
     }
 
@@ -1438,11 +1438,7 @@ export default function ReservasScreen({ summary, go }) {
                     }
 
                     return (
-                      <View
-                        key={segment.key || `skip-${segmentIndex}`}
-                        style={{ height: containerHeight }}
-                        className="border-b border-transparent px-3 py-3"
-                      />
+                      <View key={segment.key || `skip-${segmentIndex}`} style={{ height: 0 }} />
                     );
                   })}
                 </View>
