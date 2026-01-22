@@ -452,6 +452,30 @@ function TimelineReservationCard({
   );
 }
 
+function TimelineEmptySlotCard({ containerHeight, onPress }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <View
+      style={{ height: containerHeight }}
+      className="border-b border-dashed border-white/5 px-3 py-3"
+    >
+      <Pressable
+        onPress={onPress}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        className={`flex-1 items-center justify-center rounded-2xl border border-white/10 ${
+          hovered ? 'bg-sky-500/60' : 'bg-sky-500/20'
+        }`}
+      >
+        {hovered ? (
+          <Text className="text-white text-xs font-semibold tracking-widest">LIBRE</Text>
+        ) : null}
+      </Pressable>
+    </View>
+  );
+}
+
 function ReservationStatusMenu({
   visible,
   reservation,
@@ -847,7 +871,13 @@ function getReservationSegments(reservations, slots, slotMinutes = SLOT_MINUTES)
     });
 
     if (!reservation) {
-      segments.push({ type: 'empty', key: `empty-${index}` });
+      segments.push({
+        type: 'empty',
+        key: `empty-${index}`,
+        slotStart: slot.start,
+        slotEnd: slot.end,
+        slotLabel: slot.label,
+      });
       return;
     }
 
@@ -910,6 +940,9 @@ export default function ReservasScreen({ summary, go }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [reservationInitialValues, setReservationInitialValues] = useState(() => ({
+    fecha: formatDateForApi(new Date()),
+  }));
   const [creating, setCreating] = useState(false);
   const [creationError, setCreationError] = useState('');
   const [refreshToken, setRefreshToken] = useState(0);
@@ -976,6 +1009,11 @@ export default function ReservasScreen({ summary, go }) {
   useEffect(() => {
     setDateInput(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    if (showModal) return;
+    setReservationInitialValues({ fecha: selectedDate });
+  }, [selectedDate, showModal]);
 
   const metrics = useMemo(() => {
     const hoy = panelData?.totales?.hoy || {};
@@ -1145,10 +1183,17 @@ export default function ReservasScreen({ summary, go }) {
     [courts, nightEndValue, nightStartValue, panelData?.club, selectedDate]
   );
 
-  const handleOpenModal = useCallback(() => {
-    setCreationError('');
-    setShowModal(true);
-  }, []);
+  const handleOpenModal = useCallback(
+    (initialOverrides = null) => {
+      setCreationError('');
+      setReservationInitialValues({
+        fecha: selectedDate,
+        ...(initialOverrides || {}),
+      });
+      setShowModal(true);
+    },
+    [selectedDate]
+  );
 
   const handleDismissModal = useCallback(() => {
     if (creating) return;
@@ -1375,14 +1420,20 @@ export default function ReservasScreen({ summary, go }) {
                     }
 
                     if (segment.type === 'empty') {
+                      const slotLabel = segment.slotLabel;
+
                       return (
-                        <View
+                        <TimelineEmptySlotCard
                           key={segment.key || `empty-${segmentIndex}`}
-                          style={{ height: containerHeight }}
-                          className="border-b border-dashed border-white/5 px-3 py-3"
-                        >
-                          <View className="flex-1 rounded-2xl border border-white/5 border-dashed" />
-                        </View>
+                          containerHeight={containerHeight}
+                          onPress={() =>
+                            handleOpenModal({
+                              fecha: selectedDate,
+                              cancha_id: court.canchaId,
+                              hora_inicio: slotLabel || null,
+                            })
+                          }
+                        />
                       );
                     }
 
@@ -1611,7 +1662,7 @@ export default function ReservasScreen({ summary, go }) {
         onDismiss={handleDismissModal}
         onSubmit={handleCreateReservation}
         loading={creating}
-        initialValues={{ fecha: selectedDate }}
+        initialValues={reservationInitialValues}
         courts={courts}
         availableDates={availableDates}
         availableStartTimes={availableStartTimes}
