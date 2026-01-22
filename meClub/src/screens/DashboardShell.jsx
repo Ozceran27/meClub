@@ -32,20 +32,47 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
   const computedBadge = badge ?? (minLevel > 1 ? 'PRO' : undefined);
   const isBadgeElement = React.isValidElement(computedBadge);
   const badgeText = !isBadgeElement && computedBadge != null ? String(computedBadge) : '';
-  const isProBadge = badgeText === 'PRO';
+  const badgeVariant = badgeText === 'PRO' ? 'pro' : badgeText === 'ADV' ? 'adv' : 'count';
+  const isProBadge = badgeVariant === 'pro';
   const badgeContent = isBadgeElement
     ? computedBadge
     : badgeText
       ? (
         <View
           className={`rounded-full px-2 py-[2px] border ${
-            isProBadge ? 'bg-amber-500/20 border-amber-400/50' : 'bg-rose-500/20 border-rose-400/60'
+            badgeVariant === 'pro'
+              ? 'bg-amber-500/20 border-amber-400/50 hover:bg-amber-500/30 hover:border-amber-300/70'
+              : badgeVariant === 'adv'
+                ? 'bg-sky-500/20 border-sky-400/50 hover:bg-sky-500/30 hover:border-sky-300/70'
+                : 'bg-rose-500/20 border-rose-400/60 hover:bg-rose-500/30 hover:border-rose-300/80'
           }`}
           accessible
-          accessibilityLabel={isProBadge ? 'Funcionalidad PRO' : `${badgeText} notificaciones`}
-          aria-label={isProBadge ? 'Funcionalidad PRO' : `${badgeText} notificaciones`}
+          accessibilityLabel={
+            badgeVariant === 'pro'
+              ? 'Funcionalidad PRO'
+              : badgeVariant === 'adv'
+                ? 'Funcionalidad ADV'
+                : `${badgeText} notificaciones`
+          }
+          aria-label={
+            badgeVariant === 'pro'
+              ? 'Funcionalidad PRO'
+              : badgeVariant === 'adv'
+                ? 'Funcionalidad ADV'
+                : `${badgeText} notificaciones`
+          }
         >
-          <Text className={`text-[10px] font-semibold ${isProBadge ? 'text-amber-300' : 'text-rose-100'}`}>{badgeText}</Text>
+          <Text
+            className={`text-[10px] font-semibold ${
+              badgeVariant === 'pro'
+                ? 'text-amber-300'
+                : badgeVariant === 'adv'
+                  ? 'text-sky-100'
+                  : 'text-rose-100'
+            }`}
+          >
+            {badgeText}
+          </Text>
         </View>
       )
       : null;
@@ -54,7 +81,9 @@ function SidebarItem({ iconName, label, active, onPress, minLevel = 1, disabled 
     badgeText
       ? isProBadge
         ? ', sección PRO'
-        : `, ${badgeText} notificaciones`
+        : badgeVariant === 'adv'
+          ? ', sección ADV'
+          : `, ${badgeText} notificaciones`
       : ''
   }${disabled ? ', deshabilitado' : ''}`;
 
@@ -228,9 +257,9 @@ export default function DashboardShell() {
     { key: 'mis-canchas', label: 'Mis Canchas', iconName: 'tennisball-outline', minLevel: 1 },
     { key: 'reservas', label: 'Reservas', iconName: 'calendar-outline', minLevel: 1 },
     { key: 'economia', label: 'Economía', iconName: 'cash-outline', minLevel: 1 },
-    { key: 'servicios', label: 'Servicios', iconName: 'pricetags-outline', minLevel: 1 },
+    { key: 'servicios', label: 'Servicios', iconName: 'pricetags-outline', minLevel: 1, badge: 'ADV' },
+    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 1, badge: 'ADV' },
     { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline', minLevel: 2 },
-    { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 1, badge: 'PRO' },
     { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', minLevel: 2 },
     { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', minLevel: 2 },
     { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline', minLevel: 1 },
