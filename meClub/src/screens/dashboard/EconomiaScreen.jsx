@@ -1247,7 +1247,7 @@ export default function EconomiaScreen() {
               >
                 <View className="gap-1">
                   <Text className="text-white text-3xl font-extrabold">{reservasMensuales ?? 0}</Text>
-                  <Text className="text-white/60 text-sm uppercase tracking-[0.12em]">Total mensual</Text>
+                  <Text className="text-mc-warn text-sm uppercase tracking-[0.12em]">Total mensual</Text>
                 </View>
                 <View className="gap-1">
                   <Text className="text-white text-3xl font-extrabold">{reservasSemanales ?? 0}</Text>
