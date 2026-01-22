@@ -465,7 +465,7 @@ function TimelineEmptySlotCard({ containerHeight, onPress }) {
         onHoverIn={() => setHovered(true)}
         onHoverOut={() => setHovered(false)}
         className={`flex-1 items-center justify-center rounded-2xl border border-white/10 ${
-          hovered ? 'bg-amber-300/35' : 'bg-[#0F172A]/15'
+          hovered ? 'bg-amber-300/60' : 'bg-[#0F172A]/45'
         }`}
       >
         {hovered ? (
