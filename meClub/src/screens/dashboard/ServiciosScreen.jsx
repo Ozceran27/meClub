@@ -1595,7 +1595,7 @@ export default function ServiciosScreen() {
                 label="Cargar pago de cuota"
                 badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
-                className={hasProAccess ? '' : 'border border-amber-400/40'}
+                className={hasProAccess ? '' : 'border border-sky-400/50'}
               />
               <ActionButton
                 onPress={() => setShowPromoPanel(true)}
@@ -1616,7 +1616,7 @@ export default function ServiciosScreen() {
                 label="Nuevo servicio"
                 badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
-                className={hasProAccess ? '' : 'border border-amber-400/40'}
+                className={hasProAccess ? '' : 'border border-sky-400/50'}
               />
               <ActionButton
                 onPress={() => {
@@ -1629,7 +1629,7 @@ export default function ServiciosScreen() {
                 label="Crear plan de asociado"
                 badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
-                className={hasProAccess ? '' : 'border border-amber-400/40'}
+                className={hasProAccess ? '' : 'border border-sky-400/50'}
               />
               <ActionButton
                 onPress={() => setShowMemberPanel(true)}
@@ -1638,7 +1638,7 @@ export default function ServiciosScreen() {
                 label="Alta de asociado"
                 badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
-                className={hasProAccess ? '' : 'border border-amber-400/40'}
+                className={hasProAccess ? '' : 'border border-sky-400/50'}
               />
             </View>
           </View>
