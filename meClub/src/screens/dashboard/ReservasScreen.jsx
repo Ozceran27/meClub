@@ -499,12 +499,12 @@ function TimelineEmptySlotCard({
         onHoverIn={() => setHovered(true)}
         onHoverOut={() => setHovered(false)}
         className={`flex-1 items-center justify-center rounded-2xl border border-white/10 shadow-sm transition-colors ${
-          hovered ? 'bg-slate-900/70 border-slate-500/40' : 'bg-[#0F172A]/45'
+          hovered ? 'bg-slate-900/80 border-slate-500/40' : 'bg-[#0F172A]/45'
         }`}
       >
         {hovered ? (
           <View className="items-center justify-center gap-2 px-2">
-            <Text className="text-white text-sm font-semibold tracking-widest">LIBRE</Text>
+            <Text className="text-amber-300 text-sm font-semibold tracking-widest">LIBRE</Text>
             <View className="flex-row items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
               <Ionicons name={rateIconName} size={12} color={rateIconColor} />
               <Text className="text-white/80 text-[10px]">{rateLabel}</Text>
