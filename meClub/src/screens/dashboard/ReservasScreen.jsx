@@ -504,7 +504,7 @@ function TimelineEmptySlotCard({
       >
         {hovered ? (
           <View className="items-center justify-center gap-2 px-2">
-            <Text className="text-amber-300 text-sm font-semibold tracking-widest">LIBRE</Text>
+            <Text className="text-amber-400 text-sm font-semibold tracking-widest">LIBRE</Text>
             <View className="flex-row items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
               <Ionicons name={rateIconName} size={12} color={rateIconColor} />
               <Text className="text-white/80 text-[10px]">{rateLabel}</Text>
