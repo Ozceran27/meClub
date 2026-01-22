@@ -255,24 +255,40 @@ router.post('/', verifyToken, ensureClubContext, async (req, res) => {
           ? null
           : Number.parseInt(jugadorIdBruto, 10);
 
-      if (!Number.isInteger(jugadorId) || jugadorId <= 0) {
-        return res.status(400).json({ mensaje: 'jugador_usuario_id es requerido para reservas relacionadas' });
-      }
+      if (Number.isInteger(jugadorId) && jugadorId > 0) {
+        if (jugadorId === usuarioIdToken) {
+          usuarioReservaId = usuarioIdToken;
+        } else {
+          const jugador = await UsuariosModel.buscarPorId(jugadorId);
+          if (!jugador) {
+            return res.status(404).json({ mensaje: 'Jugador no encontrado' });
+          }
 
-      if (jugadorId === usuarioIdToken) {
-        usuarioReservaId = usuarioIdToken;
+          usuarioReservaId = jugador.usuario_id;
+          if (!contactoNombre || !String(contactoNombre).trim()) contactoNombre = jugador.nombre || contactoNombre;
+          if (!contactoApellido || !String(contactoApellido).trim())
+            contactoApellido = jugador.apellido || contactoApellido;
+          if (!contactoTelefono || !String(contactoTelefono).trim())
+            contactoTelefono = jugador.telefono || contactoTelefono;
+        }
       } else {
-        const jugador = await UsuariosModel.buscarPorId(jugadorId);
-        if (!jugador) {
-          return res.status(404).json({ mensaje: 'Jugador no encontrado' });
+        if (!contactoNombre || !String(contactoNombre).trim()) {
+          return res
+            .status(400)
+            .json({ mensaje: 'contacto_nombre es requerido para reservas relacionadas sin jugador' });
+        }
+        if (!contactoApellido || !String(contactoApellido).trim()) {
+          return res
+            .status(400)
+            .json({ mensaje: 'contacto_apellido es requerido para reservas relacionadas sin jugador' });
+        }
+        if (!contactoTelefono || !String(contactoTelefono).trim()) {
+          return res
+            .status(400)
+            .json({ mensaje: 'contacto_telefono es requerido para reservas relacionadas sin jugador' });
         }
 
-        usuarioReservaId = jugador.usuario_id;
-        if (!contactoNombre || !String(contactoNombre).trim()) contactoNombre = jugador.nombre || contactoNombre;
-        if (!contactoApellido || !String(contactoApellido).trim())
-          contactoApellido = jugador.apellido || contactoApellido;
-        if (!contactoTelefono || !String(contactoTelefono).trim())
-          contactoTelefono = jugador.telefono || contactoTelefono;
+        usuarioReservaId = null;
       }
     } else {
       if (!contactoNombre || !String(contactoNombre).trim()) {
