@@ -27,7 +27,7 @@ import {
   getPaymentStatusDetails,
   normalizePaymentStatusValue,
 } from '../../constants/paymentStatus';
-import { calculateBaseAmount, determineRateType, toNumberOrNull } from './pricing';
+import { calculateBaseAmount, determineRateType, selectHourlyPrice, toNumberOrNull } from './pricing';
 
 const COURT_COLORS = [
   { bg: 'bg-emerald-500/20', border: 'border-emerald-400/40', text: 'text-emerald-200' },
@@ -452,8 +452,42 @@ function TimelineReservationCard({
   );
 }
 
-function TimelineEmptySlotCard({ containerHeight, onPress }) {
+function TimelineEmptySlotCard({
+  containerHeight,
+  onPress,
+  court,
+  slotLabel,
+  nightStart,
+  nightEnd,
+}) {
   const [hovered, setHovered] = useState(false);
+  const pricingClub = useMemo(
+    () => ({
+      hora_nocturna_inicio: nightStart ?? null,
+      hora_nocturna_fin: nightEnd ?? null,
+      horaNocturnaInicio: nightStart ?? null,
+      horaNocturnaFin: nightEnd ?? null,
+    }),
+    [nightEnd, nightStart]
+  );
+  const rateType = useMemo(
+    () => determineRateType({ horaInicio: slotLabel, club: pricingClub }),
+    [pricingClub, slotLabel]
+  );
+  const price = useMemo(
+    () =>
+      selectHourlyPrice({
+        cancha: court || {},
+        club: pricingClub,
+        horaInicio: slotLabel,
+      }),
+    [court, pricingClub, slotLabel]
+  );
+  const rateLabel =
+    rateType === 'night' ? 'Tarifa nocturna' : rateType === 'day' ? 'Tarifa diurna' : 'Tarifa estándar';
+  const rateIconName = rateType === 'night' ? 'moon-outline' : rateType === 'day' ? 'sunny-outline' : 'cash-outline';
+  const rateIconColor =
+    rateType === 'night' ? '#FACC15' : rateType === 'day' ? '#38BDF8' : '#E2E8F0';
 
   return (
     <View
@@ -464,12 +498,20 @@ function TimelineEmptySlotCard({ containerHeight, onPress }) {
         onPress={onPress}
         onHoverIn={() => setHovered(true)}
         onHoverOut={() => setHovered(false)}
-        className={`flex-1 items-center justify-center rounded-2xl border border-white/10 ${
-          hovered ? 'bg-[#0F172A]/10' : 'bg-[#0F172A]/45'
+        className={`flex-1 items-center justify-center rounded-2xl border border-white/10 shadow-sm transition-colors ${
+          hovered ? 'bg-slate-900/70 border-slate-500/40' : 'bg-[#0F172A]/45'
         }`}
       >
         {hovered ? (
-          <Text className="text-white/80 text-base font-semibold tracking-widest">LIBRE</Text>
+          <View className="items-center justify-center gap-2 px-2">
+            <Text className="text-white text-sm font-semibold tracking-widest">LIBRE</Text>
+            <View className="flex-row items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+              <Ionicons name={rateIconName} size={12} color={rateIconColor} />
+              <Text className="text-white/80 text-[10px]">{rateLabel}</Text>
+              <View className="h-3 w-px bg-white/10" />
+              <Text className="text-white text-xs font-semibold">{formatCurrency(price)}</Text>
+            </View>
+          </View>
         ) : null}
       </Pressable>
     </View>
@@ -1426,6 +1468,10 @@ export default function ReservasScreen({ summary, go }) {
                         <TimelineEmptySlotCard
                           key={segment.key || `empty-${segmentIndex}`}
                           containerHeight={containerHeight}
+                          court={court}
+                          slotLabel={slotLabel}
+                          nightStart={nightStartValue}
+                          nightEnd={nightEndValue}
                           onPress={() =>
                             handleOpenModal({
                               fecha: selectedDate,
