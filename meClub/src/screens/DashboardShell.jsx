@@ -259,9 +259,9 @@ export default function DashboardShell() {
     { key: 'economia', label: 'Economía', iconName: 'cash-outline', minLevel: 1 },
     { key: 'servicios', label: 'Servicios', iconName: 'pricetags-outline', minLevel: 1, badge: 'ADV' },
     { key: 'eventos', label: 'Eventos', iconName: 'sparkles-outline', minLevel: 1, badge: 'ADV' },
-    { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline', minLevel: 2 },
-    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', minLevel: 2 },
-    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', minLevel: 2 },
+    { key: 'grabaciones', label: 'Grabaciones', iconName: 'videocam-outline', minLevel: 3 },
+    { key: 'me-equipo', label: 'meEquipo', iconName: 'people-outline', minLevel: 3 },
+    { key: 'ranking', label: 'Ranking', iconName: 'trophy-outline', minLevel: 3 },
     { key: 'configuracion', label: 'Configuración', iconName: 'settings-outline', minLevel: 1 },
     { key: 'soporte', label: 'Soporte', iconName: 'help-circle-outline', minLevel: 1 },
   ]), [inboxBadge]);
