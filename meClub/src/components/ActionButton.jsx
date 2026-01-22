@@ -16,20 +16,44 @@ export default function ActionButton({
   const computedBadge = badge ?? null;
   const isBadgeElement = React.isValidElement(computedBadge);
   const badgeText = !isBadgeElement && computedBadge != null ? String(computedBadge) : '';
-  const isProBadge = badgeText === 'PRO';
+  const badgeVariant = badgeText === 'PRO' ? 'pro' : badgeText === 'ADV' ? 'adv' : 'default';
   const badgeContent = isBadgeElement
     ? computedBadge
     : badgeText
       ? (
         <View
           className={`rounded-full px-2 py-[2px] border ${
-            isProBadge ? 'bg-amber-500/20 border-amber-400/50' : 'bg-amber-500/20 border-amber-400/50'
+            badgeVariant === 'pro'
+              ? 'bg-amber-500/20 border-amber-400/50 hover:bg-amber-500/30 hover:border-amber-300/70'
+              : badgeVariant === 'adv'
+                ? 'bg-sky-500/20 border-sky-400/50 hover:bg-sky-500/30 hover:border-sky-300/70'
+                : 'bg-amber-500/20 border-amber-400/50 hover:bg-amber-500/30 hover:border-amber-300/70'
           }`}
           accessible
-          accessibilityLabel={isProBadge ? 'Funcionalidad PRO' : `Etiqueta ${badgeText}`}
-          aria-label={isProBadge ? 'Funcionalidad PRO' : `Etiqueta ${badgeText}`}
+          accessibilityLabel={
+            badgeVariant === 'pro'
+              ? 'Funcionalidad PRO'
+              : badgeVariant === 'adv'
+                ? 'Funcionalidad ADV'
+                : `Etiqueta ${badgeText}`
+          }
+          aria-label={
+            badgeVariant === 'pro'
+              ? 'Funcionalidad PRO'
+              : badgeVariant === 'adv'
+                ? 'Funcionalidad ADV'
+                : `Etiqueta ${badgeText}`
+          }
         >
-          <Text className={`text-[10px] font-semibold ${isProBadge ? 'text-amber-300' : 'text-amber-300'}`}>
+          <Text
+            className={`text-[10px] font-semibold ${
+              badgeVariant === 'pro'
+                ? 'text-amber-300'
+                : badgeVariant === 'adv'
+                  ? 'text-sky-100'
+                  : 'text-amber-300'
+            }`}
+          >
             {badgeText}
           </Text>
         </View>

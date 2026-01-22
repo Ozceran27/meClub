@@ -162,7 +162,7 @@ const buildMemberForm = () => ({
   tipo_asociado_id: null,
 });
 
-const PRO_BADGE = 'PRO';
+const ADV_BADGE = 'ADV';
 
 const isValidDate = (value) => {
   if (!value) return false;
@@ -1593,7 +1593,7 @@ export default function ServiciosScreen() {
                 disabled={serviceLimitReached || !hasProAccess}
                 icon="cash-outline"
                 label="Cargar pago de cuota"
-                badge={hasProAccess ? null : PRO_BADGE}
+                badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
@@ -1614,7 +1614,7 @@ export default function ServiciosScreen() {
                 disabled={serviceLimitReached || !hasProAccess}
                 icon="add-circle-outline"
                 label="Nuevo servicio"
-                badge={hasProAccess ? null : PRO_BADGE}
+                badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
@@ -1627,7 +1627,7 @@ export default function ServiciosScreen() {
                 disabled={!hasProAccess}
                 icon="people-outline"
                 label="Crear plan de asociado"
-                badge={hasProAccess ? null : PRO_BADGE}
+                badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
@@ -1636,7 +1636,7 @@ export default function ServiciosScreen() {
                 disabled={!hasProAccess}
                 icon="person-add-outline"
                 label="Alta de asociado"
-                badge={hasProAccess ? null : PRO_BADGE}
+                badge={hasProAccess ? null : ADV_BADGE}
                 backgroundClassName={hasProAccess ? undefined : 'bg-mc-warn/25'}
                 className={hasProAccess ? '' : 'border border-amber-400/40'}
               />
