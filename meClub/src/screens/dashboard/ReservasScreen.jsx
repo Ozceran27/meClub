@@ -469,7 +469,7 @@ function TimelineEmptySlotCard({ containerHeight, onPress }) {
         }`}
       >
         {hovered ? (
-          <Text className="text-white/80 text-lg font-semibold tracking-widest">LIBRE</Text>
+          <Text className="text-white/80 text-base font-semibold tracking-widest">LIBRE</Text>
         ) : null}
       </Pressable>
     </View>
