@@ -147,7 +147,7 @@ CREATE TABLE `club_servicios` (
   KEY `idx_club_servicios_catalogo` (`servicio_catalogo_id`),
   CONSTRAINT `fk_club_servicios_catalogo` FOREIGN KEY (`servicio_catalogo_id`) REFERENCES `servicios` (`servicio_id`) ON DELETE SET NULL,
   CONSTRAINT `fk_club_servicios_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -206,7 +206,7 @@ CREATE TABLE `clubes_horario` (
   PRIMARY KEY (`club_horario_id`),
   UNIQUE KEY `uq_club_dia` (`club_id`,`dia_semana`),
   CONSTRAINT `fk_ch_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=262 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -228,32 +228,7 @@ CREATE TABLE `clubes_impuestos` (
   PRIMARY KEY (`impuesto_id`),
   UNIQUE KEY `uq_clubes_impuestos_nombre` (`club_id`,`nombre`),
   CONSTRAINT `fk_clubesimpuestos_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=40 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `clubs_usuarios`
---
-
-DROP TABLE IF EXISTS `clubs_usuarios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clubs_usuarios` (
-  `club_id` int NOT NULL,
-  `usuario_id` int NOT NULL,
-  `nombre` varchar(100) NOT NULL,
-  `foto_logo` longblob,
-  `foto_portada` longblob,
-  `provincia_id` int DEFAULT NULL,
-  `localidad_id` int unsigned DEFAULT NULL,
-  `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`club_id`,`usuario_id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `idx_clubsusuarios_localidad` (`localidad_id`),
-  CONSTRAINT `clubs_usuarios_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
-  CONSTRAINT `clubs_usuarios_ibfk_2` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
-  CONSTRAINT `fk_clubsusuarios_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidad` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -314,6 +289,167 @@ CREATE TABLE `deportes` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `equipos_usuarios`
+--
+
+DROP TABLE IF EXISTS `equipos_usuarios`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `equipos_usuarios` (
+  `equipo_id` int NOT NULL AUTO_INCREMENT,
+  `usuario_id` int NOT NULL,
+  `club_id` int DEFAULT NULL,
+  `nombre` varchar(120) NOT NULL,
+  `descripcion` text,
+  `logo_url` varchar(255) DEFAULT NULL,
+  `portada_url` varchar(255) DEFAULT NULL,
+  `provincia_id` tinyint unsigned DEFAULT NULL,
+  `localidad_id` int unsigned DEFAULT NULL,
+  `deporte_id` int DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`equipo_id`),
+  KEY `idx_equipo_usuario` (`usuario_id`),
+  KEY `idx_equipo_club` (`club_id`),
+  KEY `idx_equipo_provincia` (`provincia_id`),
+  KEY `idx_equipo_localidad` (`localidad_id`),
+  KEY `fk_equipo_deporte` (`deporte_id`),
+  CONSTRAINT `fk_equipo_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
+  CONSTRAINT `fk_equipo_deporte` FOREIGN KEY (`deporte_id`) REFERENCES `deportes` (`deporte_id`),
+  CONSTRAINT `fk_equipo_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidad` (`id`),
+  CONSTRAINT `fk_equipo_provincia` FOREIGN KEY (`provincia_id`) REFERENCES `provincia` (`id`),
+  CONSTRAINT `fk_equipo_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `equipos_usuarios_legacy`
+--
+
+DROP TABLE IF EXISTS `equipos_usuarios_legacy`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `equipos_usuarios_legacy` (
+  `club_id` int NOT NULL,
+  `usuario_id` int NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `foto_logo` longblob,
+  `foto_portada` longblob,
+  `provincia_id` int DEFAULT NULL,
+  `localidad_id` int unsigned DEFAULT NULL,
+  `creado_en` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`club_id`,`usuario_id`),
+  KEY `usuario_id` (`usuario_id`),
+  KEY `idx_clubsusuarios_localidad` (`localidad_id`),
+  CONSTRAINT `equipos_usuarios_legacy_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
+  CONSTRAINT `equipos_usuarios_legacy_ibfk_2` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
+  CONSTRAINT `fk_clubsusuarios_localidad` FOREIGN KEY (`localidad_id`) REFERENCES `localidad` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `evento_equipos`
+--
+
+DROP TABLE IF EXISTS `evento_equipos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `evento_equipos` (
+  `evento_id` int NOT NULL,
+  `equipo_id` int NOT NULL,
+  `estado` enum('pendiente','aprobado','rechazado','baja') NOT NULL DEFAULT 'pendiente',
+  `origen` enum('equipo','club') NOT NULL DEFAULT 'equipo',
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`evento_id`,`equipo_id`),
+  KEY `fk_evento_equipo_equipo` (`equipo_id`),
+  CONSTRAINT `fk_evento_equipo_equipo` FOREIGN KEY (`equipo_id`) REFERENCES `equipos_usuarios` (`equipo_id`),
+  CONSTRAINT `fk_evento_equipo_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`evento_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `evento_partidos`
+--
+
+DROP TABLE IF EXISTS `evento_partidos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `evento_partidos` (
+  `partido_id` int NOT NULL AUTO_INCREMENT,
+  `evento_id` int NOT NULL,
+  `fase` enum('amistoso','liga','octavos','cuartos','semifinal','final','tercer_puesto') NOT NULL,
+  `jornada` int DEFAULT NULL,
+  `orden` int DEFAULT NULL,
+  `fecha` date DEFAULT NULL,
+  `hora` time DEFAULT NULL,
+  `cancha_id` int DEFAULT NULL,
+  `equipo_local_id` int DEFAULT NULL,
+  `equipo_visitante_id` int DEFAULT NULL,
+  `goles_local` int DEFAULT NULL,
+  `goles_visitante` int DEFAULT NULL,
+  `ganador_equipo_id` int DEFAULT NULL,
+  `estado` enum('pendiente','jugado','suspendido') NOT NULL DEFAULT 'pendiente',
+  PRIMARY KEY (`partido_id`),
+  KEY `idx_partido_evento` (`evento_id`),
+  KEY `idx_partido_fase` (`fase`),
+  KEY `fk_partido_cancha` (`cancha_id`),
+  KEY `fk_partido_local` (`equipo_local_id`),
+  KEY `fk_partido_visitante` (`equipo_visitante_id`),
+  KEY `fk_partido_ganador` (`ganador_equipo_id`),
+  CONSTRAINT `fk_partido_cancha` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`),
+  CONSTRAINT `fk_partido_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`evento_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_partido_ganador` FOREIGN KEY (`ganador_equipo_id`) REFERENCES `equipos_usuarios` (`equipo_id`),
+  CONSTRAINT `fk_partido_local` FOREIGN KEY (`equipo_local_id`) REFERENCES `equipos_usuarios` (`equipo_id`),
+  CONSTRAINT `fk_partido_visitante` FOREIGN KEY (`equipo_visitante_id`) REFERENCES `equipos_usuarios` (`equipo_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `evento_posiciones`
+--
+
+DROP TABLE IF EXISTS `evento_posiciones`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `evento_posiciones` (
+  `evento_id` int NOT NULL,
+  `equipo_id` int NOT NULL,
+  `puntos` int NOT NULL DEFAULT '0',
+  `pj` int NOT NULL DEFAULT '0',
+  `pg` int NOT NULL DEFAULT '0',
+  `pe` int NOT NULL DEFAULT '0',
+  `pp` int NOT NULL DEFAULT '0',
+  `gf` int NOT NULL DEFAULT '0',
+  `gc` int NOT NULL DEFAULT '0',
+  `orden` int DEFAULT NULL,
+  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`evento_id`,`equipo_id`),
+  KEY `fk_posicion_equipo` (`equipo_id`),
+  CONSTRAINT `fk_posicion_equipo` FOREIGN KEY (`equipo_id`) REFERENCES `equipos_usuarios` (`equipo_id`),
+  CONSTRAINT `fk_posicion_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`evento_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `evento_sedes`
+--
+
+DROP TABLE IF EXISTS `evento_sedes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `evento_sedes` (
+  `evento_id` int NOT NULL,
+  `cancha_id` int NOT NULL,
+  PRIMARY KEY (`evento_id`,`cancha_id`),
+  KEY `fk_evento_sede_cancha` (`cancha_id`),
+  CONSTRAINT `fk_evento_sede_cancha` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`),
+  CONSTRAINT `fk_evento_sede_evento` FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`evento_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `eventos`
 --
 
@@ -323,13 +459,58 @@ DROP TABLE IF EXISTS `eventos`;
 CREATE TABLE `eventos` (
   `evento_id` int NOT NULL AUTO_INCREMENT,
   `club_id` int NOT NULL,
+  `tipo` enum('amistoso','torneo','copa') NOT NULL,
+  `estado` enum('inactivo','activo','pausado','finalizado') NOT NULL DEFAULT 'inactivo',
+  `nombre` varchar(120) NOT NULL,
+  `descripcion` text,
+  `imagen_url` varchar(255) DEFAULT NULL,
+  `zona` enum('regional','nacional') NOT NULL,
+  `provincia_id` tinyint unsigned DEFAULT NULL,
+  `deporte_id` int NOT NULL,
+  `fecha_inicio` date NOT NULL,
+  `fecha_fin` date DEFAULT NULL,
+  `hora_inicio` time DEFAULT NULL,
+  `cantidad_equipos` int DEFAULT NULL,
+  `ida_vuelta` tinyint(1) NOT NULL DEFAULT '0',
+  `valor_inscripcion` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `premio_1` varchar(255) DEFAULT NULL,
+  `premio_2` varchar(255) DEFAULT NULL,
+  `premio_3` varchar(255) DEFAULT NULL,
+  `dias_partido` json DEFAULT NULL,
+  `reglamento_url` varchar(255) DEFAULT NULL,
+  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`evento_id`),
+  KEY `idx_evento_club` (`club_id`),
+  KEY `idx_evento_tipo` (`tipo`),
+  KEY `idx_evento_estado` (`estado`),
+  KEY `idx_evento_zona` (`zona`),
+  KEY `idx_evento_provincia` (`provincia_id`),
+  KEY `fk_evento_deporte` (`deporte_id`),
+  CONSTRAINT `fk_evento_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`),
+  CONSTRAINT `fk_evento_deporte` FOREIGN KEY (`deporte_id`) REFERENCES `deportes` (`deporte_id`),
+  CONSTRAINT `fk_evento_provincia` FOREIGN KEY (`provincia_id`) REFERENCES `provincia` (`id`),
+  CONSTRAINT `chk_evento_equipo_count` CHECK ((((`tipo` = _utf8mb4'amistoso') and (`cantidad_equipos` = 2)) or ((`tipo` = _utf8mb4'torneo') and (`cantidad_equipos` between 5 and 40)) or ((`tipo` = _utf8mb4'copa') and (`cantidad_equipos` in (4,8,16,32,64))) or (`cantidad_equipos` is null)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `eventos_legacy`
+--
+
+DROP TABLE IF EXISTS `eventos_legacy`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `eventos_legacy` (
+  `evento_id` int NOT NULL AUTO_INCREMENT,
+  `club_id` int NOT NULL,
   `nombre` varchar(100) DEFAULT NULL,
   `descripcion` text,
   `fecha` date DEFAULT NULL,
   `ubicacion` text,
   PRIMARY KEY (`evento_id`),
   KEY `club_id` (`club_id`),
-  CONSTRAINT `eventos_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`)
+  CONSTRAINT `eventos_legacy_ibfk_1` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -409,7 +590,7 @@ CREATE TABLE `messages` (
   PRIMARY KEY (`id`),
   KEY `idx_messages_club_date` (`club_id`,`created_at` DESC),
   CONSTRAINT `fk_messages_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -548,7 +729,7 @@ CREATE TABLE `reservas` (
   CONSTRAINT `fk_reservas_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `reservas_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`usuario_id`),
   CONSTRAINT `reservas_ibfk_2` FOREIGN KEY (`cancha_id`) REFERENCES `canchas` (`cancha_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=49 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -651,7 +832,7 @@ CREATE TABLE `user_inbox` (
   CONSTRAINT `fk_inbox_club` FOREIGN KEY (`club_id`) REFERENCES `clubes` (`club_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inbox_message` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inbox_user` FOREIGN KEY (`user_id`) REFERENCES `usuarios` (`usuario_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -694,4 +875,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-01-20 16:01:52
+-- Dump completed on 2026-01-23 17:22:49
