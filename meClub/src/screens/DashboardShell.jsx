@@ -13,6 +13,7 @@ import {
   EconomiaScreen,
   BuzonScreen,
   ServiciosScreen,
+  EventosScreen,
   MejorarPlanScreen,
   SoporteScreen,
 } from './dashboard';
@@ -335,6 +336,7 @@ export default function DashboardShell() {
     economia: EconomiaScreen,
     buzon: BuzonScreen,
     servicios: ServiciosScreen,
+    eventos: EventosScreen,
     'mejorar-plan': MejorarPlanScreen,
     soporte: SoporteScreen,
   };
