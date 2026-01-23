@@ -1,5 +1,7 @@
 const EventosModel = require('../models/eventos.model');
 const EventoEquiposModel = require('../models/evento_equipos.model');
+const EventoPartidosModel = require('../models/evento_partidos.model');
+const EventoPosicionesModel = require('../models/evento_posiciones.model');
 const {
   getLimitePorTipo,
   validateClubPermisoTipo,
@@ -9,6 +11,18 @@ const {
   resolveRegionalProvincia,
   isZonaRegional,
 } = require('../utils/eventosRules');
+
+const FASES_PARTIDO = new Set([
+  'amistoso',
+  'liga',
+  'octavos',
+  'cuartos',
+  'semifinal',
+  'final',
+  'tercer_puesto',
+]);
+
+const ESTADOS_PARTIDO = new Set(['pendiente', 'jugado', 'suspendido']);
 
 const throwValidationError = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -55,6 +69,49 @@ const parseOptionalInteger = (value, fieldName) => {
     throwValidationError(`${fieldName} inválido`);
   }
   return parsed;
+};
+
+const parseOptionalDateTime = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throwValidationError(`${fieldName} inválida`);
+  }
+  return parsed;
+};
+
+const validateFasePartido = (value) => {
+  if (!value) return null;
+  const normalized = parseRequiredString(value, 'fase').toLowerCase();
+  if (!FASES_PARTIDO.has(normalized)) {
+    throwValidationError('fase inválida');
+  }
+  return normalized;
+};
+
+const validateEstadoPartido = (value) => {
+  if (!value) return null;
+  const normalized = parseRequiredString(value, 'estado').toLowerCase();
+  if (!ESTADOS_PARTIDO.has(normalized)) {
+    throwValidationError('estado inválido');
+  }
+  return normalized;
+};
+
+const resolveDefaultFase = (eventoTipo, providedFase) => {
+  if (providedFase) return providedFase;
+  if (eventoTipo === 'copa') {
+    throwValidationError('fase es obligatoria para copas');
+  }
+  if (eventoTipo === 'amistoso') return 'amistoso';
+  return 'liga';
+};
+
+const NEXT_FASE_MAP = {
+  octavos: 'cuartos',
+  cuartos: 'semifinal',
+  semifinal: 'final',
 };
 
 const resolveLimiteEvento = (evento) => {
@@ -141,6 +198,22 @@ const updateEvento = async (req, res) => {
     const existente = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
     if (!existente) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    const baseFields = [
+      'nombre',
+      'tipo',
+      'descripcion',
+      'fecha_inicio',
+      'fecha_fin',
+      'zona',
+      'zona_regional',
+      'provincia_id',
+      'limite_equipos',
+    ];
+    const hasBaseUpdates = baseFields.some((field) => req.body?.[field] !== undefined);
+    if (hasBaseUpdates && existente.estado !== 'inactivo') {
+      throwValidationError('El evento está en modo solo lectura');
     }
 
     if (req.body?.estado !== undefined && existente.estado !== 'inactivo') {
@@ -365,6 +438,343 @@ const aprobarEquipo = (req, res) => actualizarEstadoEquipo(req, res, 'aprobado')
 
 const rechazarEquipo = (req, res) => actualizarEstadoEquipo(req, res, 'rechazado');
 
+const createPartido = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    const faseInput = req.body?.fase !== undefined ? validateFasePartido(req.body.fase) : null;
+    const fase = resolveDefaultFase(evento.tipo, faseInput);
+
+    if (evento.tipo === 'copa' && ['liga', 'amistoso'].includes(fase)) {
+      throwValidationError('fase inválida para copa');
+    }
+    if (evento.tipo === 'amistoso' && fase !== 'amistoso') {
+      throwValidationError('fase inválida para amistoso');
+    }
+    if (['liga', 'torneo'].includes(evento.tipo) && fase !== 'liga') {
+      throwValidationError('fase inválida para liga/torneo');
+    }
+
+    let orden = parseOptionalInteger(req.body?.orden, 'orden');
+    const jornada = parseOptionalInteger(req.body?.jornada, 'jornada');
+    if (evento.tipo === 'copa' && (orden === undefined || orden === null)) {
+      if (['final', 'tercer_puesto'].includes(fase)) {
+        orden = 1;
+      } else {
+        throwValidationError('orden es obligatorio para la fase');
+      }
+    }
+
+    const sedeId = parseOptionalInteger(req.body?.sede_id, 'sede_id');
+    const equipoLocalId = parseOptionalInteger(req.body?.equipo_local_id, 'equipo_local_id');
+    const equipoVisitanteId = parseOptionalInteger(
+      req.body?.equipo_visitante_id,
+      'equipo_visitante_id'
+    );
+    if (
+      equipoLocalId !== null &&
+      equipoVisitanteId !== null &&
+      equipoLocalId !== undefined &&
+      equipoVisitanteId !== undefined &&
+      equipoLocalId === equipoVisitanteId
+    ) {
+      throwValidationError('Los equipos no pueden ser iguales');
+    }
+
+    const fecha = parseOptionalDateTime(req.body?.fecha, 'fecha');
+    const marcadorLocal = parseOptionalInteger(req.body?.marcador_local, 'marcador_local');
+    const marcadorVisitante = parseOptionalInteger(
+      req.body?.marcador_visitante,
+      'marcador_visitante'
+    );
+
+    const estado = validateEstadoPartido(req.body?.estado) || 'pendiente';
+
+    const partido = await EventoPartidosModel.crear(eventoId, {
+      fase,
+      jornada,
+      orden,
+      sede_id: sedeId,
+      equipo_local_id: equipoLocalId,
+      equipo_visitante_id: equipoVisitanteId,
+      fecha,
+      marcador_local: marcadorLocal,
+      marcador_visitante: marcadorVisitante,
+      ganador_equipo_id: null,
+      estado,
+    });
+
+    res.status(201).json({ mensaje: 'Partido creado', partido });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const updatePartido = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    const partidoId = Number.parseInt(req.params.evento_partido_id, 10);
+    if (!Number.isInteger(eventoId) || !Number.isInteger(partidoId)) {
+      return res.status(400).json({ mensaje: 'Parámetros inválidos' });
+    }
+
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
+    if (!partido) {
+      return res.status(404).json({ mensaje: 'Partido no encontrado' });
+    }
+
+    const updates = {};
+
+    if (req.body?.fase !== undefined) {
+      updates.fase = validateFasePartido(req.body.fase);
+      if (evento.tipo === 'copa' && ['liga', 'amistoso'].includes(updates.fase)) {
+        throwValidationError('fase inválida para copa');
+      }
+      if (evento.tipo === 'amistoso' && updates.fase !== 'amistoso') {
+        throwValidationError('fase inválida para amistoso');
+      }
+      if (['liga', 'torneo'].includes(evento.tipo) && updates.fase !== 'liga') {
+        throwValidationError('fase inválida para liga/torneo');
+      }
+    }
+
+    if (req.body?.orden !== undefined) {
+      updates.orden = parseOptionalInteger(req.body.orden, 'orden');
+    }
+    if (req.body?.jornada !== undefined) {
+      updates.jornada = parseOptionalInteger(req.body.jornada, 'jornada');
+    }
+    if (req.body?.sede_id !== undefined) {
+      updates.sede_id = parseOptionalInteger(req.body.sede_id, 'sede_id');
+    }
+    if (req.body?.equipo_local_id !== undefined) {
+      updates.equipo_local_id = parseOptionalInteger(
+        req.body.equipo_local_id,
+        'equipo_local_id'
+      );
+    }
+    if (req.body?.equipo_visitante_id !== undefined) {
+      updates.equipo_visitante_id = parseOptionalInteger(
+        req.body.equipo_visitante_id,
+        'equipo_visitante_id'
+      );
+    }
+    if (
+      (updates.equipo_local_id ?? partido.equipo_local_id) !== null &&
+      (updates.equipo_visitante_id ?? partido.equipo_visitante_id) !== null &&
+      (updates.equipo_local_id ?? partido.equipo_local_id) !== undefined &&
+      (updates.equipo_visitante_id ?? partido.equipo_visitante_id) !== undefined &&
+      (updates.equipo_local_id ?? partido.equipo_local_id) ===
+        (updates.equipo_visitante_id ?? partido.equipo_visitante_id)
+    ) {
+      throwValidationError('Los equipos no pueden ser iguales');
+    }
+
+    if (req.body?.fecha !== undefined) {
+      updates.fecha = parseOptionalDateTime(req.body.fecha, 'fecha');
+    }
+    if (req.body?.marcador_local !== undefined) {
+      updates.marcador_local = parseOptionalInteger(req.body.marcador_local, 'marcador_local');
+    }
+    if (req.body?.marcador_visitante !== undefined) {
+      updates.marcador_visitante = parseOptionalInteger(
+        req.body.marcador_visitante,
+        'marcador_visitante'
+      );
+    }
+    if (req.body?.estado !== undefined) {
+      updates.estado = validateEstadoPartido(req.body.estado);
+    }
+
+    const actualizado = await EventoPartidosModel.actualizar(partidoId, eventoId, updates);
+    res.json({ mensaje: 'Partido actualizado', partido: actualizado });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const setGanadorPartido = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    const partidoId = Number.parseInt(req.params.evento_partido_id, 10);
+    if (!Number.isInteger(eventoId) || !Number.isInteger(partidoId)) {
+      return res.status(400).json({ mensaje: 'Parámetros inválidos' });
+    }
+
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
+    if (!partido) {
+      return res.status(404).json({ mensaje: 'Partido no encontrado' });
+    }
+
+    const ganadorEquipoId = parseOptionalInteger(req.body?.ganador_equipo_id, 'ganador_equipo_id');
+    if (!ganadorEquipoId) {
+      throwValidationError('ganador_equipo_id es obligatorio');
+    }
+
+    if (![partido.equipo_local_id, partido.equipo_visitante_id].includes(ganadorEquipoId)) {
+      throwValidationError('El ganador debe ser un equipo del partido');
+    }
+
+    const updates = {
+      ganador_equipo_id: ganadorEquipoId,
+      estado: 'jugado',
+    };
+
+    if (req.body?.marcador_local !== undefined) {
+      updates.marcador_local = parseOptionalInteger(req.body.marcador_local, 'marcador_local');
+    }
+    if (req.body?.marcador_visitante !== undefined) {
+      updates.marcador_visitante = parseOptionalInteger(
+        req.body.marcador_visitante,
+        'marcador_visitante'
+      );
+    }
+
+    const actualizado = await EventoPartidosModel.actualizar(partidoId, eventoId, updates);
+
+    if (evento.tipo === 'copa') {
+      const nextFase = NEXT_FASE_MAP[partido.fase];
+      if (nextFase && Number.isInteger(partido.orden)) {
+        const nextOrden = Math.ceil(partido.orden / 2);
+        const siguiente = await EventoPartidosModel.obtenerPorFaseOrden(
+          eventoId,
+          nextFase,
+          nextOrden
+        );
+        if (siguiente) {
+          const slotKey = partido.orden % 2 === 1 ? 'equipo_local_id' : 'equipo_visitante_id';
+          if (siguiente[slotKey] && Number(siguiente[slotKey]) !== ganadorEquipoId) {
+            throwValidationError('El siguiente cruce ya tiene un equipo asignado');
+          }
+          if (!siguiente[slotKey]) {
+            await EventoPartidosModel.actualizar(siguiente.evento_partido_id, eventoId, {
+              [slotKey]: ganadorEquipoId,
+            });
+          }
+        }
+      }
+    }
+
+    res.json({ mensaje: 'Ganador asignado', partido: actualizado });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const createPosicion = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (!['torneo', 'liga'].includes(evento.tipo)) {
+      return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
+    }
+
+    const equipoId = parseOptionalInteger(req.body?.equipo_id, 'equipo_id');
+    if (!equipoId) {
+      throwValidationError('equipo_id es obligatorio');
+    }
+
+    const posicion = await EventoPosicionesModel.crear(eventoId, {
+      equipo_id: equipoId,
+      puntos: parseOptionalInteger(req.body?.puntos, 'puntos') ?? 0,
+      partidos_jugados: parseOptionalInteger(req.body?.partidos_jugados, 'partidos_jugados') ?? 0,
+      victorias: parseOptionalInteger(req.body?.victorias, 'victorias') ?? 0,
+      empates: parseOptionalInteger(req.body?.empates, 'empates') ?? 0,
+      derrotas: parseOptionalInteger(req.body?.derrotas, 'derrotas') ?? 0,
+      goles_favor: parseOptionalInteger(req.body?.goles_favor, 'goles_favor') ?? 0,
+      goles_contra: parseOptionalInteger(req.body?.goles_contra, 'goles_contra') ?? 0,
+      orden: parseOptionalInteger(req.body?.orden, 'orden'),
+    });
+
+    res.status(201).json({ mensaje: 'Posición creada', posicion });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const updatePosicion = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    const posicionId = Number.parseInt(req.params.evento_posicion_id, 10);
+    if (!Number.isInteger(eventoId) || !Number.isInteger(posicionId)) {
+      return res.status(400).json({ mensaje: 'Parámetros inválidos' });
+    }
+
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (!['torneo', 'liga'].includes(evento.tipo)) {
+      return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
+    }
+
+    const existente = await EventoPosicionesModel.obtenerPorId(posicionId, eventoId);
+    if (!existente) {
+      return res.status(404).json({ mensaje: 'Posición no encontrada' });
+    }
+
+    const updates = {};
+    if (req.body?.puntos !== undefined) {
+      updates.puntos = parseOptionalInteger(req.body.puntos, 'puntos');
+    }
+    if (req.body?.orden !== undefined) {
+      updates.orden = parseOptionalInteger(req.body.orden, 'orden');
+    }
+
+    const actualizado = await EventoPosicionesModel.actualizar(posicionId, eventoId, updates);
+    res.json({ mensaje: 'Posición actualizada', posicion: actualizado });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
 module.exports = {
   listEventos,
   getEvento,
@@ -377,4 +787,9 @@ module.exports = {
   inscribirEquipo,
   aprobarEquipo,
   rechazarEquipo,
+  createPartido,
+  updatePartido,
+  setGanadorPartido,
+  createPosicion,
+  updatePosicion,
 };
