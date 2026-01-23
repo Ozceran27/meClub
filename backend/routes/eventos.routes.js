@@ -22,4 +22,11 @@ router.post('/:evento_id/equipos', eventosController.inscribirEquipo);
 router.post('/:evento_id/equipos/:evento_equipo_id/aprobar', eventosController.aprobarEquipo);
 router.post('/:evento_id/equipos/:evento_equipo_id/rechazar', eventosController.rechazarEquipo);
 
+router.post('/:evento_id/partidos', eventosController.createPartido);
+router.put('/:evento_id/partidos/:evento_partido_id', eventosController.updatePartido);
+router.post('/:evento_id/partidos/:evento_partido_id/ganador', eventosController.setGanadorPartido);
+
+router.post('/:evento_id/posiciones', eventosController.createPosicion);
+router.put('/:evento_id/posiciones/:evento_posicion_id', eventosController.updatePosicion);
+
 module.exports = router;

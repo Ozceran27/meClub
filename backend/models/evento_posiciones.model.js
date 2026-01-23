@@ -6,6 +6,7 @@ const normalizePosicionRow = (row) => {
     ...row,
     equipo_id: row.equipo_id === null ? null : Number(row.equipo_id),
     puntos: row.puntos === null ? null : Number(row.puntos),
+    orden: row.orden === null ? null : Number(row.orden),
   };
 };
 
@@ -13,10 +14,10 @@ const EventoPosicionesModel = {
   listarPorEvento: async (eventoId) => {
     const [rows] = await db.query(
       `SELECT evento_posicion_id, evento_id, equipo_id, puntos, partidos_jugados,
-              victorias, empates, derrotas, goles_favor, goles_contra, creado_en, actualizado_en
+              victorias, empates, derrotas, goles_favor, goles_contra, orden, creado_en, actualizado_en
        FROM evento_posiciones
        WHERE evento_id = ?
-       ORDER BY puntos DESC, goles_favor DESC`,
+       ORDER BY orden ASC, puntos DESC, goles_favor DESC`,
       [eventoId]
     );
     return rows.map((row) => normalizePosicionRow(row));
@@ -25,7 +26,7 @@ const EventoPosicionesModel = {
   obtenerPorId: async (posicionId, eventoId) => {
     const [rows] = await db.query(
       `SELECT evento_posicion_id, evento_id, equipo_id, puntos, partidos_jugados,
-              victorias, empates, derrotas, goles_favor, goles_contra, creado_en, actualizado_en
+              victorias, empates, derrotas, goles_favor, goles_contra, orden, creado_en, actualizado_en
        FROM evento_posiciones
        WHERE evento_posicion_id = ? AND evento_id = ?
        LIMIT 1`,
@@ -37,8 +38,8 @@ const EventoPosicionesModel = {
   crear: async (eventoId, payload) => {
     const [result] = await db.query(
       `INSERT INTO evento_posiciones
-       (evento_id, equipo_id, puntos, partidos_jugados, victorias, empates, derrotas, goles_favor, goles_contra)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (evento_id, equipo_id, puntos, partidos_jugados, victorias, empates, derrotas, goles_favor, goles_contra, orden)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         eventoId,
         payload.equipo_id,
@@ -49,6 +50,7 @@ const EventoPosicionesModel = {
         payload.derrotas,
         payload.goles_favor,
         payload.goles_contra,
+        payload.orden,
       ]
     );
     return EventoPosicionesModel.obtenerPorId(result.insertId, eventoId);
