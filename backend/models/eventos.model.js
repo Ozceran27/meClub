@@ -27,6 +27,24 @@ const EventosModel = {
     );
     return rows.map((row) => normalizeEventoRow(row));
   },
+  listarGlobales: async ({ provinciaId } = {}) => {
+    const values = [];
+    let whereClause = "zona = 'nacional'";
+    if (provinciaId !== undefined && provinciaId !== null) {
+      whereClause = "(zona = 'nacional' OR (zona = 'regional' AND provincia_id = ?))";
+      values.push(provinciaId);
+    }
+
+    const [rows] = await db.query(
+      `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
+              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+       FROM eventos
+       WHERE ${whereClause}
+       ORDER BY creado_en DESC, evento_id DESC`,
+      values
+    );
+    return rows.map((row) => normalizeEventoRow(row));
+  },
 
   obtenerPorId: async (eventoId, clubId) => {
     const [rows] = await db.query(
