@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../features/auth/useAuth';
+import { api } from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
@@ -45,36 +46,37 @@ const myEvents = [
   },
 ];
 
-const globalEvents = [
-  {
-    id: 'g-1',
-    title: 'Liga Provincial · Fecha 4',
-    date: 'Sáb 21 Sep',
-    scope: 'provincia',
-    organizer: 'Federación Provincial',
-  },
-  {
-    id: 'g-2',
-    title: 'Copa Nacional Juvenil',
-    date: 'Dom 29 Sep',
-    scope: 'nacional',
-    organizer: 'Asociación Nacional',
-  },
-  {
-    id: 'g-3',
-    title: 'Encuentro Regional',
-    date: 'Vie 04 Oct',
-    scope: 'provincia',
-    organizer: 'Liga Metropolitana',
-  },
-  {
-    id: 'g-4',
-    title: 'Master Nacional',
-    date: 'Sáb 12 Oct',
-    scope: 'nacional',
-    organizer: 'Comité Nacional',
-  },
-];
+const resolveGlobalScope = (zona) => {
+  const normalized = String(zona ?? '').toLowerCase();
+  if (normalized === 'regional') return 'provincia';
+  return 'nacional';
+};
+
+const formatEventDate = (value) => {
+  if (!value) return 'Sin fecha';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Sin fecha';
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(parsed);
+};
+
+const resolveOrganizer = (evento) => {
+  if (evento?.organizador) return evento.organizador;
+  if (evento?.club_nombre) return evento.club_nombre;
+  if (evento?.club_id) return `Club ${evento.club_id}`;
+  return 'Organización';
+};
+
+const mapGlobalEvent = (evento) => ({
+  id: evento?.evento_id ?? evento?.id ?? `global-${Math.random()}`,
+  title: evento?.nombre ?? 'Evento',
+  date: formatEventDate(evento?.fecha_inicio ?? evento?.fecha_fin),
+  scope: resolveGlobalScope(evento?.zona),
+  organizer: resolveOrganizer(evento),
+});
 
 const DEFAULT_STANDINGS = [
   { id: 'st-1', team: 'Club Centro', played: 3, points: 7 },
@@ -1002,6 +1004,8 @@ export default function EventosScreen() {
   const [activeModal, setActiveModal] = useState(null);
   const [activeMode, setActiveMode] = useState('create');
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [globalEvents, setGlobalEvents] = useState([]);
+  const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
   const clubLevel = useMemo(() => {
     const parsed = Number(user?.nivel_id ?? 1);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -1010,7 +1014,7 @@ export default function EventosScreen() {
 
   const filteredGlobalEvents = useMemo(() => {
     return globalEvents.filter((event) => event.scope === filter);
-  }, [filter]);
+  }, [filter, globalEvents]);
 
   const lockedButtonProps = hasProAccess
     ? {
@@ -1029,6 +1033,39 @@ export default function EventosScreen() {
     setSelectedEvent(null);
     setActiveModal(type);
   };
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadGlobalEvents = async () => {
+      if (!user?.clubId) {
+        setGlobalEvents([]);
+        return;
+      }
+      setGlobalEventsStatus({ loading: true, error: null });
+      try {
+        const data = await api.get(`/eventos/globales?club_id=${user.clubId}`);
+        const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+        if (isMounted) {
+          setGlobalEvents(eventos.map(mapGlobalEvent));
+        }
+      } catch (error) {
+        if (isMounted) {
+          setGlobalEventsStatus({
+            loading: false,
+            error: error?.message || 'No se pudieron cargar los eventos globales.',
+          });
+        }
+        return;
+      }
+      if (isMounted) {
+        setGlobalEventsStatus({ loading: false, error: null });
+      }
+    };
+    loadGlobalEvents();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.clubId]);
 
   const handleOpenEdit = (event) => {
     setActiveMode('edit');
@@ -1210,6 +1247,17 @@ export default function EventosScreen() {
               Explorá convocatorias oficiales y definí tu participación según región.
             </Text>
             <View className="mt-4 gap-4">
+              {globalEventsStatus.loading ? (
+                <Text className="text-white/60 text-sm">Cargando eventos globales...</Text>
+              ) : null}
+              {globalEventsStatus.error ? (
+                <Text className="text-rose-200 text-sm">{globalEventsStatus.error}</Text>
+              ) : null}
+              {!globalEventsStatus.loading && !globalEventsStatus.error && filteredGlobalEvents.length === 0 ? (
+                <Text className="text-white/50 text-sm">
+                  No hay eventos globales disponibles para este filtro.
+                </Text>
+              ) : null}
               {filteredGlobalEvents.map((event) => (
                 <View
                   key={event.id}

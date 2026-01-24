@@ -2,6 +2,7 @@ const EventosModel = require('../models/eventos.model');
 const EventoEquiposModel = require('../models/evento_equipos.model');
 const EventoPartidosModel = require('../models/evento_partidos.model');
 const EventoPosicionesModel = require('../models/evento_posiciones.model');
+const ClubesModel = require('../models/clubes.model');
 const {
   getLimitePorTipo,
   validateClubPermisoTipo,
@@ -71,6 +72,14 @@ const parseOptionalInteger = (value, fieldName) => {
   return parsed;
 };
 
+const parseRequiredInteger = (value, fieldName) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed)) {
+    throwValidationError(`${fieldName} inválido`);
+  }
+  return parsed;
+};
+
 const parseOptionalDateTime = (value, fieldName) => {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
@@ -127,6 +136,25 @@ const listEventos = async (req, res) => {
     const eventos = await EventosModel.listarPorClub(req.club.club_id, { provinciaId });
     res.json({ eventos });
   } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const listEventosGlobales = async (req, res) => {
+  try {
+    const clubId = parseRequiredInteger(req.query?.club_id ?? req.body?.club_id, 'club_id');
+    const club = await ClubesModel.obtenerClubPorId(clubId);
+    if (!club) {
+      return res.status(404).json({ mensaje: 'Club no encontrado' });
+    }
+    const provinciaId = club.provincia_id ?? null;
+    const eventos = await EventosModel.listarGlobales({ provinciaId });
+    res.json({ eventos });
+  } catch (error) {
+    if (error.statusCode === 400) {
+      return res.status(400).json({ mensaje: error.message });
+    }
     console.error(error);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
   }
@@ -777,6 +805,7 @@ const updatePosicion = async (req, res) => {
 
 module.exports = {
   listEventos,
+  listEventosGlobales,
   getEvento,
   createEvento,
   updateEvento,
