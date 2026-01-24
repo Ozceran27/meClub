@@ -110,6 +110,31 @@ const EventosModel = {
     );
     return result.affectedRows > 0;
   },
+
+  finalizarEventosVencidos: async () => {
+    const [rows] = await db.query(
+      `SELECT evento_id, club_id
+       FROM eventos
+       WHERE fecha_fin IS NOT NULL
+         AND fecha_fin < NOW()
+         AND estado <> 'finalizado'`
+    );
+
+    if (rows.length === 0) {
+      return { actualizados: 0, eventos: [] };
+    }
+
+    const ids = rows.map((row) => row.evento_id);
+
+    const [result] = await db.query(
+      `UPDATE eventos
+       SET estado = 'finalizado', actualizado_en = NOW()
+       WHERE evento_id IN (?)`,
+      [ids]
+    );
+
+    return { actualizados: result.affectedRows ?? 0, eventos: rows };
+  },
 };
 
 module.exports = EventosModel;

@@ -31,6 +31,12 @@ const throwValidationError = (message, statusCode = 400) => {
   throw error;
 };
 
+const ensureEventoNoFinalizado = (evento, message = 'El evento está finalizado y no admite cambios') => {
+  if (evento?.estado === 'finalizado') {
+    throwValidationError(message);
+  }
+};
+
 const parseRequiredString = (value, fieldName) => {
   if (typeof value !== 'string') {
     throwValidationError(`${fieldName} es obligatorio`);
@@ -227,6 +233,8 @@ const updateEvento = async (req, res) => {
     if (!existente) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+
+    ensureEventoNoFinalizado(existente);
 
     const baseFields = [
       'nombre',
@@ -432,6 +440,8 @@ const actualizarEstadoEquipo = async (req, res, estadoDestino) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
+    ensureEventoNoFinalizado(evento, 'No se pueden modificar equipos en un evento finalizado');
+
     const equipo = await EventoEquiposModel.obtenerPorId(eventoEquipoId, eventoId);
     if (!equipo) {
       return res.status(404).json({ mensaje: 'Inscripción no encontrada' });
@@ -477,6 +487,8 @@ const createPartido = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+
+    ensureEventoNoFinalizado(evento);
 
     const faseInput = req.body?.fase !== undefined ? validateFasePartido(req.body.fase) : null;
     const fase = resolveDefaultFase(evento.tipo, faseInput);
@@ -562,6 +574,8 @@ const updatePartido = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+
+    ensureEventoNoFinalizado(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -655,6 +669,8 @@ const setGanadorPartido = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
+    ensureEventoNoFinalizado(evento);
+
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
       return res.status(404).json({ mensaje: 'Partido no encontrado' });
@@ -731,6 +747,8 @@ const createPosicion = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
+    ensureEventoNoFinalizado(evento);
+
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
     }
@@ -774,6 +792,8 @@ const updatePosicion = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+
+    ensureEventoNoFinalizado(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
