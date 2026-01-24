@@ -76,6 +76,37 @@ const globalEvents = [
   },
 ];
 
+const DEFAULT_STANDINGS = [
+  { id: 'st-1', team: 'Club Centro', played: 3, points: 7 },
+  { id: 'st-2', team: 'Atlético Norte', played: 3, points: 6 },
+  { id: 'st-3', team: 'Deportivo Sur', played: 3, points: 4 },
+  { id: 'st-4', team: 'Social Este', played: 3, points: 3 },
+  { id: 'st-5', team: 'Unión Oeste', played: 3, points: 1 },
+];
+
+const DEFAULT_BRACKET = [
+  {
+    name: 'Cuartos',
+    matches: [
+      { id: 'qf-1', teamA: 'Club Centro', teamB: 'Unión Oeste', winner: '' },
+      { id: 'qf-2', teamA: 'Atlético Norte', teamB: 'Social Este', winner: '' },
+      { id: 'qf-3', teamA: 'Deportivo Sur', teamB: 'Club Andes', winner: '' },
+      { id: 'qf-4', teamA: 'Juventud', teamB: 'San Martín', winner: '' },
+    ],
+  },
+  {
+    name: 'Semifinal',
+    matches: [
+      { id: 'sf-1', teamA: '—', teamB: '—', winner: '' },
+      { id: 'sf-2', teamA: '—', teamB: '—', winner: '' },
+    ],
+  },
+  {
+    name: 'Final',
+    matches: [{ id: 'f-1', teamA: '—', teamB: '—', winner: '' }],
+  },
+];
+
 const statusStyles = {
   Programado: {
     container: 'bg-sky-500/10 border-sky-400/40',
@@ -165,6 +196,15 @@ function ModalHeader({ title, subtitle, onClose }) {
       <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
         <Ionicons name="close" size={18} color="#E2E8F0" />
       </Pressable>
+    </View>
+  );
+}
+
+function SectionTitle({ title, subtitle }) {
+  return (
+    <View className="gap-1">
+      <Text className="text-white text-sm font-semibold">{title}</Text>
+      {subtitle ? <Text className="text-white/50 text-xs">{subtitle}</Text> : null}
     </View>
   );
 }
@@ -267,6 +307,58 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
             onChangeText={(value) => handleChange('prize', value)}
             editable={editable}
           />
+          <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <SectionTitle
+              title="Resultado del amistoso"
+              subtitle="Definí el marcador final y seleccioná el ganador."
+            />
+            <View className="flex-row gap-4">
+              <View className="flex-1 gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <Text className="text-white text-xs font-semibold uppercase tracking-wide">
+                  {form.team1 || 'Equipo 1'}
+                </Text>
+                <TextInput
+                  className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-white"
+                  placeholder="0"
+                  placeholderTextColor="#94A3B8"
+                  value={form.team1Score}
+                  onChangeText={(value) => handleChange('team1Score', value.replace(/[^0-9]/g, ''))}
+                  editable={editable}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View className="flex-1 gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                <Text className="text-white text-xs font-semibold uppercase tracking-wide">
+                  {form.team2 || 'Equipo 2'}
+                </Text>
+                <TextInput
+                  className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-white"
+                  placeholder="0"
+                  placeholderTextColor="#94A3B8"
+                  value={form.team2Score}
+                  onChangeText={(value) => handleChange('team2Score', value.replace(/[^0-9]/g, ''))}
+                  editable={editable}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+            <View className="gap-2">
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Ganador
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {[form.team1 || 'Equipo 1', form.team2 || 'Equipo 2', 'Empate'].map((option) => (
+                  <OptionPill
+                    key={option}
+                    label={option}
+                    active={form.winner === option}
+                    onPress={() => handleChange('winner', option)}
+                    disabled={!editable}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
         </View>
         <View className="flex-row justify-end gap-3 pt-2">
           <Pressable onPress={onClose} className="rounded-full border border-white/15 px-4 py-2">
@@ -290,6 +382,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
   const [form, setForm] = useState(() => initialValues);
   const [venues, setVenues] = useState(() => initialValues?.venues ?? []);
   const [newVenue, setNewVenue] = useState('');
+  const [standings, setStandings] = useState(() => initialValues?.standings ?? []);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -297,6 +390,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
   useEffect(() => {
     setForm(initialValues);
     setVenues(initialValues?.venues ?? []);
+    setStandings(initialValues?.standings ?? []);
   }, [initialValues]);
 
   const handleChange = (field, value) => {
@@ -331,6 +425,27 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
     }
     const clamped = Math.max(5, Math.min(40, parsed));
     handleChange('teams', String(clamped));
+  };
+
+  const handleStandingChange = (index, field, value) => {
+    if (!editable) return;
+    setStandings((prev) =>
+      prev.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [field]: value } : row
+      )
+    );
+  };
+
+  const moveStanding = (index, direction) => {
+    if (!editable) return;
+    setStandings((prev) => {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [row] = next.splice(index, 1);
+      next.splice(targetIndex, 0, row);
+      return next;
+    });
   };
 
   return (
@@ -511,6 +626,75 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
               editable={editable}
             />
           </View>
+          <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <SectionTitle
+              title="Tabla de posiciones"
+              subtitle="Actualizá puntos y reordená la tabla según resultados."
+            />
+            <View className="flex-row items-center justify-between border-b border-white/10 pb-2">
+              <Text className="text-white/50 text-xs w-8">#</Text>
+              <Text className="text-white/50 text-xs flex-1">Equipo</Text>
+              <Text className="text-white/50 text-xs w-12 text-center">PJ</Text>
+              <Text className="text-white/50 text-xs w-12 text-center">PTS</Text>
+              <Text className="text-white/50 text-xs w-16 text-right">Orden</Text>
+            </View>
+            {standings.length === 0 ? (
+              <Text className="text-white/40 text-xs">Sin posiciones cargadas.</Text>
+            ) : (
+              standings.map((row, index) => (
+                <View
+                  key={row.id ?? `${row.team}-${index}`}
+                  className="flex-row items-center gap-3 border-b border-white/5 py-2"
+                >
+                  <Text className="text-white/60 text-xs w-8">{index + 1}</Text>
+                  <TextInput
+                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white text-xs"
+                    value={row.team}
+                    onChangeText={(value) => handleStandingChange(index, 'team', value)}
+                    editable={editable}
+                  />
+                  <TextInput
+                    className="w-12 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-white text-xs"
+                    value={String(row.played)}
+                    onChangeText={(value) =>
+                      handleStandingChange(index, 'played', value.replace(/[^0-9]/g, ''))
+                    }
+                    editable={editable}
+                    keyboardType="numeric"
+                  />
+                  <TextInput
+                    className="w-12 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-white text-xs"
+                    value={String(row.points)}
+                    onChangeText={(value) =>
+                      handleStandingChange(index, 'points', value.replace(/[^0-9]/g, ''))
+                    }
+                    editable={editable}
+                    keyboardType="numeric"
+                  />
+                  <View className="flex-row gap-1 w-16 justify-end">
+                    <Pressable
+                      onPress={() => moveStanding(index, -1)}
+                      disabled={!editable || index === 0}
+                      className={`h-7 w-7 items-center justify-center rounded-full ${
+                        !editable || index === 0 ? 'bg-white/10' : 'bg-white/5'
+                      }`}
+                    >
+                      <Ionicons name="chevron-up" size={14} color="#E2E8F0" />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => moveStanding(index, 1)}
+                      disabled={!editable || index === standings.length - 1}
+                      className={`h-7 w-7 items-center justify-center rounded-full ${
+                        !editable || index === standings.length - 1 ? 'bg-white/10' : 'bg-white/5'
+                      }`}
+                    >
+                      <Ionicons name="chevron-down" size={14} color="#E2E8F0" />
+                    </Pressable>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
         </View>
         <View className="flex-row justify-end gap-3 pt-2">
           <Pressable onPress={onClose} className="rounded-full border border-white/15 px-4 py-2">
@@ -534,6 +718,7 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
   const [form, setForm] = useState(() => initialValues);
   const [venues, setVenues] = useState(() => initialValues?.venues ?? []);
   const [newVenue, setNewVenue] = useState('');
+  const [bracket, setBracket] = useState(() => initialValues?.bracket ?? []);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -541,6 +726,7 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
   useEffect(() => {
     setForm(initialValues);
     setVenues(initialValues?.venues ?? []);
+    setBracket(initialValues?.bracket ?? []);
   }, [initialValues]);
 
   const handleChange = (field, value) => {
@@ -564,6 +750,28 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
     if (!editable) return;
     const filename = `reglamento-${Date.now()}.pdf`;
     setForm((prev) => ({ ...prev, pdfName: filename }));
+  };
+
+  const handleSelectWinner = (roundIndex, matchIndex, team) => {
+    if (!editable) return;
+    setBracket((prev) => {
+      const next = prev.map((round) => ({
+        ...round,
+        matches: round.matches.map((match) => ({ ...match })),
+      }));
+      const round = next[roundIndex];
+      if (!round) return prev;
+      const match = round.matches[matchIndex];
+      if (!match) return prev;
+      match.winner = team;
+      if (next[roundIndex + 1]) {
+        const nextRound = next[roundIndex + 1];
+        const nextMatchIndex = Math.floor(matchIndex / 2);
+        const slot = matchIndex % 2 === 0 ? 'teamA' : 'teamB';
+        nextRound.matches[nextMatchIndex][slot] = team;
+      }
+      return next;
+    });
   };
 
   return (
@@ -728,6 +936,47 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
               editable={editable}
             />
           </View>
+          <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <SectionTitle
+              title="Fixture por llaves"
+              subtitle="Seleccioná ganadores y avanzá de ronda."
+            />
+            <View className="flex-col gap-4 lg:flex-row">
+              {bracket.map((round, roundIndex) => (
+                <View key={round.name} className="flex-1 gap-3">
+                  <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                    {round.name}
+                  </Text>
+                  <View className="gap-3">
+                    {round.matches.map((match, matchIndex) => (
+                      <View
+                        key={match.id ?? `${round.name}-${matchIndex}`}
+                        className="gap-2 rounded-2xl border border-white/10 bg-white/5 p-3"
+                      >
+                        {[match.teamA, match.teamB].map((team) => (
+                          <Pressable
+                            key={`${match.id}-${team}`}
+                            onPress={() => handleSelectWinner(roundIndex, matchIndex, team)}
+                            disabled={!editable}
+                            className={`rounded-xl border px-3 py-2 ${
+                              match.winner === team
+                                ? 'border-emerald-400/60 bg-emerald-500/10'
+                                : 'border-white/10 bg-white/5'
+                            } ${!editable ? 'opacity-60' : ''}`}
+                          >
+                            <Text className="text-white text-xs font-semibold">{team}</Text>
+                          </Pressable>
+                        ))}
+                        <Text className="text-white/40 text-[11px]">
+                          Ganador: {match.winner || 'Sin definir'}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
         <View className="flex-row justify-end gap-3 pt-2">
           <Pressable onPress={onClose} className="rounded-full border border-white/15 px-4 py-2">
@@ -801,6 +1050,9 @@ export default function EventosScreen() {
       sport: selectedEvent?.sport ?? '',
       team1: selectedEvent?.team1 ?? '',
       team2: selectedEvent?.team2 ?? '',
+      team1Score: selectedEvent?.team1Score ?? '',
+      team2Score: selectedEvent?.team2Score ?? '',
+      winner: selectedEvent?.winner ?? '',
       prize: selectedEvent?.prize ?? '',
       status: selectedEvent?.status ?? '',
     }),
@@ -821,6 +1073,7 @@ export default function EventosScreen() {
       pdfName: selectedEvent?.pdfName ?? '',
       pdfUrl: selectedEvent?.pdfUrl ?? '',
       venues: selectedEvent?.venues ?? [],
+      standings: selectedEvent?.standings ?? DEFAULT_STANDINGS,
       status: selectedEvent?.status ?? '',
     }),
     [selectedEvent]
@@ -839,6 +1092,7 @@ export default function EventosScreen() {
       pdfName: selectedEvent?.pdfName ?? '',
       pdfUrl: selectedEvent?.pdfUrl ?? '',
       venues: selectedEvent?.venues ?? [],
+      bracket: selectedEvent?.bracket ?? DEFAULT_BRACKET,
       status: selectedEvent?.status ?? '',
     }),
     [selectedEvent]
@@ -896,9 +1150,10 @@ export default function EventosScreen() {
             </Text>
             <View className="mt-4 gap-4">
               {myEvents.map((event) => (
-                <View
+                <Pressable
                   key={event.id}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  onPress={() => handleOpenEdit(event)}
                 >
                   <View className="flex-row items-start justify-between gap-3">
                     <View className="flex-1">
@@ -911,7 +1166,10 @@ export default function EventosScreen() {
                   <View className="flex-row flex-wrap gap-2 mt-4">
                     <Pressable
                       className="rounded-full border border-white/10 px-3 py-1"
-                      onPress={() => handleOpenEdit(event)}
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleOpenEdit(event);
+                      }}
                     >
                       <Text className="text-white text-xs font-semibold">Editar</Text>
                     </Pressable>
@@ -925,7 +1183,7 @@ export default function EventosScreen() {
                       <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
                     </Pressable>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           </Card>
