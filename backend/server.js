@@ -4,6 +4,7 @@ const cors = require('cors');
 const logger = require('./utils/logger');
 const { initAsociadosTablesCheck } = require('./utils/asociadosTablesGuard');
 const { logosDir, logosPublicPath } = require('./utils/logoStorage');
+const { startEventosFinalizacionJob } = require('./utils/eventosFinalizacionJob');
 const app = express();
 const PORT = process.env.PORT || 3006;
 
@@ -72,6 +73,7 @@ app.get('/', (req, res) => {
 });
 
 initAsociadosTablesCheck();
+startEventosFinalizacionJob();
 
 // RUN SERVER -------------------------------------------------------------------------------------
 app.listen(PORT, '0.0.0.0', () => {
