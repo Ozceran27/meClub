@@ -46,6 +46,19 @@ const myEvents = [
   },
 ];
 
+const STATUS_LABELS = {
+  inactivo: 'Inactivo',
+  activo: 'En curso',
+  pausado: 'Pausado',
+  finalizado: 'Finalizado',
+};
+
+const resolveStatusLabel = (status) => {
+  if (!status) return 'Programado';
+  const normalized = String(status).toLowerCase();
+  return STATUS_LABELS[normalized] ?? status;
+};
+
 const resolveGlobalScope = (zona) => {
   const normalized = String(zona ?? '').toLowerCase();
   if (normalized === 'regional') return 'provincia';
@@ -122,14 +135,23 @@ const statusStyles = {
     container: 'bg-amber-500/10 border-amber-400/40',
     text: 'text-amber-100',
   },
+  Finalizado: {
+    container: 'bg-slate-500/10 border-slate-400/40',
+    text: 'text-slate-200',
+  },
+  Inactivo: {
+    container: 'bg-indigo-500/10 border-indigo-400/40',
+    text: 'text-indigo-100',
+  },
 };
 
 function StatusPill({ status }) {
-  const styles = statusStyles[status] ?? statusStyles.Programado;
+  const label = resolveStatusLabel(status);
+  const styles = statusStyles[label] ?? statusStyles.Programado;
   return (
     <View className={`rounded-full px-3 py-[4px] border ${styles.container}`}>
       <Text className={`text-[12px] font-semibold ${styles.text}`} numberOfLines={1}>
-        {status}
+        {label}
       </Text>
     </View>
   );
@@ -1413,6 +1435,7 @@ export default function EventosScreen() {
   const [activeModal, setActiveModal] = useState(null);
   const [activeMode, setActiveMode] = useState('create');
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [events, setEvents] = useState(myEvents);
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
   const [venues, setVenues] = useState([]);
@@ -1534,6 +1557,32 @@ export default function EventosScreen() {
     setSelectedEvent(null);
   };
 
+  const updateEventStatus = (eventoId, estado) => {
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.id === eventoId ? { ...event, status: estado ?? event.status } : event
+      )
+    );
+  };
+
+  const handleStartEvent = async (event) => {
+    try {
+      const data = await api.post(`/eventos/${event.id}/iniciar`);
+      updateEventStatus(event.id, data?.evento?.estado ?? 'activo');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handlePauseEvent = async (event) => {
+    try {
+      const data = await api.post(`/eventos/${event.id}/pausar`);
+      updateEventStatus(event.id, data?.evento?.estado ?? 'pausado');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const friendlyInitialValues = useMemo(
     () => ({
       title: selectedEvent?.title ?? '',
@@ -1639,7 +1688,7 @@ export default function EventosScreen() {
               Organizá tus eventos internos y controlá el estado de cada convocatoria.
             </Text>
             <View className="mt-4 gap-4">
-              {myEvents.map((event) => (
+              {events.map((event) => (
                 <Pressable
                   key={event.id}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
@@ -1663,10 +1712,22 @@ export default function EventosScreen() {
                     >
                       <Text className="text-white text-xs font-semibold">Editar</Text>
                     </Pressable>
-                    <Pressable className="rounded-full border border-emerald-400/40 px-3 py-1">
+                    <Pressable
+                      className="rounded-full border border-emerald-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleStartEvent(event);
+                      }}
+                    >
                       <Text className="text-emerald-200 text-xs font-semibold">Iniciar</Text>
                     </Pressable>
-                    <Pressable className="rounded-full border border-amber-400/40 px-3 py-1">
+                    <Pressable
+                      className="rounded-full border border-amber-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handlePauseEvent(event);
+                      }}
+                    >
                       <Text className="text-amber-200 text-xs font-semibold">Pausar</Text>
                     </Pressable>
                     <Pressable className="rounded-full border border-rose-500/40 px-3 py-1">
