@@ -3,6 +3,7 @@ const EventoEquiposModel = require('../models/evento_equipos.model');
 const EventoPartidosModel = require('../models/evento_partidos.model');
 const EventoPosicionesModel = require('../models/evento_posiciones.model');
 const ClubesModel = require('../models/clubes.model');
+const { normalizeHour } = require('../utils/datetime');
 const {
   getLimitePorTipo,
   validateClubPermisoTipo,
@@ -77,6 +78,17 @@ const parseOptionalDate = (value, fieldName) => {
   return parsed;
 };
 
+const parseRequiredDate = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    throwValidationError(`${fieldName} es obligatorio`);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throwValidationError(`${fieldName} inválido`);
+  }
+  return parsed;
+};
+
 const parseOptionalInteger = (value, fieldName) => {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
@@ -103,6 +115,26 @@ const parseOptionalDateTime = (value, fieldName) => {
     throwValidationError(`${fieldName} inválida`);
   }
   return parsed;
+};
+
+const parseOptionalHour = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const normalized = normalizeHour(String(value));
+  if (!normalized) {
+    throwValidationError(`${fieldName} inválida`);
+  }
+  return normalized;
+};
+
+const parseOptionalPrice = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    throwValidationError(`${fieldName} debe ser un número positivo`);
+  }
+  return Math.round(numeric * 100) / 100;
 };
 
 const validateFasePartido = (value) => {
@@ -203,11 +235,17 @@ const createEvento = async (req, res) => {
 
     const estado = validateEstado(req.body?.estado) || 'inactivo';
     const descripcion = parseOptionalString(req.body?.descripcion);
-    const fecha_inicio = parseOptionalDate(req.body?.fecha_inicio, 'fecha_inicio');
+    const fecha_inicio = parseRequiredDate(req.body?.fecha_inicio, 'fecha_inicio');
     const fecha_fin = parseOptionalDate(req.body?.fecha_fin, 'fecha_fin');
-    const zona = parseOptionalString(req.body?.zona) || null;
-    const provincia_id = resolveRegionalProvincia(req.body || {}, req.club);
+    const zona = parseOptionalString(req.body?.zona) || 'regional';
+    const provincia_id = resolveRegionalProvincia({ ...(req.body || {}), zona }, req.club);
     const limite_equipos = validateLimiteEquipos(tipo, req.body?.limite_equipos);
+    const deporte_id = parseRequiredInteger(req.body?.deporte_id, 'deporte_id');
+    const hora_inicio = parseOptionalHour(req.body?.hora_inicio, 'hora_inicio');
+    const valor_inscripcion = parseOptionalPrice(req.body?.valor_inscripcion, 'valor_inscripcion');
+    const premio_1 = parseOptionalString(req.body?.premio_1);
+    const premio_2 = parseOptionalString(req.body?.premio_2);
+    const premio_3 = parseOptionalString(req.body?.premio_3);
 
     const evento = await EventosModel.crear(req.club.club_id, {
       nombre,
@@ -219,6 +257,12 @@ const createEvento = async (req, res) => {
       zona,
       provincia_id,
       limite_equipos,
+      deporte_id,
+      hora_inicio,
+      valor_inscripcion,
+      premio_1,
+      premio_2,
+      premio_3,
     });
 
     res.status(201).json({ mensaje: 'Evento creado', evento });
@@ -251,10 +295,16 @@ const updateEvento = async (req, res) => {
       'descripcion',
       'fecha_inicio',
       'fecha_fin',
+      'hora_inicio',
       'zona',
       'zona_regional',
       'provincia_id',
       'limite_equipos',
+      'deporte_id',
+      'valor_inscripcion',
+      'premio_1',
+      'premio_2',
+      'premio_3',
     ];
     const hasBaseUpdates = baseFields.some((field) => req.body?.[field] !== undefined);
     if (hasBaseUpdates && existente.estado !== 'inactivo') {
@@ -292,6 +342,10 @@ const updateEvento = async (req, res) => {
       updates.fecha_fin = parseOptionalDate(req.body.fecha_fin, 'fecha_fin');
     }
 
+    if (req.body?.hora_inicio !== undefined) {
+      updates.hora_inicio = parseOptionalHour(req.body.hora_inicio, 'hora_inicio');
+    }
+
     if (req.body?.estado !== undefined) {
       updates.estado = validateEstado(req.body.estado);
     }
@@ -318,6 +372,26 @@ const updateEvento = async (req, res) => {
     if (req.body?.limite_equipos !== undefined) {
       const tipoForLimit = updates.tipo || existente.tipo;
       updates.limite_equipos = validateLimiteEquipos(tipoForLimit, req.body.limite_equipos);
+    }
+
+    if (req.body?.deporte_id !== undefined) {
+      updates.deporte_id = parseRequiredInteger(req.body.deporte_id, 'deporte_id');
+    }
+
+    if (req.body?.valor_inscripcion !== undefined) {
+      updates.valor_inscripcion = parseOptionalPrice(req.body.valor_inscripcion, 'valor_inscripcion');
+    }
+
+    if (req.body?.premio_1 !== undefined) {
+      updates.premio_1 = parseOptionalString(req.body.premio_1);
+    }
+
+    if (req.body?.premio_2 !== undefined) {
+      updates.premio_2 = parseOptionalString(req.body.premio_2);
+    }
+
+    if (req.body?.premio_3 !== undefined) {
+      updates.premio_3 = parseOptionalString(req.body.premio_3);
     }
 
     const evento = await EventosModel.actualizar(eventoId, req.club.club_id, updates);

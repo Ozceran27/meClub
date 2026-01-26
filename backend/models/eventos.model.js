@@ -30,7 +30,8 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, cantidad_equipos, creado_en, actualizado_en
+              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
+              premio_1, premio_2, premio_3, creado_en, actualizado_en
        FROM eventos
        WHERE ${filters.join(' AND ')}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -48,7 +49,8 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, cantidad_equipos, creado_en, actualizado_en
+              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
+              premio_1, premio_2, premio_3, creado_en, actualizado_en
        FROM eventos
        WHERE ${whereClause}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -60,7 +62,8 @@ const EventosModel = {
   obtenerPorId: async (eventoId, clubId) => {
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, cantidad_equipos, creado_en, actualizado_en
+              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
+              premio_1, premio_2, premio_3, creado_en, actualizado_en
        FROM eventos
        WHERE evento_id = ? AND club_id = ?
        LIMIT 1`,
@@ -74,8 +77,9 @@ const EventosModel = {
       payload.cantidad_equipos ?? payload.limite_equipos ?? null;
     const [result] = await db.query(
       `INSERT INTO eventos
-       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, provincia_id, zona, cantidad_equipos)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio,
+        provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion, premio_1, premio_2, premio_3)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clubId,
         payload.nombre,
@@ -84,9 +88,15 @@ const EventosModel = {
         payload.estado,
         payload.fecha_inicio,
         payload.fecha_fin,
+        payload.hora_inicio,
         payload.provincia_id,
         payload.zona,
+        payload.deporte_id,
         cantidadEquipos,
+        payload.valor_inscripcion ?? 0,
+        payload.premio_1,
+        payload.premio_2,
+        payload.premio_3,
       ]
     );
     return EventosModel.obtenerPorId(result.insertId, clubId);
