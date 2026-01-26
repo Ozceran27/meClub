@@ -1161,7 +1161,7 @@ export default function EventosScreen() {
               onPress={() => handleOpenCreate('torneo')}
               disabled={!hasProAccess}
               icon="trophy-outline"
-              label="Torneo-Liga"
+              label="Crear Torneo"
               badge={lockedButtonProps.badge}
               backgroundClassName={lockedButtonProps.backgroundClassName}
               className={lockedButtonProps.className}
@@ -1170,7 +1170,7 @@ export default function EventosScreen() {
               onPress={() => handleOpenCreate('copa')}
               disabled={!hasProAccess}
               icon="flag-outline"
-              label="Copa"
+              label="Crear Copa"
               badge={lockedButtonProps.badge}
               backgroundClassName={lockedButtonProps.backgroundClassName}
               className={lockedButtonProps.className}
