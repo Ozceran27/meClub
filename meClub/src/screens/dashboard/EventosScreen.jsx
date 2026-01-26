@@ -73,6 +73,30 @@ const resolveOrganizer = (evento) => {
   return 'Organización';
 };
 
+const resolveFriendlyTeams = (evento) => {
+  const equipos = Array.isArray(evento?.equipos) ? [...evento.equipos] : [];
+  if (equipos.length === 0) {
+    return {
+      team1: '',
+      team1Id: '',
+      team2: '',
+      team2Id: '',
+    };
+  }
+  const sorted = equipos.sort((a, b) => {
+    const aTime = new Date(a?.creado_en ?? 0).getTime();
+    const bTime = new Date(b?.creado_en ?? 0).getTime();
+    return aTime - bTime;
+  });
+  const [team1, team2] = sorted;
+  return {
+    team1: team1?.nombre_equipo ?? team1?.nombre ?? '',
+    team1Id: team1?.equipo_id ?? '',
+    team2: team2?.nombre_equipo ?? team2?.nombre ?? '',
+    team2Id: team2?.equipo_id ?? '',
+  };
+};
+
 const mapGlobalEvent = (evento) => ({
   id: evento?.evento_id ?? evento?.id ?? `global-${Math.random()}`,
   title: evento?.nombre ?? 'Evento',
@@ -443,6 +467,14 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
       setSubmitError('Seleccioná un deporte.');
       return;
     }
+    if (!form.team1Id || !form.team2Id) {
+      setSubmitError('Seleccioná ambos equipos desde la búsqueda.');
+      return;
+    }
+    if (String(form.team1Id) === String(form.team2Id)) {
+      setSubmitError('Los equipos deben ser distintos.');
+      return;
+    }
     setSaving(true);
     setSubmitError('');
     try {
@@ -670,6 +702,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                 onChangeText={(value) => {
                   setTeam1Query(value);
                   handleChange('team1', value);
+                  handleChange('team1Id', '');
                 }}
                 editable={editable}
                 onFocus={() => setShowTeam1Dropdown(true)}
@@ -685,6 +718,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                   error: team1Error,
                   onSelect: (team) => {
                     handleChange('team1', team.nombre);
+                    handleChange('team1Id', team.id);
                     setTeam1Query(team.nombre);
                     setShowTeam1Dropdown(false);
                   },
@@ -703,6 +737,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                 onChangeText={(value) => {
                   setTeam2Query(value);
                   handleChange('team2', value);
+                  handleChange('team2Id', '');
                 }}
                 editable={editable}
                 onFocus={() => setShowTeam2Dropdown(true)}
@@ -718,6 +753,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                   error: team2Error,
                   onSelect: (team) => {
                     handleChange('team2', team.nombre);
+                    handleChange('team2Id', team.id);
                     setTeam2Query(team.nombre);
                     setShowTeam2Dropdown(false);
                   },
@@ -1658,6 +1694,22 @@ export default function EventosScreen() {
     setActiveMode('edit');
     setSelectedEvent(event);
     setActiveModal(event.type);
+    if (event.type !== 'amistoso') return;
+    const loadFriendlyDetails = async () => {
+      try {
+        const data = await api.get(`/eventos/${event.id}`);
+        if (data?.evento) {
+          const friendlyTeams = resolveFriendlyTeams(data.evento);
+          setSelectedEvent({
+            ...mapClubEvent(data.evento),
+            ...friendlyTeams,
+          });
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    loadFriendlyDetails();
   };
 
   const handleCloseModal = () => {
@@ -1699,7 +1751,9 @@ export default function EventosScreen() {
       venue: selectedEvent?.venue ?? '',
       sport: selectedEvent?.sport ?? '',
       team1: selectedEvent?.team1 ?? '',
+      team1Id: selectedEvent?.team1Id ?? '',
       team2: selectedEvent?.team2 ?? '',
+      team2Id: selectedEvent?.team2Id ?? '',
       team1Score: selectedEvent?.team1Score ?? '',
       team2Score: selectedEvent?.team2Score ?? '',
       winner: selectedEvent?.winner ?? '',
@@ -1758,6 +1812,13 @@ export default function EventosScreen() {
 
   const handleSaveFriendly = async (formValues) => {
     try {
+      const equipos =
+        formValues.team1Id && formValues.team2Id
+          ? [
+            { equipo_id: formValues.team1Id, nombre_equipo: formValues.team1 },
+            { equipo_id: formValues.team2Id, nombre_equipo: formValues.team2 },
+          ]
+          : [];
       const payload = {
         nombre: formValues.title.trim(),
         tipo: 'amistoso',
@@ -1768,6 +1829,7 @@ export default function EventosScreen() {
         deporte_id: formValues.sport,
         limite_equipos: 2,
         premio_1: formValues.prize ? String(formValues.prize) : null,
+        equipos,
       };
 
       if (activeMode === 'edit' && selectedEvent?.id) {

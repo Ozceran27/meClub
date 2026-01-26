@@ -11,10 +11,13 @@ const normalizeEquipoRow = (row) => {
 const EventoEquiposModel = {
   listarPorEvento: async (eventoId) => {
     const [rows] = await db.query(
-      `SELECT evento_equipo_id, evento_id, equipo_id, nombre_equipo, estado, creado_en, actualizado_en
+      `SELECT evento_equipos.evento_id, evento_equipos.equipo_id, evento_equipos.estado, evento_equipos.origen,
+              evento_equipos.creado_en, evento_equipos.actualizado_en,
+              equipos_usuarios.nombre AS nombre_equipo, equipos_usuarios.descripcion AS descripcion_equipo
        FROM evento_equipos
-       WHERE evento_id = ?
-       ORDER BY evento_equipo_id DESC`,
+       LEFT JOIN equipos_usuarios ON equipos_usuarios.equipo_id = evento_equipos.equipo_id
+       WHERE evento_equipos.evento_id = ?
+       ORDER BY evento_equipos.creado_en ASC, evento_equipos.equipo_id ASC`,
       [eventoId]
     );
     return rows.map((row) => normalizeEquipoRow(row));
@@ -22,9 +25,12 @@ const EventoEquiposModel = {
 
   obtenerPorId: async (eventoEquipoId, eventoId) => {
     const [rows] = await db.query(
-      `SELECT evento_equipo_id, evento_id, equipo_id, nombre_equipo, estado, creado_en, actualizado_en
+      `SELECT evento_equipos.evento_id, evento_equipos.equipo_id, evento_equipos.estado, evento_equipos.origen,
+              evento_equipos.creado_en, evento_equipos.actualizado_en,
+              equipos_usuarios.nombre AS nombre_equipo, equipos_usuarios.descripcion AS descripcion_equipo
        FROM evento_equipos
-       WHERE evento_equipo_id = ? AND evento_id = ?
+       LEFT JOIN equipos_usuarios ON equipos_usuarios.equipo_id = evento_equipos.equipo_id
+       WHERE evento_equipos.equipo_id = ? AND evento_equipos.evento_id = ?
        LIMIT 1`,
       [eventoEquipoId, eventoId]
     );
@@ -33,9 +39,12 @@ const EventoEquiposModel = {
 
   obtenerPorEquipo: async (eventoId, equipoId) => {
     const [rows] = await db.query(
-      `SELECT evento_equipo_id, evento_id, equipo_id, nombre_equipo, estado, creado_en, actualizado_en
+      `SELECT evento_equipos.evento_id, evento_equipos.equipo_id, evento_equipos.estado, evento_equipos.origen,
+              evento_equipos.creado_en, evento_equipos.actualizado_en,
+              equipos_usuarios.nombre AS nombre_equipo, equipos_usuarios.descripcion AS descripcion_equipo
        FROM evento_equipos
-       WHERE evento_id = ? AND equipo_id = ?
+       LEFT JOIN equipos_usuarios ON equipos_usuarios.equipo_id = evento_equipos.equipo_id
+       WHERE evento_equipos.evento_id = ? AND evento_equipos.equipo_id = ?
        LIMIT 1`,
       [eventoId, equipoId]
     );
@@ -59,23 +68,31 @@ const EventoEquiposModel = {
   },
 
   crear: async (eventoId, payload) => {
-    const [result] = await db.query(
+    await db.query(
       `INSERT INTO evento_equipos
-       (evento_id, equipo_id, nombre_equipo, estado)
+       (evento_id, equipo_id, estado, origen)
        VALUES (?, ?, ?, ?)`,
-      [eventoId, payload.equipo_id, payload.nombre_equipo, payload.estado]
+      [eventoId, payload.equipo_id, payload.estado, payload.origen ?? 'equipo']
     );
-    return EventoEquiposModel.obtenerPorId(result.insertId, eventoId);
+    return EventoEquiposModel.obtenerPorEquipo(eventoId, payload.equipo_id);
   },
 
   actualizarEstado: async (eventoEquipoId, eventoId, estado) => {
     await db.query(
       `UPDATE evento_equipos
        SET estado = ?
-       WHERE evento_equipo_id = ? AND evento_id = ?`,
+       WHERE equipo_id = ? AND evento_id = ?`,
       [estado, eventoEquipoId, eventoId]
     );
     return EventoEquiposModel.obtenerPorId(eventoEquipoId, eventoId);
+  },
+
+  eliminarPorEvento: async (eventoId) => {
+    await db.query(
+      `DELETE FROM evento_equipos
+       WHERE evento_id = ?`,
+      [eventoId]
+    );
   },
 };
 
