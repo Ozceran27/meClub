@@ -1149,12 +1149,9 @@ export default function EventosScreen() {
           <View className="grid grid-cols-3 gap-3 self-end">
             <ActionButton
               onPress={() => handleOpenCreate('amistoso')}
-              disabled={!hasProAccess}
               icon="sparkles-outline"
               label="Crear Amistoso"
-              badge={lockedButtonProps.badge}
-              backgroundClassName={lockedButtonProps.backgroundClassName}
-              className={lockedButtonProps.className}
+              backgroundClassName="bg-emerald-400 hover:bg-emerald-400/80"
             />
             <ActionButton
               onPress={() => handleOpenCreate('torneo')}
