@@ -149,9 +149,8 @@ const parseEquiposPayload = (equiposInput, { requiredCount } = {}) => {
         equipo?.equipo_id ?? equipo?.equipoId ?? equipo?.id,
         `equipos[${index}].equipo_id`
       );
-      const nombreEquipo = parseRequiredString(
-        equipo?.nombre_equipo ?? equipo?.nombre ?? equipo?.name,
-        `equipos[${index}].nombre_equipo`
+      const nombreEquipo = parseOptionalString(
+        equipo?.nombre_equipo ?? equipo?.nombre ?? equipo?.name
       );
       return {
         equipo_id: equipoId,
@@ -306,8 +305,8 @@ const createEvento = async (req, res) => {
         equipos.map((equipo) =>
           EventoEquiposModel.crear(evento.evento_id, {
             equipo_id: equipo.equipo_id,
-            nombre_equipo: equipo.nombre_equipo,
             estado: 'aprobado',
+            origen: 'club',
           })
         )
       );
@@ -466,8 +465,8 @@ const updateEvento = async (req, res) => {
         equipos.map((equipo) =>
           EventoEquiposModel.crear(eventoId, {
             equipo_id: equipo.equipo_id,
-            nombre_equipo: equipo.nombre_equipo,
             estado: 'aprobado',
+            origen: 'club',
           })
         )
       );
