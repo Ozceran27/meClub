@@ -1,10 +1,21 @@
 const db = require('../config/db');
 
+const toNullableInteger = (value) => {
+  if (value === undefined || value === null) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const resolveLimiteEquipos = (row) => {
+  if (!row) return null;
+  return toNullableInteger(row.limite_equipos ?? row.cantidad_equipos);
+};
+
 const normalizeEventoRow = (row) => {
   if (!row) return null;
   return {
     ...row,
-    limite_equipos: row.limite_equipos === null ? null : Number(row.limite_equipos),
+    limite_equipos: resolveLimiteEquipos(row),
   };
 };
 
@@ -19,7 +30,7 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+              provincia_id, zona, cantidad_equipos, creado_en, actualizado_en
        FROM eventos
        WHERE ${filters.join(' AND ')}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -37,7 +48,7 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+              provincia_id, zona, cantidad_equipos, creado_en, actualizado_en
        FROM eventos
        WHERE ${whereClause}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -49,7 +60,7 @@ const EventosModel = {
   obtenerPorId: async (eventoId, clubId) => {
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+              provincia_id, zona, cantidad_equipos, creado_en, actualizado_en
        FROM eventos
        WHERE evento_id = ? AND club_id = ?
        LIMIT 1`,
@@ -59,9 +70,11 @@ const EventosModel = {
   },
 
   crear: async (clubId, payload) => {
+    const cantidadEquipos =
+      payload.cantidad_equipos ?? payload.limite_equipos ?? null;
     const [result] = await db.query(
       `INSERT INTO eventos
-       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, provincia_id, zona, limite_equipos)
+       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, provincia_id, zona, cantidad_equipos)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clubId,
@@ -73,14 +86,20 @@ const EventosModel = {
         payload.fecha_fin,
         payload.provincia_id,
         payload.zona,
-        payload.limite_equipos,
+        cantidadEquipos,
       ]
     );
     return EventosModel.obtenerPorId(result.insertId, clubId);
   },
 
   actualizar: async (eventoId, clubId, updates) => {
-    const fields = Object.entries(updates).filter(([, value]) => value !== undefined);
+    const normalizedUpdates = { ...updates };
+    if (normalizedUpdates.limite_equipos !== undefined) {
+      normalizedUpdates.cantidad_equipos = normalizedUpdates.limite_equipos;
+      delete normalizedUpdates.limite_equipos;
+    }
+
+    const fields = Object.entries(normalizedUpdates).filter(([, value]) => value !== undefined);
     if (fields.length === 0) {
       return EventosModel.obtenerPorId(eventoId, clubId);
     }
