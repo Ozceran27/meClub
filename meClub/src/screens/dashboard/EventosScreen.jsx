@@ -11,41 +11,6 @@ import ScreenHeader from '../../components/ScreenHeader';
 
 const ADV_BADGE = 'ADV';
 
-const myEvents = [
-  {
-    id: 'evt-1',
-    title: 'Amistoso Interclub',
-    date: 'Vie 20 Sep · 19:30',
-    location: 'Club Centro',
-    type: 'amistoso',
-    status: 'Programado',
-  },
-  {
-    id: 'evt-2',
-    title: 'Torneo Liga Mixto',
-    date: 'Sáb 28 Sep · 09:00',
-    location: 'Canchas Norte',
-    type: 'torneo',
-    status: 'En curso',
-  },
-  {
-    id: 'evt-3',
-    title: 'Copa Primavera',
-    date: 'Dom 06 Oct · 15:00',
-    location: 'Sede Sur',
-    type: 'copa',
-    status: 'Pausado',
-  },
-  {
-    id: 'evt-4',
-    title: 'Copa Aniversario',
-    date: 'Sáb 19 Oct · 17:00',
-    location: 'Sede Central',
-    type: 'copa',
-    status: 'Inactivo',
-  },
-];
-
 const STATUS_LABELS = {
   inactivo: 'Inactivo',
   activo: 'En curso',
@@ -76,6 +41,22 @@ const formatEventDate = (value) => {
   }).format(parsed);
 };
 
+const formatEventRange = (start, end) => {
+  const startLabel = formatEventDate(start);
+  const endLabel = formatEventDate(end);
+  if (!start && !end) return 'Sin fecha';
+  if (!start) return endLabel;
+  if (!end || startLabel === endLabel) return startLabel;
+  return `${startLabel} - ${endLabel}`;
+};
+
+const resolveLocationLabel = (evento) => {
+  if (evento?.descripcion) return evento.descripcion;
+  if (evento?.zona) return `Zona ${evento.zona}`;
+  if (evento?.provincia_id) return `Provincia ${evento.provincia_id}`;
+  return 'Sin descripción';
+};
+
 const resolveOrganizer = (evento) => {
   if (evento?.organizador) return evento.organizador;
   if (evento?.club_nombre) return evento.club_nombre;
@@ -90,6 +71,25 @@ const mapGlobalEvent = (evento) => ({
   scope: resolveGlobalScope(evento?.zona),
   organizer: resolveOrganizer(evento),
 });
+
+const mapClubEvent = (evento) => ({
+  id: evento?.evento_id ?? evento?.id ?? `event-${Math.random()}`,
+  title: evento?.nombre ?? 'Evento',
+  date: formatEventRange(evento?.fecha_inicio, evento?.fecha_fin),
+  location: resolveLocationLabel(evento),
+  type: evento?.tipo ?? 'amistoso',
+  status: evento?.estado ?? 'programado',
+  raw: evento,
+});
+
+const normalizeStatus = (status) => String(status ?? '').toLowerCase();
+
+const STATUS_ORDER = {
+  inactivo: 0,
+  activo: 1,
+  pausado: 2,
+  finalizado: 3,
+};
 
 const DEFAULT_STANDINGS = [
   { id: 'st-1', team: 'Club Centro', played: 3, points: 7 },
@@ -1435,7 +1435,8 @@ export default function EventosScreen() {
   const [activeModal, setActiveModal] = useState(null);
   const [activeMode, setActiveMode] = useState('create');
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [events, setEvents] = useState(myEvents);
+  const [events, setEvents] = useState([]);
+  const [eventsStatus, setEventsStatus] = useState({ loading: false, error: null });
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
   const [venues, setVenues] = useState([]);
@@ -1449,6 +1450,21 @@ export default function EventosScreen() {
   const filteredGlobalEvents = useMemo(() => {
     return globalEvents.filter((event) => event.scope === filter);
   }, [filter, globalEvents]);
+
+  const { orderedEvents, finalizedEvents } = useMemo(() => {
+    const sorted = [...events].sort((a, b) => {
+      const aOrder = STATUS_ORDER[normalizeStatus(a.status)] ?? 0;
+      const bOrder = STATUS_ORDER[normalizeStatus(b.status)] ?? 0;
+      return aOrder - bOrder;
+    });
+    const finalizados = sorted.filter(
+      (event) => normalizeStatus(event.status) === 'finalizado'
+    );
+    const activos = sorted.filter(
+      (event) => normalizeStatus(event.status) !== 'finalizado'
+    );
+    return { orderedEvents: activos, finalizedEvents: finalizados };
+  }, [events]);
 
   const lockedButtonProps = hasProAccess
     ? {
@@ -1470,6 +1486,28 @@ export default function EventosScreen() {
 
   useEffect(() => {
     let isMounted = true;
+    const loadClubEvents = async () => {
+      setEventsStatus({ loading: true, error: null });
+      try {
+        const data = await api.get('/eventos');
+        const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+        if (isMounted) {
+          setEvents(eventos.map(mapClubEvent));
+          setEventsStatus({ loading: false, error: null });
+        }
+      } catch (error) {
+        if (isMounted) {
+          setEvents([]);
+          setEventsStatus({
+            loading: false,
+            error: error?.message || 'No se pudieron cargar los eventos.',
+          });
+        }
+      }
+    };
+
+    loadClubEvents();
+
     const loadGlobalEvents = async () => {
       if (!user?.clubId) {
         setGlobalEvents([]);
@@ -1688,7 +1726,78 @@ export default function EventosScreen() {
               Organizá tus eventos internos y controlá el estado de cada convocatoria.
             </Text>
             <View className="mt-4 gap-4">
-              {events.map((event) => (
+              {eventsStatus.loading ? (
+                <Text className="text-white/60 text-sm">Cargando eventos...</Text>
+              ) : null}
+              {eventsStatus.error ? (
+                <Text className="text-rose-200 text-sm">{eventsStatus.error}</Text>
+              ) : null}
+              {!eventsStatus.loading &&
+              !eventsStatus.error &&
+              orderedEvents.length === 0 &&
+              finalizedEvents.length === 0 ? (
+                  <Text className="text-white/50 text-sm">No hay eventos registrados.</Text>
+                ) : null}
+              {orderedEvents.map((event) => (
+                <Pressable
+                  key={event.id}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  onPress={() => handleOpenEdit(event)}
+                >
+                  <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1">
+                      <Text className="text-white font-semibold">{event.title}</Text>
+                      <Text className="text-white/60 text-xs mt-1">{event.date}</Text>
+                      <Text className="text-white/40 text-xs mt-1">{event.location}</Text>
+                    </View>
+                    <StatusPill status={event.status} />
+                  </View>
+                  <View className="flex-row flex-wrap gap-2 mt-4">
+                    <Pressable
+                      className="rounded-full border border-white/10 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleOpenEdit(event);
+                      }}
+                    >
+                      <Text className="text-white text-xs font-semibold">Editar</Text>
+                    </Pressable>
+                    <Pressable
+                      className="rounded-full border border-emerald-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleStartEvent(event);
+                      }}
+                    >
+                      <Text className="text-emerald-200 text-xs font-semibold">Iniciar</Text>
+                    </Pressable>
+                    <Pressable
+                      className="rounded-full border border-amber-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handlePauseEvent(event);
+                      }}
+                    >
+                      <Text className="text-amber-200 text-xs font-semibold">Pausar</Text>
+                    </Pressable>
+                    <Pressable className="rounded-full border border-rose-500/40 px-3 py-1">
+                      <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              ))}
+              {finalizedEvents.length > 0 ? (
+                <View className="gap-3 pt-2">
+                  <View className="flex-row items-center gap-3">
+                    <View className="h-px flex-1 bg-white/10" />
+                    <Text className="text-white/50 text-xs font-semibold uppercase tracking-wide">
+                      Eventos finalizados
+                    </Text>
+                    <View className="h-px flex-1 bg-white/10" />
+                  </View>
+                </View>
+              ) : null}
+              {finalizedEvents.map((event) => (
                 <Pressable
                   key={event.id}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
