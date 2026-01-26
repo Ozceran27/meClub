@@ -14,7 +14,7 @@ const EventoEquiposModel = {
       `SELECT evento_equipo_id, evento_id, equipo_id, nombre_equipo, estado, creado_en, actualizado_en
        FROM evento_equipos
        WHERE evento_id = ?
-       ORDER BY evento_equipo_id DESC`,
+       ORDER BY creado_en ASC, evento_equipo_id ASC`,
       [eventoId]
     );
     return rows.map((row) => normalizeEquipoRow(row));
@@ -76,6 +76,14 @@ const EventoEquiposModel = {
       [estado, eventoEquipoId, eventoId]
     );
     return EventoEquiposModel.obtenerPorId(eventoEquipoId, eventoId);
+  },
+
+  eliminarPorEvento: async (eventoId) => {
+    await db.query(
+      `DELETE FROM evento_equipos
+       WHERE evento_id = ?`,
+      [eventoId]
+    );
   },
 };
 
