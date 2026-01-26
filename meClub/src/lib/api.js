@@ -1616,13 +1616,16 @@ export async function searchPlayers(term, { limit } = {}) {
   return extractPlayerSearch(response);
 }
 
-export async function searchTeams(term, { limit } = {}) {
+export async function searchTeams(term, { limit, clubId } = {}) {
   const params = new URLSearchParams();
   if (term) {
     params.set('q', term);
   }
   if (limit) {
     params.set('limit', limit);
+  }
+  if (clubId) {
+    params.set('club_id', clubId);
   }
   const search = params.toString();
   const response = await api.get(`/equipos/buscar${search ? `?${search}` : ''}`);

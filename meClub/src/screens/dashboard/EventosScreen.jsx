@@ -251,7 +251,7 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, sports }) {
+function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, sports, clubId }) {
   const [form, setForm] = useState(() => initialValues);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -309,7 +309,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     setTeam1Error('');
     const timeout = setTimeout(async () => {
       try {
-        const results = await searchTeams(trimmed, { limit: 8 });
+        const results = await searchTeams(trimmed, { limit: 8, clubId });
         if (isActive) {
           setTeam1Results(results);
         }
@@ -343,7 +343,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     setTeam2Error('');
     const timeout = setTimeout(async () => {
       try {
-        const results = await searchTeams(trimmed, { limit: 8 });
+        const results = await searchTeams(trimmed, { limit: 8, clubId });
         if (isActive) {
           setTeam2Results(results);
         }
@@ -1747,6 +1747,7 @@ export default function EventosScreen() {
         onClose={handleCloseModal}
         venues={venues}
         sports={sports}
+        clubId={user?.clubId}
       />
       <TournamentEventModal
         visible={activeModal === 'torneo'}
