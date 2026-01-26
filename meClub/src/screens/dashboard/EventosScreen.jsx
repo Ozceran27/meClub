@@ -226,7 +226,11 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
   };
 
   return (
-    <ModalContainer visible={visible} onRequestClose={onClose}>
+    <ModalContainer
+      visible={visible}
+      onRequestClose={onClose}
+      containerClassName="w-full max-w-3xl max-h-[90vh]"
+    >
       <View className="gap-5 rounded-3xl border border-white/10 bg-mc-surface p-6 shadow-xl">
         <ModalHeader
           title={mode === 'edit' ? 'Editar amistoso' : 'Nuevo amistoso'}
