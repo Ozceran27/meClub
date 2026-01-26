@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../features/auth/useAuth';
-import { api } from '../../lib/api';
+import { api, fetchClubCourts, fetchSports, searchTeams } from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
@@ -155,6 +155,46 @@ function FilterPill({ active, label, onPress }) {
 const FORM_FIELD_CLASSNAME =
   'min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white';
 
+const EVENT_DATE_OPTIONS = (() => {
+  const formatter = new Intl.DateTimeFormat('es-AR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  });
+  return Array.from({ length: 45 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    const value = date.toISOString().slice(0, 10);
+    return {
+      value,
+      label: formatter.format(date),
+    };
+  });
+})();
+
+const EVENT_TIME_OPTIONS = Array.from({ length: 30 }, (_, index) => {
+  const hours = Math.floor(index / 2) + 8;
+  const minutes = index % 2 === 0 ? '00' : '30';
+  const label = `${String(hours).padStart(2, '0')}:${minutes}`;
+  return { value: label, label };
+});
+
+const formatTimeInput = (input) => {
+  const digits = String(input ?? '').replace(/\D/g, '').slice(0, 4);
+  if (!digits) {
+    return { formatted: '', isComplete: false, isValid: false };
+  }
+  if (digits.length <= 2) {
+    return { formatted: digits, isComplete: false, isValid: false };
+  }
+  const hours = Number(digits.slice(0, 2));
+  const minutes = Number(digits.slice(2, 4));
+  const formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  const isComplete = digits.length === 4;
+  const isValid = isComplete && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+  return { formatted, isComplete, isValid };
+};
+
 function FormField({ label, placeholder, value, onChangeText, editable = true, keyboardType }) {
   return (
     <View className="gap-2">
@@ -211,8 +251,24 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
+function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, sports }) {
   const [form, setForm] = useState(() => initialValues);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showVenuePicker, setShowVenuePicker] = useState(false);
+  const [showSportPicker, setShowSportPicker] = useState(false);
+  const [timeInput, setTimeInput] = useState('');
+  const [timeInputError, setTimeInputError] = useState('');
+  const [team1Query, setTeam1Query] = useState('');
+  const [team2Query, setTeam2Query] = useState('');
+  const [team1Results, setTeam1Results] = useState([]);
+  const [team2Results, setTeam2Results] = useState([]);
+  const [team1Loading, setTeam1Loading] = useState(false);
+  const [team2Loading, setTeam2Loading] = useState(false);
+  const [team1Error, setTeam1Error] = useState('');
+  const [team2Error, setTeam2Error] = useState('');
+  const [showTeam1Dropdown, setShowTeam1Dropdown] = useState(false);
+  const [showTeam2Dropdown, setShowTeam2Dropdown] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -221,9 +277,212 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
     setForm(initialValues);
   }, [initialValues]);
 
+  useEffect(() => {
+    if (!visible) return;
+    setShowDatePicker(false);
+    setShowTimePicker(false);
+    setShowVenuePicker(false);
+    setShowSportPicker(false);
+    setTimeInput(initialValues?.time ?? '');
+    setTimeInputError('');
+    setTeam1Query(initialValues?.team1 ?? '');
+    setTeam2Query(initialValues?.team2 ?? '');
+    setTeam1Results([]);
+    setTeam2Results([]);
+    setTeam1Error('');
+    setTeam2Error('');
+    setShowTeam1Dropdown(false);
+    setShowTeam2Dropdown(false);
+  }, [visible, initialValues]);
+
+  useEffect(() => {
+    if (!showTeam1Dropdown) return;
+    const trimmed = team1Query.trim();
+    if (trimmed.length < 2) {
+      setTeam1Results([]);
+      setTeam1Loading(false);
+      setTeam1Error('');
+      return;
+    }
+    let isActive = true;
+    setTeam1Loading(true);
+    setTeam1Error('');
+    const timeout = setTimeout(async () => {
+      try {
+        const results = await searchTeams(trimmed, { limit: 8 });
+        if (isActive) {
+          setTeam1Results(results);
+        }
+      } catch (error) {
+        if (isActive) {
+          setTeam1Error(error?.message || 'No se pudieron buscar equipos.');
+        }
+      } finally {
+        if (isActive) {
+          setTeam1Loading(false);
+        }
+      }
+    }, 300);
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+  }, [showTeam1Dropdown, team1Query]);
+
+  useEffect(() => {
+    if (!showTeam2Dropdown) return;
+    const trimmed = team2Query.trim();
+    if (trimmed.length < 2) {
+      setTeam2Results([]);
+      setTeam2Loading(false);
+      setTeam2Error('');
+      return;
+    }
+    let isActive = true;
+    setTeam2Loading(true);
+    setTeam2Error('');
+    const timeout = setTimeout(async () => {
+      try {
+        const results = await searchTeams(trimmed, { limit: 8 });
+        if (isActive) {
+          setTeam2Results(results);
+        }
+      } catch (error) {
+        if (isActive) {
+          setTeam2Error(error?.message || 'No se pudieron buscar equipos.');
+        }
+      } finally {
+        if (isActive) {
+          setTeam2Loading(false);
+        }
+      }
+    }, 300);
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+  }, [showTeam2Dropdown, team2Query]);
+
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  const handleTimeInputChange = (value) => {
+    const { formatted, isComplete, isValid } = formatTimeInput(value);
+    setTimeInput(formatted);
+    if (isComplete && !isValid) {
+      setTimeInputError('Ingresá una hora válida (00-23 / 00-59).');
+      return;
+    }
+    setTimeInputError('');
+    if (isValid) {
+      handleChange('time', formatted);
+    }
+  };
+
+  const renderPickerModal = ({
+    visible: pickerVisible,
+    onClose,
+    options,
+    selectedValue,
+    onSelect,
+    title: pickerTitle,
+    emptyText = 'No hay datos disponibles',
+    headerContent,
+  }) => {
+    if (!pickerVisible) return null;
+    return (
+      <ModalContainer
+        visible={pickerVisible}
+        onRequestClose={onClose}
+        containerClassName="w-full max-w-xl max-h-[480px]"
+      >
+        <Card className="w-full max-h-[480px]">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-white text-lg font-semibold">{pickerTitle}</Text>
+            <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
+              <Ionicons name="close" size={18} color="white" />
+            </Pressable>
+          </View>
+          {headerContent ? <View className="mb-3">{headerContent}</View> : null}
+          <ScrollView className="max-h-[320px]" contentContainerClassName="pb-2">
+            {options.map((option) => {
+              const value = option.value ?? option.id ?? option.key ?? option;
+              const label = option.label ?? option.nombre ?? option.title ?? String(option);
+              const active = String(selectedValue) === String(value);
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => {
+                    onSelect(value, option);
+                    onClose();
+                  }}
+                  className={`rounded-xl px-4 py-3 mb-2 border border-white/5 ${
+                    active ? 'bg-white/10 border-mc-warn' : 'bg-white/5'
+                  }`}
+                >
+                  <Text className="text-white text-base font-medium">{label}</Text>
+                  {option.description ? (
+                    <Text className="text-white/60 text-sm mt-1">{option.description}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+            {options.length === 0 ? (
+              <Text className="text-white/60 text-sm text-center">{emptyText}</Text>
+            ) : null}
+          </ScrollView>
+        </Card>
+      </ModalContainer>
+    );
+  };
+
+  const renderTeamResults = ({ query, results, loading, error, onSelect }) => (
+    <View className="mt-2 rounded-2xl border border-white/10 bg-white/5">
+      {loading ? (
+        <View className="px-4 py-3 flex-row items-center gap-2">
+          <Text className="text-white/70 text-sm">Buscando equipos...</Text>
+        </View>
+      ) : null}
+      {error ? (
+        <View className="px-4 py-3">
+          <Text className="text-rose-200 text-sm">{error}</Text>
+        </View>
+      ) : null}
+      {!loading && !error && query.trim().length < 2 ? (
+        <View className="px-4 py-3">
+          <Text className="text-white/60 text-sm">Escribí al menos 2 caracteres para buscar</Text>
+        </View>
+      ) : null}
+      {!loading && !error && query.trim().length >= 2 && results.length === 0 ? (
+        <View className="px-4 py-3">
+          <Text className="text-white/60 text-sm">Sin resultados</Text>
+        </View>
+      ) : null}
+      {results.map((team) => (
+        <Pressable
+          key={team.id ?? team.nombre}
+          onPress={() => onSelect(team)}
+          className="px-4 py-3 border-b border-white/5"
+        >
+          <Text className="text-white text-sm font-medium">{team.nombre}</Text>
+          {team.descripcion ? (
+            <Text className="text-white/60 text-xs mt-1">{team.descripcion}</Text>
+          ) : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  const venueLabel =
+    venues.find((venue) => String(venue.cancha_id ?? venue.id) === String(form.venue))?.nombre ??
+    venues.find((venue) => String(venue.cancha_id ?? venue.id) === String(form.venue))?.label ??
+    form.venue;
+
+  const sportLabel =
+    sports.find((sport) => String(sport.id ?? sport.deporte_id) === String(form.sport))?.nombre ??
+    sports.find((sport) => String(sport.id ?? sport.deporte_id) === String(form.sport))?.label ??
+    form.sport;
 
   return (
     <ModalContainer
@@ -254,56 +513,138 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
           />
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Fecha"
-                placeholder="20/09/2024"
-                value={form.date}
-                onChangeText={(value) => handleChange('date', value)}
-                editable={editable}
-              />
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Fecha
+              </Text>
+              <Pressable
+                onPress={() => editable && setShowDatePicker(true)}
+                className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                  editable ? '' : 'opacity-60'
+                }`}
+              >
+                <Text className="text-white text-sm">
+                  {EVENT_DATE_OPTIONS.find((option) => option.value === form.date)?.label ||
+                    form.date ||
+                    'Seleccioná una fecha'}
+                </Text>
+              </Pressable>
             </View>
             <View className="flex-1">
-              <FormField
-                label="Hora"
-                placeholder="19:30"
-                value={form.time}
-                onChangeText={(value) => handleChange('time', value)}
-                editable={editable}
-              />
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Hora
+              </Text>
+              <Pressable
+                onPress={() => {
+                  if (!editable) return;
+                  setTimeInput(form.time ?? '');
+                  setShowTimePicker(true);
+                }}
+                className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                  editable ? '' : 'opacity-60'
+                }`}
+              >
+                <Text className="text-white text-sm">
+                  {form.time || 'Seleccioná un horario'}
+                </Text>
+              </Pressable>
             </View>
           </View>
-          <FormField
-            label="Sede"
-            placeholder="Club Centro"
-            value={form.venue}
-            onChangeText={(value) => handleChange('venue', value)}
-            editable={editable}
-          />
-          <FormField
-            label="Deporte"
-            placeholder="Fútbol, tenis, básquet"
-            value={form.sport}
-            onChangeText={(value) => handleChange('sport', value)}
-            editable={editable}
-          />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Sede
+            </Text>
+            <Pressable
+              onPress={() => editable && setShowVenuePicker(true)}
+              className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                editable ? '' : 'opacity-60'
+              }`}
+            >
+              <Text className="text-white text-sm">
+                {venueLabel || 'Seleccioná una sede'}
+              </Text>
+            </Pressable>
+          </View>
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Deporte
+            </Text>
+            <Pressable
+              onPress={() => editable && setShowSportPicker(true)}
+              className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                editable ? '' : 'opacity-60'
+              }`}
+            >
+              <Text className="text-white text-sm">
+                {sportLabel || 'Seleccioná un deporte'}
+              </Text>
+            </Pressable>
+          </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Equipo 1"
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Equipo 1
+              </Text>
+              <TextInput
+                className={FORM_FIELD_CLASSNAME}
                 placeholder="Local"
-                value={form.team1}
-                onChangeText={(value) => handleChange('team1', value)}
+                placeholderTextColor="#94A3B8"
+                value={team1Query}
+                onChangeText={(value) => {
+                  setTeam1Query(value);
+                  handleChange('team1', value);
+                }}
                 editable={editable}
+                onFocus={() => setShowTeam1Dropdown(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowTeam1Dropdown(false), 150);
+                }}
               />
+              {showTeam1Dropdown
+                ? renderTeamResults({
+                  query: team1Query,
+                  results: team1Results,
+                  loading: team1Loading,
+                  error: team1Error,
+                  onSelect: (team) => {
+                    handleChange('team1', team.nombre);
+                    setTeam1Query(team.nombre);
+                    setShowTeam1Dropdown(false);
+                  },
+                })
+                : null}
             </View>
             <View className="flex-1">
-              <FormField
-                label="Equipo 2"
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Equipo 2
+              </Text>
+              <TextInput
+                className={FORM_FIELD_CLASSNAME}
                 placeholder="Visitante"
-                value={form.team2}
-                onChangeText={(value) => handleChange('team2', value)}
+                placeholderTextColor="#94A3B8"
+                value={team2Query}
+                onChangeText={(value) => {
+                  setTeam2Query(value);
+                  handleChange('team2', value);
+                }}
                 editable={editable}
+                onFocus={() => setShowTeam2Dropdown(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowTeam2Dropdown(false), 150);
+                }}
               />
+              {showTeam2Dropdown
+                ? renderTeamResults({
+                  query: team2Query,
+                  results: team2Results,
+                  loading: team2Loading,
+                  error: team2Error,
+                  onSelect: (team) => {
+                    handleChange('team2', team.nombre);
+                    setTeam2Query(team.nombre);
+                    setShowTeam2Dropdown(false);
+                  },
+                })
+                : null}
             </View>
           </View>
           <FormField
@@ -380,6 +721,70 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
           </Pressable>
         </View>
       </View>
+      {renderPickerModal({
+        visible: showDatePicker,
+        onClose: () => setShowDatePicker(false),
+        options: EVENT_DATE_OPTIONS,
+        selectedValue: form.date,
+        onSelect: (value) => handleChange('date', value),
+        title: 'Seleccioná una fecha',
+        emptyText: 'No hay fechas disponibles',
+      })}
+      {renderPickerModal({
+        visible: showTimePicker,
+        onClose: () => setShowTimePicker(false),
+        options: EVENT_TIME_OPTIONS,
+        selectedValue: form.time,
+        onSelect: (value) => {
+          handleChange('time', value);
+          setTimeInput(value);
+          setTimeInputError('');
+        },
+        title: 'Seleccioná un horario',
+        headerContent: (
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs">Ingresar manualmente</Text>
+            <TextInput
+              className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white"
+              placeholder="HH:MM"
+              placeholderTextColor="#94A3B8"
+              value={timeInput}
+              onChangeText={handleTimeInputChange}
+              editable={editable}
+              keyboardType="numeric"
+            />
+            {timeInputError ? (
+              <Text className="text-rose-200 text-xs">{timeInputError}</Text>
+            ) : null}
+          </View>
+        ),
+        emptyText: 'No hay horarios disponibles',
+      })}
+      {renderPickerModal({
+        visible: showVenuePicker,
+        onClose: () => setShowVenuePicker(false),
+        options: venues.map((venue) => ({
+          value: venue.cancha_id ?? venue.id,
+          label: venue.nombre ?? venue.label ?? `Cancha #${venue.cancha_id ?? venue.id}`,
+          description: venue.descripcion ?? venue.deporte?.nombre,
+        })),
+        selectedValue: form.venue,
+        onSelect: (value) => handleChange('venue', value),
+        title: 'Seleccioná una sede',
+        emptyText: 'No encontramos sedes disponibles',
+      })}
+      {renderPickerModal({
+        visible: showSportPicker,
+        onClose: () => setShowSportPicker(false),
+        options: sports.map((sport) => ({
+          value: sport.id ?? sport.deporte_id,
+          label: sport.nombre ?? sport.label ?? `Deporte #${sport.id ?? sport.deporte_id}`,
+        })),
+        selectedValue: form.sport,
+        onSelect: (value) => handleChange('sport', value),
+        title: 'Seleccioná un deporte',
+        emptyText: 'No encontramos deportes disponibles',
+      })}
     </ModalContainer>
   );
 }
@@ -1010,6 +1415,8 @@ export default function EventosScreen() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
+  const [venues, setVenues] = useState([]);
+  const [sports, setSports] = useState([]);
   const clubLevel = useMemo(() => {
     const parsed = Number(user?.nivel_id ?? 1);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -1070,6 +1477,51 @@ export default function EventosScreen() {
       isMounted = false;
     };
   }, [user?.clubId]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadVenues = async () => {
+      try {
+        const data = await fetchClubCourts();
+        const filtered = data.filter((court) => {
+          const status = String(court?.estado ?? court?.status ?? '').toLowerCase();
+          if (!status) return true;
+          return ['disponible', 'activa', 'activo', 'available'].includes(status);
+        });
+        if (isMounted) {
+          setVenues(filtered);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setVenues([]);
+        }
+      }
+    };
+    loadVenues();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSports = async () => {
+      try {
+        const data = await fetchSports();
+        if (isMounted) {
+          setSports(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setSports([]);
+        }
+      }
+    };
+    loadSports();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleOpenEdit = (event) => {
     setActiveMode('edit');
@@ -1293,6 +1745,8 @@ export default function EventosScreen() {
         mode={activeMode}
         initialValues={friendlyInitialValues}
         onClose={handleCloseModal}
+        venues={venues}
+        sports={sports}
       />
       <TournamentEventModal
         visible={activeModal === 'torneo'}
