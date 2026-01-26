@@ -50,6 +50,15 @@ const formatEventRange = (start, end) => {
   return `${startLabel} - ${endLabel}`;
 };
 
+const formatEventTime = (value) => {
+  if (!value) return '';
+  const normalized = String(value);
+  if (normalized.length >= 5) {
+    return normalized.slice(0, 5);
+  }
+  return normalized;
+};
+
 const resolveLocationLabel = (evento) => {
   if (evento?.descripcion) return evento.descripcion;
   if (evento?.zona) return `Zona ${evento.zona}`;
@@ -79,6 +88,12 @@ const mapClubEvent = (evento) => ({
   location: resolveLocationLabel(evento),
   type: evento?.tipo ?? 'amistoso',
   status: evento?.estado ?? 'programado',
+  startDate: evento?.fecha_inicio ?? '',
+  endDate: evento?.fecha_fin ?? '',
+  time: formatEventTime(evento?.hora_inicio),
+  sport: evento?.deporte_id ?? '',
+  prize: evento?.premio_1 ?? '',
+  venue: evento?.descripcion ?? '',
   raw: evento,
 });
 
@@ -273,7 +288,7 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, sports }) {
+function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, sports, onSave }) {
   const [form, setForm] = useState(() => initialValues);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -291,6 +306,8 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
   const [team2Error, setTeam2Error] = useState('');
   const [showTeam1Dropdown, setShowTeam1Dropdown] = useState(false);
   const [showTeam2Dropdown, setShowTeam2Dropdown] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -315,6 +332,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     setTeam2Error('');
     setShowTeam1Dropdown(false);
     setShowTeam2Dropdown(false);
+    setSubmitError('');
   }, [visible, initialValues]);
 
   useEffect(() => {
@@ -389,6 +407,11 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const formatPrizeValue = (value) => {
+    const digits = String(value ?? '').replace(/\D/g, '');
+    return digits ? `$ ${digits}` : '';
+  };
+
   const handleTimeInputChange = (value) => {
     const { formatted, isComplete, isValid } = formatTimeInput(value);
     setTimeInput(formatted);
@@ -399,6 +422,39 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     setTimeInputError('');
     if (isValid) {
       handleChange('time', formatted);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!editable || saving) return;
+    if (!form.title?.trim()) {
+      setSubmitError('Ingresá un título para el amistoso.');
+      return;
+    }
+    if (!form.date) {
+      setSubmitError('Seleccioná una fecha para el amistoso.');
+      return;
+    }
+    if (!form.venue) {
+      setSubmitError('Seleccioná una sede.');
+      return;
+    }
+    if (!form.sport) {
+      setSubmitError('Seleccioná un deporte.');
+      return;
+    }
+    setSaving(true);
+    setSubmitError('');
+    try {
+      if (typeof onSave !== 'function') {
+        throw new Error('No se encontró el manejador de guardado.');
+      }
+      await onSave(form);
+      onClose();
+    } catch (error) {
+      setSubmitError(error?.message || 'No se pudo guardar el amistoso.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -669,13 +725,20 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                 : null}
             </View>
           </View>
-          <FormField
-            label="Premio"
-            placeholder="Trofeo + medallas"
-            value={form.prize}
-            onChangeText={(value) => handleChange('prize', value)}
-            editable={editable}
-          />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Premio
+            </Text>
+            <TextInput
+              className={FORM_FIELD_CLASSNAME}
+              placeholder="$ 0"
+              placeholderTextColor="#94A3B8"
+              value={formatPrizeValue(form.prize)}
+              onChangeText={(value) => handleChange('prize', value.replace(/\D/g, ''))}
+              editable={editable}
+              keyboardType="numeric"
+            />
+          </View>
           <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <SectionTitle
               title="Resultado del amistoso"
@@ -734,14 +797,20 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
             <Text className="text-white text-xs font-semibold">Cancelar</Text>
           </Pressable>
           <Pressable
-            disabled={!editable}
-            className={`rounded-full px-4 py-2 ${editable ? 'bg-emerald-500/80' : 'bg-white/10'}`}
+            disabled={!editable || saving}
+            onPress={handleSubmit}
+            className={`rounded-full px-4 py-2 ${
+              editable && !saving ? 'bg-emerald-500/80' : 'bg-white/10'
+            }`}
           >
             <Text className="text-white text-xs font-semibold">
-              {mode === 'edit' ? 'Guardar cambios' : 'Crear amistoso'}
+              {saving ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Crear amistoso'}
             </Text>
           </Pressable>
         </View>
+        {submitError ? (
+          <Text className="text-rose-200 text-xs">{submitError}</Text>
+        ) : null}
       </View>
       {renderPickerModal({
         visible: showDatePicker,
@@ -1484,29 +1553,30 @@ export default function EventosScreen() {
     setActiveModal(type);
   };
 
+  const loadClubEvents = async () => {
+    setEventsStatus({ loading: true, error: null });
+    try {
+      const data = await api.get('/eventos');
+      const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+      setEvents(eventos.map(mapClubEvent));
+      setEventsStatus({ loading: false, error: null });
+    } catch (error) {
+      setEvents([]);
+      setEventsStatus({
+        loading: false,
+        error: error?.message || 'No se pudieron cargar los eventos.',
+      });
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
-    const loadClubEvents = async () => {
-      setEventsStatus({ loading: true, error: null });
-      try {
-        const data = await api.get('/eventos');
-        const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
-        if (isMounted) {
-          setEvents(eventos.map(mapClubEvent));
-          setEventsStatus({ loading: false, error: null });
-        }
-      } catch (error) {
-        if (isMounted) {
-          setEvents([]);
-          setEventsStatus({
-            loading: false,
-            error: error?.message || 'No se pudieron cargar los eventos.',
-          });
-        }
-      }
+    const loadEvents = async () => {
+      if (!isMounted) return;
+      await loadClubEvents();
     };
 
-    loadClubEvents();
+    loadEvents();
 
     const loadGlobalEvents = async () => {
       if (!user?.clubId) {
@@ -1624,9 +1694,9 @@ export default function EventosScreen() {
   const friendlyInitialValues = useMemo(
     () => ({
       title: selectedEvent?.title ?? '',
-      date: selectedEvent?.date ?? '',
+      date: selectedEvent?.startDate ?? '',
       time: selectedEvent?.time ?? '',
-      venue: selectedEvent?.location ?? '',
+      venue: selectedEvent?.venue ?? '',
       sport: selectedEvent?.sport ?? '',
       team1: selectedEvent?.team1 ?? '',
       team2: selectedEvent?.team2 ?? '',
@@ -1677,6 +1747,49 @@ export default function EventosScreen() {
     }),
     [selectedEvent]
   );
+
+  const resolveVenueName = (venueValue) => {
+    if (!venueValue) return '';
+    const match = venues.find(
+      (venue) => String(venue.cancha_id ?? venue.id) === String(venueValue)
+    );
+    return match?.nombre ?? match?.label ?? String(venueValue);
+  };
+
+  const handleSaveFriendly = async (formValues) => {
+    try {
+      const payload = {
+        nombre: formValues.title.trim(),
+        tipo: 'amistoso',
+        fecha_inicio: formValues.date,
+        hora_inicio: formValues.time || null,
+        zona: 'regional',
+        descripcion: resolveVenueName(formValues.venue),
+        deporte_id: formValues.sport,
+        limite_equipos: 2,
+        premio_1: formValues.prize ? String(formValues.prize) : null,
+      };
+
+      if (activeMode === 'edit' && selectedEvent?.id) {
+        const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        const updatedEvent = mapClubEvent(data?.evento);
+        setEvents((prev) =>
+          prev.map((item) => (item.id === selectedEvent.id ? updatedEvent : item))
+        );
+        return;
+      }
+
+      const data = await api.post('/eventos', payload);
+      if (data?.evento) {
+        setEvents((prev) => [mapClubEvent(data.evento), ...prev]);
+        return;
+      }
+
+      await loadClubEvents();
+    } catch (error) {
+      throw error;
+    }
+  };
 
   return (
     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
@@ -1917,6 +2030,7 @@ export default function EventosScreen() {
         onClose={handleCloseModal}
         venues={venues}
         sports={sports}
+        onSave={handleSaveFriendly}
       />
       <TournamentEventModal
         visible={activeModal === 'torneo'}
