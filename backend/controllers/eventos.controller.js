@@ -137,6 +137,38 @@ const parseOptionalPrice = (value, fieldName) => {
   return Math.round(numeric * 100) / 100;
 };
 
+const parseEquiposPayload = (equiposInput, { requiredCount } = {}) => {
+  if (equiposInput === undefined) return [];
+  if (!Array.isArray(equiposInput)) {
+    throwValidationError('equipos debe ser una lista');
+  }
+  const equipos = equiposInput
+    .filter((equipo) => equipo)
+    .map((equipo, index) => {
+      const equipoId = parseRequiredInteger(
+        equipo?.equipo_id ?? equipo?.equipoId ?? equipo?.id,
+        `equipos[${index}].equipo_id`
+      );
+      const nombreEquipo = parseRequiredString(
+        equipo?.nombre_equipo ?? equipo?.nombre ?? equipo?.name,
+        `equipos[${index}].nombre_equipo`
+      );
+      return {
+        equipo_id: equipoId,
+        nombre_equipo: nombreEquipo,
+      };
+    });
+  if (requiredCount && equipos.length !== requiredCount) {
+    throwValidationError(`equipos debe contener exactamente ${requiredCount} equipos`);
+  }
+  const ids = equipos.map((equipo) => equipo.equipo_id);
+  const uniqueIds = new Set(ids);
+  if (uniqueIds.size !== ids.length) {
+    throwValidationError('Los equipos deben ser distintos');
+  }
+  return equipos;
+};
+
 const validateFasePartido = (value) => {
   if (!value) return null;
   const normalized = parseRequiredString(value, 'fase').toLowerCase();
@@ -217,7 +249,8 @@ const getEvento = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
-    res.json({ evento });
+    const equipos = await EventoEquiposModel.listarPorEvento(eventoId);
+    res.json({ evento: { ...evento, equipos } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
@@ -246,6 +279,9 @@ const createEvento = async (req, res) => {
     const premio_1 = parseOptionalString(req.body?.premio_1);
     const premio_2 = parseOptionalString(req.body?.premio_2);
     const premio_3 = parseOptionalString(req.body?.premio_3);
+    const equipos = parseEquiposPayload(req.body?.equipos ?? [], {
+      requiredCount: tipo === 'amistoso' ? 2 : undefined,
+    });
 
     const evento = await EventosModel.crear(req.club.club_id, {
       nombre,
@@ -265,7 +301,24 @@ const createEvento = async (req, res) => {
       premio_3,
     });
 
-    res.status(201).json({ mensaje: 'Evento creado', evento });
+    if (equipos.length > 0) {
+      await Promise.all(
+        equipos.map((equipo) =>
+          EventoEquiposModel.crear(evento.evento_id, {
+            equipo_id: equipo.equipo_id,
+            nombre_equipo: equipo.nombre_equipo,
+            estado: 'aprobado',
+          })
+        )
+      );
+    }
+
+    const eventoConEquipos =
+      equipos.length > 0
+        ? { ...evento, equipos: await EventoEquiposModel.listarPorEvento(evento.evento_id) }
+        : evento;
+
+    res.status(201).json({ mensaje: 'Evento creado', evento: eventoConEquipos });
   } catch (error) {
     if (error.statusCode === 400 || error.statusCode === 403) {
       return res.status(error.statusCode).json({ mensaje: error.message });
@@ -311,11 +364,22 @@ const updateEvento = async (req, res) => {
       throwValidationError('El evento está en modo solo lectura');
     }
 
+    if (req.body?.equipos !== undefined && existente.estado !== 'inactivo') {
+      throwValidationError('El evento está en modo solo lectura');
+    }
+
     if (req.body?.estado !== undefined && existente.estado !== 'inactivo') {
       throwValidationError('estado solo editable cuando el evento está inactivo');
     }
 
     const updates = {};
+    const equiposInput = req.body?.equipos;
+    const equipos =
+      equiposInput !== undefined
+        ? parseEquiposPayload(equiposInput, {
+          requiredCount: existente.tipo === 'amistoso' ? 2 : undefined,
+        })
+        : [];
 
     if (req.body?.nombre !== undefined) {
       updates.nombre = parseRequiredString(req.body.nombre, 'nombre');
@@ -395,7 +459,26 @@ const updateEvento = async (req, res) => {
     }
 
     const evento = await EventosModel.actualizar(eventoId, req.club.club_id, updates);
-    res.json({ mensaje: 'Evento actualizado', evento });
+
+    if (equiposInput !== undefined) {
+      await EventoEquiposModel.eliminarPorEvento(eventoId);
+      await Promise.all(
+        equipos.map((equipo) =>
+          EventoEquiposModel.crear(eventoId, {
+            equipo_id: equipo.equipo_id,
+            nombre_equipo: equipo.nombre_equipo,
+            estado: 'aprobado',
+          })
+        )
+      );
+    }
+
+    const eventoConEquipos =
+      equiposInput !== undefined
+        ? { ...evento, equipos: await EventoEquiposModel.listarPorEvento(eventoId) }
+        : evento;
+
+    res.json({ mensaje: 'Evento actualizado', evento: eventoConEquipos });
   } catch (error) {
     if (error.statusCode === 400 || error.statusCode === 403) {
       return res.status(error.statusCode).json({ mensaje: error.message });
