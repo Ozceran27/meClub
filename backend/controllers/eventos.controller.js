@@ -37,6 +37,15 @@ const ensureEventoNoFinalizado = (evento, message = 'El evento está finalizado 
   }
 };
 
+const ensureEventoEditableResultados = (
+  evento,
+  message = 'Solo se pueden modificar partidos o posiciones cuando el evento está activo o pausado'
+) => {
+  if (!['activo', 'pausado'].includes(evento?.estado)) {
+    throwValidationError(message);
+  }
+};
+
 const parseRequiredString = (value, fieldName) => {
   if (typeof value !== 'string') {
     throwValidationError(`${fieldName} es obligatorio`);
@@ -329,6 +338,15 @@ const deleteEvento = async (req, res) => {
       return res.status(400).json({ mensaje: 'evento_id inválido' });
     }
 
+    const existente = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!existente) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (existente.estado === 'finalizado') {
+      return res.status(400).json({ mensaje: 'No se puede eliminar un evento finalizado' });
+    }
+
     const deleted = await EventosModel.eliminar(eventoId, req.club.club_id);
     if (!deleted) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
@@ -489,6 +507,7 @@ const createPartido = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     const faseInput = req.body?.fase !== undefined ? validateFasePartido(req.body.fase) : null;
     const fase = resolveDefaultFase(evento.tipo, faseInput);
@@ -576,6 +595,7 @@ const updatePartido = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -670,6 +690,7 @@ const setGanadorPartido = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -748,6 +769,7 @@ const createPosicion = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
@@ -794,6 +816,7 @@ const updatePosicion = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });

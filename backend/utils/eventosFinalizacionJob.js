@@ -5,7 +5,7 @@ const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
 
 const createEventosFinalizacionRunner = () => async () => {
   try {
-    const { actualizados, eventos } = await EventosModel.finalizarEventosVencidos();
+    const { actualizados, eventos } = await EventosModel.finalizarEventosVencidos(new Date());
     if (actualizados > 0) {
       const ids = eventos.map((evento) => `#${evento.evento_id}`).join(', ');
       logger.info(`Eventos finalizados automáticamente: ${actualizados}.`, ids);

@@ -111,13 +111,21 @@ const EventosModel = {
     return result.affectedRows > 0;
   },
 
-  finalizarEventosVencidos: async () => {
+  finalizarEventosVencidos: async (referenceDate = new Date()) => {
     const [rows] = await db.query(
       `SELECT evento_id, club_id
        FROM eventos
-       WHERE fecha_fin IS NOT NULL
-         AND fecha_fin < NOW()
-         AND estado <> 'finalizado'`
+       WHERE estado <> 'finalizado'
+         AND (
+           (tipo = 'amistoso'
+             AND fecha_inicio IS NOT NULL
+             AND fecha_inicio < DATE_SUB(?, INTERVAL 1 DAY))
+           OR
+           (tipo IN ('torneo', 'copa')
+             AND fecha_fin IS NOT NULL
+             AND fecha_fin < DATE_SUB(?, INTERVAL 1 DAY))
+         )`,
+      [referenceDate, referenceDate]
     );
 
     if (rows.length === 0) {
