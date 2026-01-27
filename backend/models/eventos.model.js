@@ -39,11 +39,22 @@ const EventosModel = {
     );
     return rows.map((row) => normalizeEventoRow(row));
   },
-  listarGlobales: async ({ provinciaId } = {}) => {
+  listarGlobales: async ({ provinciaId, zona } = {}) => {
     const values = [];
-    let whereClause = "zona = 'nacional'";
-    if (provinciaId !== undefined && provinciaId !== null) {
-      whereClause = "(zona = 'nacional' OR (zona = 'regional' AND provincia_id = ?))";
+    let whereClause = "eventos.zona = 'nacional'";
+
+    if (zona === 'regional') {
+      if (provinciaId === undefined || provinciaId === null) {
+        return [];
+      }
+      whereClause = 'eventos.zona = ? AND eventos.provincia_id = ?';
+      values.push('regional', provinciaId);
+    } else if (zona === 'nacional') {
+      whereClause = 'eventos.zona = ?';
+      values.push('nacional');
+    } else if (provinciaId !== undefined && provinciaId !== null) {
+      whereClause =
+        "(eventos.zona = 'nacional' OR (eventos.zona = 'regional' AND eventos.provincia_id = ?))";
       values.push(provinciaId);
     }
 

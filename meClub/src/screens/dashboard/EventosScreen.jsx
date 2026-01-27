@@ -28,7 +28,7 @@ const resolveStatusLabel = (status) => {
 
 const resolveGlobalScope = (zona) => {
   const normalized = String(zona ?? '').toLowerCase();
-  if (normalized === 'regional') return 'provincia';
+  if (['regional', 'provincial', 'provincia'].includes(normalized)) return 'provincia';
   return 'nacional';
 };
 
