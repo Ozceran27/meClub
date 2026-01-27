@@ -326,15 +326,37 @@ function EventDetail({ label, value }) {
 }
 
 function EventActionButton({ label, borderClassName, iconName, iconColor, onPress }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const tooltipEnabled = Platform.OS === 'web';
+  const showTooltip = tooltipEnabled && isHovered;
+  const handleHoverIn = tooltipEnabled ? () => setIsHovered(true) : undefined;
+  const handleHoverOut = tooltipEnabled ? () => setIsHovered(false) : undefined;
+  const handleFocus = tooltipEnabled ? () => setIsHovered(true) : undefined;
+  const handleBlur = tooltipEnabled ? () => setIsHovered(false) : undefined;
+
   return (
-    <Pressable
-      className={`h-9 w-9 items-center justify-center rounded-xl border ${borderClassName}`}
-      onPress={onPress}
-      accessibilityLabel={label}
-      title={label}
-    >
-      <Ionicons name={iconName} size={18} color={iconColor} />
-    </Pressable>
+    <View className="relative items-center">
+      <Pressable
+        className={`h-9 w-9 items-center justify-center rounded-xl border ${borderClassName}`}
+        onPress={onPress}
+        onHoverIn={handleHoverIn}
+        onHoverOut={handleHoverOut}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        accessibilityLabel={label}
+        title={label}
+      >
+        <Ionicons name={iconName} size={18} color={iconColor} />
+      </Pressable>
+      {showTooltip ? (
+        <View
+          pointerEvents="none"
+          className="absolute top-full z-20 mt-1 rounded-lg border border-white/20 bg-slate-950/95 px-2 py-1 shadow-lg shadow-black/40"
+        >
+          <Text className="text-[11px] font-semibold text-white">{label}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -394,7 +416,7 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
           </View>
         </View>
         <View className="w-36 justify-center">
-          <View className="grid grid-cols-2 gap-2">
+          <View className="grid grid-cols-2 gap-x-1 gap-y-2">
             <EventActionButton
               label="Iniciar"
               borderClassName="border-emerald-400/40"
