@@ -342,6 +342,7 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
   const endDateLabel = isCupOrTournament && event?.endDate ? formatEventDate(event.endDate) : '';
   const dateLabel =
     endDateLabel && startDateLabel ? `${startDateLabel} - ${endDateLabel}` : startDateLabel;
+  const imageStyle = Platform.select({ web: { objectFit: 'contain' } });
   const prizeDetail = event?.prize
     ? {
       label: isCupOrTournament ? '1° premio' : 'Premio',
@@ -364,7 +365,12 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
         <View className="w-20">
           <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             {imageSource ? (
-              <Image source={imageSource} className="h-full w-full" resizeMode="contain" />
+              <Image
+                source={imageSource}
+                className="h-full w-full"
+                resizeMode="contain"
+                style={imageStyle}
+              />
             ) : (
               <View className="flex-1 items-center justify-center">
                 <Ionicons name="image-outline" size={24} color="#94A3B8" />
