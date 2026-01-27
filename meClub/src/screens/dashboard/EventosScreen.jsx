@@ -2327,12 +2327,12 @@ export default function EventosScreen() {
               <CardTitle colorClass="text-mc-info">Eventos Globales</CardTitle>
               <View className="flex-row gap-2">
                 <FilterPill
-                  label="Provincia"
+                  label="Regionales"
                   active={filter === 'provincia'}
                   onPress={() => setFilter('provincia')}
                 />
                 <FilterPill
-                  label="Nacional"
+                  label="Nacionales"
                   active={filter === 'nacional'}
                   onPress={() => setFilter('nacional')}
                 />
