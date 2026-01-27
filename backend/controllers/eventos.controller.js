@@ -283,6 +283,9 @@ const createEvento = async (req, res) => {
     const descripcion = parseOptionalString(req.body?.descripcion);
     const fecha_inicio = parseRequiredDate(req.body?.fecha_inicio, 'fecha_inicio');
     const fecha_fin = parseOptionalDate(req.body?.fecha_fin, 'fecha_fin');
+    if (fecha_fin && fecha_fin < fecha_inicio) {
+      throwValidationError('fecha_fin debe ser posterior a fecha_inicio');
+    }
     const zona = parseOptionalString(req.body?.zona) || 'regional';
     const provincia_id = resolveRegionalProvincia({ ...(req.body || {}), zona }, req.club);
     const limite_equipos = validateLimiteEquipos(tipo, req.body?.limite_equipos);
@@ -420,6 +423,16 @@ const updateEvento = async (req, res) => {
 
     if (req.body?.fecha_fin !== undefined) {
       updates.fecha_fin = parseOptionalDate(req.body.fecha_fin, 'fecha_fin');
+    }
+
+    const fechaInicio = updates.fecha_inicio ?? existente.fecha_inicio;
+    const fechaFin = updates.fecha_fin ?? existente.fecha_fin;
+    if (fechaInicio && fechaFin) {
+      const inicio = new Date(fechaInicio);
+      const fin = new Date(fechaFin);
+      if (!Number.isNaN(inicio.getTime()) && !Number.isNaN(fin.getTime()) && fin < inicio) {
+        throwValidationError('fecha_fin debe ser posterior a fecha_inicio');
+      }
     }
 
     if (req.body?.hora_inicio !== undefined) {
