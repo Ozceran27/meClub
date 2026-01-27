@@ -362,7 +362,7 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
     >
       <View className="flex-row items-stretch gap-4">
         <View className="w-20">
-          <View className="h-20 w-20 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             {imageSource ? (
               <Image source={imageSource} className="h-full w-full" resizeMode="contain" />
             ) : (
@@ -385,7 +385,7 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
             ) : null}
           </View>
         </View>
-        <View className="w-32 items-end gap-3">
+        <View className="w-36">
           <View className="grid grid-cols-2 gap-2">
             <EventActionButton
               label="Iniciar"
@@ -412,9 +412,9 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
               onPress={onDelete}
             />
           </View>
-          <View className="self-end">
-            <StatusPill status={event.status} />
-          </View>
+        </View>
+        <View className="w-24 items-end">
+          <StatusPill status={event.status} />
         </View>
       </View>
     </Pressable>
