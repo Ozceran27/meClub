@@ -2478,7 +2478,7 @@ export default function EventosScreen() {
               <TextInput
                 value={globalSearchQuery}
                 onChangeText={(value) => setGlobalSearchQuery(value)}
-                placeholder="Buscar por organizador o título"
+                placeholder="Buscar por Club organizador o nombre del Evento"
                 placeholderTextColor="#94A3B8"
                 className={`${FORM_FIELD_CLASSNAME} flex-1`}
                 autoCorrect={false}
