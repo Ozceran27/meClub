@@ -52,6 +52,7 @@ const cuponesRoutes = require('./routes/cupones.routes');
 const messagesRoutes = require('./routes/messages.routes');
 const asociadosRoutes = require('./routes/asociados.routes');
 const eventosRoutes = require('./routes/eventos.routes');
+const equiposRoutes = require('./routes/equipos.routes');
 app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/clubes', clubesRoutes);
@@ -66,6 +67,7 @@ app.use('/api/cupones', cuponesRoutes);
 app.use('/api/mensajes', messagesRoutes);
 app.use('/api/asociados', asociadosRoutes);
 app.use('/api/eventos', eventosRoutes);
+app.use('/api/equipos', equiposRoutes);
 
 // INFO API -----------------------------------------------------------------------------------------
 app.get('/', (req, res) => {

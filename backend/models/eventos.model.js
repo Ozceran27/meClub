@@ -1,10 +1,21 @@
 const db = require('../config/db');
 
+const toNullableInteger = (value) => {
+  if (value === undefined || value === null) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const resolveLimiteEquipos = (row) => {
+  if (!row) return null;
+  return toNullableInteger(row.limite_equipos ?? row.cantidad_equipos);
+};
+
 const normalizeEventoRow = (row) => {
   if (!row) return null;
   return {
     ...row,
-    limite_equipos: row.limite_equipos === null ? null : Number(row.limite_equipos),
+    limite_equipos: resolveLimiteEquipos(row),
   };
 };
 
@@ -19,7 +30,8 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
+              premio_1, premio_2, premio_3, creado_en, actualizado_en
        FROM eventos
        WHERE ${filters.join(' AND ')}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -37,7 +49,8 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
+              premio_1, premio_2, premio_3, creado_en, actualizado_en
        FROM eventos
        WHERE ${whereClause}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -49,7 +62,8 @@ const EventosModel = {
   obtenerPorId: async (eventoId, clubId) => {
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              provincia_id, zona, limite_equipos, creado_en, actualizado_en
+              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
+              premio_1, premio_2, premio_3, creado_en, actualizado_en
        FROM eventos
        WHERE evento_id = ? AND club_id = ?
        LIMIT 1`,
@@ -59,10 +73,13 @@ const EventosModel = {
   },
 
   crear: async (clubId, payload) => {
+    const cantidadEquipos =
+      payload.cantidad_equipos ?? payload.limite_equipos ?? null;
     const [result] = await db.query(
       `INSERT INTO eventos
-       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, provincia_id, zona, limite_equipos)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio,
+        provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion, premio_1, premio_2, premio_3)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clubId,
         payload.nombre,
@@ -71,16 +88,28 @@ const EventosModel = {
         payload.estado,
         payload.fecha_inicio,
         payload.fecha_fin,
+        payload.hora_inicio,
         payload.provincia_id,
         payload.zona,
-        payload.limite_equipos,
+        payload.deporte_id,
+        cantidadEquipos,
+        payload.valor_inscripcion ?? 0,
+        payload.premio_1,
+        payload.premio_2,
+        payload.premio_3,
       ]
     );
     return EventosModel.obtenerPorId(result.insertId, clubId);
   },
 
   actualizar: async (eventoId, clubId, updates) => {
-    const fields = Object.entries(updates).filter(([, value]) => value !== undefined);
+    const normalizedUpdates = { ...updates };
+    if (normalizedUpdates.limite_equipos !== undefined) {
+      normalizedUpdates.cantidad_equipos = normalizedUpdates.limite_equipos;
+      delete normalizedUpdates.limite_equipos;
+    }
+
+    const fields = Object.entries(normalizedUpdates).filter(([, value]) => value !== undefined);
     if (fields.length === 0) {
       return EventosModel.obtenerPorId(eventoId, clubId);
     }
@@ -111,13 +140,21 @@ const EventosModel = {
     return result.affectedRows > 0;
   },
 
-  finalizarEventosVencidos: async () => {
+  finalizarEventosVencidos: async (referenceDate = new Date()) => {
     const [rows] = await db.query(
       `SELECT evento_id, club_id
        FROM eventos
-       WHERE fecha_fin IS NOT NULL
-         AND fecha_fin < NOW()
-         AND estado <> 'finalizado'`
+       WHERE estado <> 'finalizado'
+         AND (
+           (tipo = 'amistoso'
+             AND fecha_inicio IS NOT NULL
+             AND fecha_inicio < DATE_SUB(?, INTERVAL 1 DAY))
+           OR
+           (tipo IN ('torneo', 'copa')
+             AND fecha_fin IS NOT NULL
+             AND fecha_fin < DATE_SUB(?, INTERVAL 1 DAY))
+         )`,
+      [referenceDate, referenceDate]
     );
 
     if (rows.length === 0) {

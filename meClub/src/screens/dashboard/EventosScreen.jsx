@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../features/auth/useAuth';
-import { api } from '../../lib/api';
+import { api, fetchClubCourts, fetchSports, searchTeams } from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
@@ -11,40 +11,18 @@ import ScreenHeader from '../../components/ScreenHeader';
 
 const ADV_BADGE = 'ADV';
 
-const myEvents = [
-  {
-    id: 'evt-1',
-    title: 'Amistoso Interclub',
-    date: 'Vie 20 Sep · 19:30',
-    location: 'Club Centro',
-    type: 'amistoso',
-    status: 'Programado',
-  },
-  {
-    id: 'evt-2',
-    title: 'Torneo Liga Mixto',
-    date: 'Sáb 28 Sep · 09:00',
-    location: 'Canchas Norte',
-    type: 'torneo',
-    status: 'En curso',
-  },
-  {
-    id: 'evt-3',
-    title: 'Copa Primavera',
-    date: 'Dom 06 Oct · 15:00',
-    location: 'Sede Sur',
-    type: 'copa',
-    status: 'Pausado',
-  },
-  {
-    id: 'evt-4',
-    title: 'Copa Aniversario',
-    date: 'Sáb 19 Oct · 17:00',
-    location: 'Sede Central',
-    type: 'copa',
-    status: 'Inactivo',
-  },
-];
+const STATUS_LABELS = {
+  inactivo: 'Inactivo',
+  activo: 'En curso',
+  pausado: 'Pausado',
+  finalizado: 'Finalizado',
+};
+
+const resolveStatusLabel = (status) => {
+  if (!status) return 'Programado';
+  const normalized = String(status).toLowerCase();
+  return STATUS_LABELS[normalized] ?? status;
+};
 
 const resolveGlobalScope = (zona) => {
   const normalized = String(zona ?? '').toLowerCase();
@@ -63,11 +41,60 @@ const formatEventDate = (value) => {
   }).format(parsed);
 };
 
+const formatEventRange = (start, end) => {
+  const startLabel = formatEventDate(start);
+  const endLabel = formatEventDate(end);
+  if (!start && !end) return 'Sin fecha';
+  if (!start) return endLabel;
+  if (!end || startLabel === endLabel) return startLabel;
+  return `${startLabel} - ${endLabel}`;
+};
+
+const formatEventTime = (value) => {
+  if (!value) return '';
+  const normalized = String(value);
+  if (normalized.length >= 5) {
+    return normalized.slice(0, 5);
+  }
+  return normalized;
+};
+
+const resolveLocationLabel = (evento) => {
+  if (evento?.descripcion) return evento.descripcion;
+  if (evento?.zona) return `Zona ${evento.zona}`;
+  if (evento?.provincia_id) return `Provincia ${evento.provincia_id}`;
+  return 'Sin descripción';
+};
+
 const resolveOrganizer = (evento) => {
   if (evento?.organizador) return evento.organizador;
   if (evento?.club_nombre) return evento.club_nombre;
   if (evento?.club_id) return `Club ${evento.club_id}`;
   return 'Organización';
+};
+
+const resolveFriendlyTeams = (evento) => {
+  const equipos = Array.isArray(evento?.equipos) ? [...evento.equipos] : [];
+  if (equipos.length === 0) {
+    return {
+      team1: '',
+      team1Id: '',
+      team2: '',
+      team2Id: '',
+    };
+  }
+  const sorted = equipos.sort((a, b) => {
+    const aTime = new Date(a?.creado_en ?? 0).getTime();
+    const bTime = new Date(b?.creado_en ?? 0).getTime();
+    return aTime - bTime;
+  });
+  const [team1, team2] = sorted;
+  return {
+    team1: team1?.nombre_equipo ?? team1?.nombre ?? '',
+    team1Id: team1?.equipo_id ?? '',
+    team2: team2?.nombre_equipo ?? team2?.nombre ?? '',
+    team2Id: team2?.equipo_id ?? '',
+  };
 };
 
 const mapGlobalEvent = (evento) => ({
@@ -77,6 +104,31 @@ const mapGlobalEvent = (evento) => ({
   scope: resolveGlobalScope(evento?.zona),
   organizer: resolveOrganizer(evento),
 });
+
+const mapClubEvent = (evento) => ({
+  id: evento?.evento_id ?? evento?.id ?? `event-${Math.random()}`,
+  title: evento?.nombre ?? 'Evento',
+  date: formatEventRange(evento?.fecha_inicio, evento?.fecha_fin),
+  location: resolveLocationLabel(evento),
+  type: evento?.tipo ?? 'amistoso',
+  status: evento?.estado ?? 'programado',
+  startDate: evento?.fecha_inicio ?? '',
+  endDate: evento?.fecha_fin ?? '',
+  time: formatEventTime(evento?.hora_inicio),
+  sport: evento?.deporte_id ?? '',
+  prize: evento?.premio_1 ?? '',
+  venue: evento?.descripcion ?? '',
+  raw: evento,
+});
+
+const normalizeStatus = (status) => String(status ?? '').toLowerCase();
+
+const STATUS_ORDER = {
+  inactivo: 0,
+  activo: 1,
+  pausado: 2,
+  finalizado: 3,
+};
 
 const DEFAULT_STANDINGS = [
   { id: 'st-1', team: 'Club Centro', played: 3, points: 7 },
@@ -122,14 +174,23 @@ const statusStyles = {
     container: 'bg-amber-500/10 border-amber-400/40',
     text: 'text-amber-100',
   },
+  Finalizado: {
+    container: 'bg-slate-500/10 border-slate-400/40',
+    text: 'text-slate-200',
+  },
+  Inactivo: {
+    container: 'bg-indigo-500/10 border-indigo-400/40',
+    text: 'text-indigo-100',
+  },
 };
 
 function StatusPill({ status }) {
-  const styles = statusStyles[status] ?? statusStyles.Programado;
+  const label = resolveStatusLabel(status);
+  const styles = statusStyles[label] ?? statusStyles.Programado;
   return (
     <View className={`rounded-full px-3 py-[4px] border ${styles.container}`}>
       <Text className={`text-[12px] font-semibold ${styles.text}`} numberOfLines={1}>
-        {status}
+        {label}
       </Text>
     </View>
   );
@@ -154,6 +215,46 @@ function FilterPill({ active, label, onPress }) {
 
 const FORM_FIELD_CLASSNAME =
   'min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white';
+
+const EVENT_DATE_OPTIONS = (() => {
+  const formatter = new Intl.DateTimeFormat('es-AR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  });
+  return Array.from({ length: 45 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    const value = date.toISOString().slice(0, 10);
+    return {
+      value,
+      label: formatter.format(date),
+    };
+  });
+})();
+
+const EVENT_TIME_OPTIONS = Array.from({ length: 30 }, (_, index) => {
+  const hours = Math.floor(index / 2) + 8;
+  const minutes = index % 2 === 0 ? '00' : '30';
+  const label = `${String(hours).padStart(2, '0')}:${minutes}`;
+  return { value: label, label };
+});
+
+const formatTimeInput = (input) => {
+  const digits = String(input ?? '').replace(/\D/g, '').slice(0, 4);
+  if (!digits) {
+    return { formatted: '', isComplete: false, isValid: false };
+  }
+  if (digits.length <= 2) {
+    return { formatted: digits, isComplete: false, isValid: false };
+  }
+  const hours = Number(digits.slice(0, 2));
+  const minutes = Number(digits.slice(2, 4));
+  const formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  const isComplete = digits.length === 4;
+  const isValid = isComplete && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+  return { formatted, isComplete, isValid };
+};
 
 function FormField({ label, placeholder, value, onChangeText, editable = true, keyboardType }) {
   return (
@@ -211,8 +312,26 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
+function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, sports, onSave }) {
   const [form, setForm] = useState(() => initialValues);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showVenuePicker, setShowVenuePicker] = useState(false);
+  const [showSportPicker, setShowSportPicker] = useState(false);
+  const [timeInput, setTimeInput] = useState('');
+  const [timeInputError, setTimeInputError] = useState('');
+  const [team1Query, setTeam1Query] = useState('');
+  const [team2Query, setTeam2Query] = useState('');
+  const [team1Results, setTeam1Results] = useState([]);
+  const [team2Results, setTeam2Results] = useState([]);
+  const [team1Loading, setTeam1Loading] = useState(false);
+  const [team2Loading, setTeam2Loading] = useState(false);
+  const [team1Error, setTeam1Error] = useState('');
+  const [team2Error, setTeam2Error] = useState('');
+  const [showTeam1Dropdown, setShowTeam1Dropdown] = useState(false);
+  const [showTeam2Dropdown, setShowTeam2Dropdown] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -221,9 +340,259 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
     setForm(initialValues);
   }, [initialValues]);
 
+  useEffect(() => {
+    if (!visible) return;
+    setShowDatePicker(false);
+    setShowTimePicker(false);
+    setShowVenuePicker(false);
+    setShowSportPicker(false);
+    setTimeInput(initialValues?.time ?? '');
+    setTimeInputError('');
+    setTeam1Query(initialValues?.team1 ?? '');
+    setTeam2Query(initialValues?.team2 ?? '');
+    setTeam1Results([]);
+    setTeam2Results([]);
+    setTeam1Error('');
+    setTeam2Error('');
+    setShowTeam1Dropdown(false);
+    setShowTeam2Dropdown(false);
+    setSubmitError('');
+  }, [visible, initialValues]);
+
+  useEffect(() => {
+    if (!showTeam1Dropdown) return;
+    const trimmed = team1Query.trim();
+    if (trimmed.length < 2) {
+      setTeam1Results([]);
+      setTeam1Loading(false);
+      setTeam1Error('');
+      return;
+    }
+    let isActive = true;
+    setTeam1Loading(true);
+    setTeam1Error('');
+    const timeout = setTimeout(async () => {
+      try {
+        const results = await searchTeams(trimmed, { limit: 8 });
+        if (isActive) {
+          setTeam1Results(results);
+        }
+      } catch (error) {
+        if (isActive) {
+          setTeam1Error(error?.message || 'No se pudieron buscar equipos.');
+        }
+      } finally {
+        if (isActive) {
+          setTeam1Loading(false);
+        }
+      }
+    }, 300);
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+  }, [showTeam1Dropdown, team1Query]);
+
+  useEffect(() => {
+    if (!showTeam2Dropdown) return;
+    const trimmed = team2Query.trim();
+    if (trimmed.length < 2) {
+      setTeam2Results([]);
+      setTeam2Loading(false);
+      setTeam2Error('');
+      return;
+    }
+    let isActive = true;
+    setTeam2Loading(true);
+    setTeam2Error('');
+    const timeout = setTimeout(async () => {
+      try {
+        const results = await searchTeams(trimmed, { limit: 8 });
+        if (isActive) {
+          setTeam2Results(results);
+        }
+      } catch (error) {
+        if (isActive) {
+          setTeam2Error(error?.message || 'No se pudieron buscar equipos.');
+        }
+      } finally {
+        if (isActive) {
+          setTeam2Loading(false);
+        }
+      }
+    }, 300);
+    return () => {
+      isActive = false;
+      clearTimeout(timeout);
+    };
+  }, [showTeam2Dropdown, team2Query]);
+
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  const formatPrizeValue = (value) => {
+    const digits = String(value ?? '').replace(/\D/g, '');
+    return digits ? `$ ${digits}` : '';
+  };
+
+  const handleTimeInputChange = (value) => {
+    const { formatted, isComplete, isValid } = formatTimeInput(value);
+    setTimeInput(formatted);
+    if (isComplete && !isValid) {
+      setTimeInputError('Ingresá una hora válida (00-23 / 00-59).');
+      return;
+    }
+    setTimeInputError('');
+    if (isValid) {
+      handleChange('time', formatted);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!editable || saving) return;
+    if (!form.title?.trim()) {
+      setSubmitError('Ingresá un título para el amistoso.');
+      return;
+    }
+    if (!form.date) {
+      setSubmitError('Seleccioná una fecha para el amistoso.');
+      return;
+    }
+    if (!form.venue) {
+      setSubmitError('Seleccioná una sede.');
+      return;
+    }
+    if (!form.sport) {
+      setSubmitError('Seleccioná un deporte.');
+      return;
+    }
+    if (!form.team1Id || !form.team2Id) {
+      setSubmitError('Seleccioná ambos equipos desde la búsqueda.');
+      return;
+    }
+    if (String(form.team1Id) === String(form.team2Id)) {
+      setSubmitError('Los equipos deben ser distintos.');
+      return;
+    }
+    setSaving(true);
+    setSubmitError('');
+    try {
+      if (typeof onSave !== 'function') {
+        throw new Error('No se encontró el manejador de guardado.');
+      }
+      await onSave(form);
+      onClose();
+    } catch (error) {
+      setSubmitError(error?.message || 'No se pudo guardar el amistoso.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderPickerModal = ({
+    visible: pickerVisible,
+    onClose,
+    options,
+    selectedValue,
+    onSelect,
+    title: pickerTitle,
+    emptyText = 'No hay datos disponibles',
+    headerContent,
+  }) => {
+    if (!pickerVisible) return null;
+    return (
+      <ModalContainer
+        visible={pickerVisible}
+        onRequestClose={onClose}
+        containerClassName="w-full max-w-xl max-h-[480px]"
+      >
+        <Card className="w-full max-h-[480px]">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-white text-lg font-semibold">{pickerTitle}</Text>
+            <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
+              <Ionicons name="close" size={18} color="white" />
+            </Pressable>
+          </View>
+          {headerContent ? <View className="mb-3">{headerContent}</View> : null}
+          <ScrollView className="max-h-[320px]" contentContainerClassName="pb-2">
+            {options.map((option) => {
+              const value = option.value ?? option.id ?? option.key ?? option;
+              const label = option.label ?? option.nombre ?? option.title ?? String(option);
+              const active = String(selectedValue) === String(value);
+              return (
+                <Pressable
+                  key={value}
+                  onPress={() => {
+                    onSelect(value, option);
+                    onClose();
+                  }}
+                  className={`rounded-xl px-4 py-3 mb-2 border border-white/5 ${
+                    active ? 'bg-white/10 border-mc-warn' : 'bg-white/5'
+                  }`}
+                >
+                  <Text className="text-white text-base font-medium">{label}</Text>
+                  {option.description ? (
+                    <Text className="text-white/60 text-sm mt-1">{option.description}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+            {options.length === 0 ? (
+              <Text className="text-white/60 text-sm text-center">{emptyText}</Text>
+            ) : null}
+          </ScrollView>
+        </Card>
+      </ModalContainer>
+    );
+  };
+
+  const renderTeamResults = ({ query, results, loading, error, onSelect }) => (
+    <View className="mt-2 rounded-2xl border border-white/10 bg-white/5">
+      {loading ? (
+        <View className="px-4 py-3 flex-row items-center gap-2">
+          <Text className="text-white/70 text-sm">Buscando equipos...</Text>
+        </View>
+      ) : null}
+      {error ? (
+        <View className="px-4 py-3">
+          <Text className="text-rose-200 text-sm">{error}</Text>
+        </View>
+      ) : null}
+      {!loading && !error && query.trim().length < 2 ? (
+        <View className="px-4 py-3">
+          <Text className="text-white/60 text-sm">Escribí al menos 2 caracteres para buscar</Text>
+        </View>
+      ) : null}
+      {!loading && !error && query.trim().length >= 2 && results.length === 0 ? (
+        <View className="px-4 py-3">
+          <Text className="text-white/60 text-sm">Sin resultados</Text>
+        </View>
+      ) : null}
+      {results.map((team) => (
+        <Pressable
+          key={team.id ?? team.nombre}
+          onPress={() => onSelect(team)}
+          className="px-4 py-3 border-b border-white/5"
+        >
+          <Text className="text-white text-sm font-medium">{team.nombre}</Text>
+          {team.descripcion ? (
+            <Text className="text-white/60 text-xs mt-1">{team.descripcion}</Text>
+          ) : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  const venueLabel =
+    venues.find((venue) => String(venue.cancha_id ?? venue.id) === String(form.venue))?.nombre ??
+    venues.find((venue) => String(venue.cancha_id ?? venue.id) === String(form.venue))?.label ??
+    form.venue;
+
+  const sportLabel =
+    sports.find((sport) => String(sport.id ?? sport.deporte_id) === String(form.sport))?.nombre ??
+    sports.find((sport) => String(sport.id ?? sport.deporte_id) === String(form.sport))?.label ??
+    form.sport;
 
   return (
     <ModalContainer
@@ -254,65 +623,158 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
           />
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Fecha"
-                placeholder="20/09/2024"
-                value={form.date}
-                onChangeText={(value) => handleChange('date', value)}
-                editable={editable}
-              />
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Fecha
+              </Text>
+              <Pressable
+                onPress={() => editable && setShowDatePicker(true)}
+                className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                  editable ? '' : 'opacity-60'
+                }`}
+              >
+                <Text className="text-white text-sm">
+                  {EVENT_DATE_OPTIONS.find((option) => option.value === form.date)?.label ||
+                    form.date ||
+                    'Seleccioná una fecha'}
+                </Text>
+              </Pressable>
             </View>
             <View className="flex-1">
-              <FormField
-                label="Hora"
-                placeholder="19:30"
-                value={form.time}
-                onChangeText={(value) => handleChange('time', value)}
-                editable={editable}
-              />
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Hora
+              </Text>
+              <Pressable
+                onPress={() => {
+                  if (!editable) return;
+                  setTimeInput(form.time ?? '');
+                  setShowTimePicker(true);
+                }}
+                className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                  editable ? '' : 'opacity-60'
+                }`}
+              >
+                <Text className="text-white text-sm">
+                  {form.time || 'Seleccioná un horario'}
+                </Text>
+              </Pressable>
             </View>
           </View>
-          <FormField
-            label="Sede"
-            placeholder="Club Centro"
-            value={form.venue}
-            onChangeText={(value) => handleChange('venue', value)}
-            editable={editable}
-          />
-          <FormField
-            label="Deporte"
-            placeholder="Fútbol, tenis, básquet"
-            value={form.sport}
-            onChangeText={(value) => handleChange('sport', value)}
-            editable={editable}
-          />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Sede
+            </Text>
+            <Pressable
+              onPress={() => editable && setShowVenuePicker(true)}
+              className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                editable ? '' : 'opacity-60'
+              }`}
+            >
+              <Text className="text-white text-sm">
+                {venueLabel || 'Seleccioná una sede'}
+              </Text>
+            </Pressable>
+          </View>
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Deporte
+            </Text>
+            <Pressable
+              onPress={() => editable && setShowSportPicker(true)}
+              className={`min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                editable ? '' : 'opacity-60'
+              }`}
+            >
+              <Text className="text-white text-sm">
+                {sportLabel || 'Seleccioná un deporte'}
+              </Text>
+            </Pressable>
+          </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Equipo 1"
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Equipo 1
+              </Text>
+              <TextInput
+                className={FORM_FIELD_CLASSNAME}
                 placeholder="Local"
-                value={form.team1}
-                onChangeText={(value) => handleChange('team1', value)}
+                placeholderTextColor="#94A3B8"
+                value={team1Query}
+                onChangeText={(value) => {
+                  setTeam1Query(value);
+                  handleChange('team1', value);
+                  handleChange('team1Id', '');
+                }}
                 editable={editable}
+                onFocus={() => setShowTeam1Dropdown(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowTeam1Dropdown(false), 150);
+                }}
               />
+              {showTeam1Dropdown
+                ? renderTeamResults({
+                  query: team1Query,
+                  results: team1Results,
+                  loading: team1Loading,
+                  error: team1Error,
+                  onSelect: (team) => {
+                    handleChange('team1', team.nombre);
+                    handleChange('team1Id', team.id);
+                    setTeam1Query(team.nombre);
+                    setShowTeam1Dropdown(false);
+                  },
+                })
+                : null}
             </View>
             <View className="flex-1">
-              <FormField
-                label="Equipo 2"
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Equipo 2
+              </Text>
+              <TextInput
+                className={FORM_FIELD_CLASSNAME}
                 placeholder="Visitante"
-                value={form.team2}
-                onChangeText={(value) => handleChange('team2', value)}
+                placeholderTextColor="#94A3B8"
+                value={team2Query}
+                onChangeText={(value) => {
+                  setTeam2Query(value);
+                  handleChange('team2', value);
+                  handleChange('team2Id', '');
+                }}
                 editable={editable}
+                onFocus={() => setShowTeam2Dropdown(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowTeam2Dropdown(false), 150);
+                }}
               />
+              {showTeam2Dropdown
+                ? renderTeamResults({
+                  query: team2Query,
+                  results: team2Results,
+                  loading: team2Loading,
+                  error: team2Error,
+                  onSelect: (team) => {
+                    handleChange('team2', team.nombre);
+                    handleChange('team2Id', team.id);
+                    setTeam2Query(team.nombre);
+                    setShowTeam2Dropdown(false);
+                  },
+                })
+                : null}
             </View>
           </View>
-          <FormField
-            label="Premio"
-            placeholder="Trofeo + medallas"
-            value={form.prize}
-            onChangeText={(value) => handleChange('prize', value)}
-            editable={editable}
-          />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Premio
+            </Text>
+            <TextInput
+              className={FORM_FIELD_CLASSNAME}
+              placeholder="$ 0"
+              placeholderTextColor="#94A3B8"
+              value={formatPrizeValue(form.prize)}
+              onChangeText={(value) => handleChange('prize', value.replace(/\D/g, ''))}
+              editable={editable}
+              keyboardType="numeric"
+            />
+          </View>
           <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <SectionTitle
               title="Resultado del amistoso"
@@ -371,15 +833,85 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose }) {
             <Text className="text-white text-xs font-semibold">Cancelar</Text>
           </Pressable>
           <Pressable
-            disabled={!editable}
-            className={`rounded-full px-4 py-2 ${editable ? 'bg-emerald-500/80' : 'bg-white/10'}`}
+            disabled={!editable || saving}
+            onPress={handleSubmit}
+            className={`rounded-full px-4 py-2 ${
+              editable && !saving ? 'bg-emerald-500/80' : 'bg-white/10'
+            }`}
           >
             <Text className="text-white text-xs font-semibold">
-              {mode === 'edit' ? 'Guardar cambios' : 'Crear amistoso'}
+              {saving ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Crear amistoso'}
             </Text>
           </Pressable>
         </View>
+        {submitError ? (
+          <Text className="text-rose-200 text-xs">{submitError}</Text>
+        ) : null}
       </View>
+      {renderPickerModal({
+        visible: showDatePicker,
+        onClose: () => setShowDatePicker(false),
+        options: EVENT_DATE_OPTIONS,
+        selectedValue: form.date,
+        onSelect: (value) => handleChange('date', value),
+        title: 'Seleccioná una fecha',
+        emptyText: 'No hay fechas disponibles',
+      })}
+      {renderPickerModal({
+        visible: showTimePicker,
+        onClose: () => setShowTimePicker(false),
+        options: EVENT_TIME_OPTIONS,
+        selectedValue: form.time,
+        onSelect: (value) => {
+          handleChange('time', value);
+          setTimeInput(value);
+          setTimeInputError('');
+        },
+        title: 'Seleccioná un horario',
+        headerContent: (
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs">Ingresar manualmente</Text>
+            <TextInput
+              className="min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white"
+              placeholder="HH:MM"
+              placeholderTextColor="#94A3B8"
+              value={timeInput}
+              onChangeText={handleTimeInputChange}
+              editable={editable}
+              keyboardType="numeric"
+            />
+            {timeInputError ? (
+              <Text className="text-rose-200 text-xs">{timeInputError}</Text>
+            ) : null}
+          </View>
+        ),
+        emptyText: 'No hay horarios disponibles',
+      })}
+      {renderPickerModal({
+        visible: showVenuePicker,
+        onClose: () => setShowVenuePicker(false),
+        options: venues.map((venue) => ({
+          value: venue.cancha_id ?? venue.id,
+          label: venue.nombre ?? venue.label ?? `Cancha #${venue.cancha_id ?? venue.id}`,
+          description: venue.descripcion ?? venue.deporte?.nombre,
+        })),
+        selectedValue: form.venue,
+        onSelect: (value) => handleChange('venue', value),
+        title: 'Seleccioná una sede',
+        emptyText: 'No encontramos sedes disponibles',
+      })}
+      {renderPickerModal({
+        visible: showSportPicker,
+        onClose: () => setShowSportPicker(false),
+        options: sports.map((sport) => ({
+          value: sport.id ?? sport.deporte_id,
+          label: sport.nombre ?? sport.label ?? `Deporte #${sport.id ?? sport.deporte_id}`,
+        })),
+        selectedValue: form.sport,
+        onSelect: (value) => handleChange('sport', value),
+        title: 'Seleccioná un deporte',
+        emptyText: 'No encontramos deportes disponibles',
+      })}
     </ModalContainer>
   );
 }
@@ -1008,8 +1540,12 @@ export default function EventosScreen() {
   const [activeModal, setActiveModal] = useState(null);
   const [activeMode, setActiveMode] = useState('create');
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [eventsStatus, setEventsStatus] = useState({ loading: false, error: null });
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
+  const [venues, setVenues] = useState([]);
+  const [sports, setSports] = useState([]);
   const clubLevel = useMemo(() => {
     const parsed = Number(user?.nivel_id ?? 1);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -1019,6 +1555,21 @@ export default function EventosScreen() {
   const filteredGlobalEvents = useMemo(() => {
     return globalEvents.filter((event) => event.scope === filter);
   }, [filter, globalEvents]);
+
+  const { orderedEvents, finalizedEvents } = useMemo(() => {
+    const sorted = [...events].sort((a, b) => {
+      const aOrder = STATUS_ORDER[normalizeStatus(a.status)] ?? 0;
+      const bOrder = STATUS_ORDER[normalizeStatus(b.status)] ?? 0;
+      return aOrder - bOrder;
+    });
+    const finalizados = sorted.filter(
+      (event) => normalizeStatus(event.status) === 'finalizado'
+    );
+    const activos = sorted.filter(
+      (event) => normalizeStatus(event.status) !== 'finalizado'
+    );
+    return { orderedEvents: activos, finalizedEvents: finalizados };
+  }, [events]);
 
   const lockedButtonProps = hasProAccess
     ? {
@@ -1038,8 +1589,31 @@ export default function EventosScreen() {
     setActiveModal(type);
   };
 
+  const loadClubEvents = async () => {
+    setEventsStatus({ loading: true, error: null });
+    try {
+      const data = await api.get('/eventos');
+      const eventos = Array.isArray(data?.eventos) ? data.eventos : [];
+      setEvents(eventos.map(mapClubEvent));
+      setEventsStatus({ loading: false, error: null });
+    } catch (error) {
+      setEvents([]);
+      setEventsStatus({
+        loading: false,
+        error: error?.message || 'No se pudieron cargar los eventos.',
+      });
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
+    const loadEvents = async () => {
+      if (!isMounted) return;
+      await loadClubEvents();
+    };
+
+    loadEvents();
+
     const loadGlobalEvents = async () => {
       if (!user?.clubId) {
         setGlobalEvents([]);
@@ -1071,10 +1645,71 @@ export default function EventosScreen() {
     };
   }, [user?.clubId]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadVenues = async () => {
+      try {
+        const data = await fetchClubCourts();
+        const filtered = data.filter((court) => {
+          const status = String(court?.estado ?? court?.status ?? '').toLowerCase();
+          if (!status) return true;
+          return ['disponible', 'activa', 'activo', 'available'].includes(status);
+        });
+        if (isMounted) {
+          setVenues(filtered);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setVenues([]);
+        }
+      }
+    };
+    loadVenues();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSports = async () => {
+      try {
+        const data = await fetchSports();
+        if (isMounted) {
+          setSports(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setSports([]);
+        }
+      }
+    };
+    loadSports();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleOpenEdit = (event) => {
     setActiveMode('edit');
     setSelectedEvent(event);
     setActiveModal(event.type);
+    if (event.type !== 'amistoso') return;
+    const loadFriendlyDetails = async () => {
+      try {
+        const data = await api.get(`/eventos/${event.id}`);
+        if (data?.evento) {
+          const friendlyTeams = resolveFriendlyTeams(data.evento);
+          setSelectedEvent({
+            ...mapClubEvent(data.evento),
+            ...friendlyTeams,
+          });
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    loadFriendlyDetails();
   };
 
   const handleCloseModal = () => {
@@ -1082,15 +1717,43 @@ export default function EventosScreen() {
     setSelectedEvent(null);
   };
 
+  const updateEventStatus = (eventoId, estado) => {
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.id === eventoId ? { ...event, status: estado ?? event.status } : event
+      )
+    );
+  };
+
+  const handleStartEvent = async (event) => {
+    try {
+      const data = await api.post(`/eventos/${event.id}/iniciar`);
+      updateEventStatus(event.id, data?.evento?.estado ?? 'activo');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handlePauseEvent = async (event) => {
+    try {
+      const data = await api.post(`/eventos/${event.id}/pausar`);
+      updateEventStatus(event.id, data?.evento?.estado ?? 'pausado');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const friendlyInitialValues = useMemo(
     () => ({
       title: selectedEvent?.title ?? '',
-      date: selectedEvent?.date ?? '',
+      date: selectedEvent?.startDate ?? '',
       time: selectedEvent?.time ?? '',
-      venue: selectedEvent?.location ?? '',
+      venue: selectedEvent?.venue ?? '',
       sport: selectedEvent?.sport ?? '',
       team1: selectedEvent?.team1 ?? '',
+      team1Id: selectedEvent?.team1Id ?? '',
       team2: selectedEvent?.team2 ?? '',
+      team2Id: selectedEvent?.team2Id ?? '',
       team1Score: selectedEvent?.team1Score ?? '',
       team2Score: selectedEvent?.team2Score ?? '',
       winner: selectedEvent?.winner ?? '',
@@ -1138,6 +1801,57 @@ export default function EventosScreen() {
     }),
     [selectedEvent]
   );
+
+  const resolveVenueName = (venueValue) => {
+    if (!venueValue) return '';
+    const match = venues.find(
+      (venue) => String(venue.cancha_id ?? venue.id) === String(venueValue)
+    );
+    return match?.nombre ?? match?.label ?? String(venueValue);
+  };
+
+  const handleSaveFriendly = async (formValues) => {
+    try {
+      const equipos =
+        formValues.team1Id && formValues.team2Id
+          ? [
+            { equipo_id: formValues.team1Id, nombre_equipo: formValues.team1 },
+            { equipo_id: formValues.team2Id, nombre_equipo: formValues.team2 },
+          ]
+          : [];
+      const payload = {
+        nombre: formValues.title.trim(),
+        tipo: 'amistoso',
+        fecha_inicio: formValues.date,
+        hora_inicio: formValues.time || null,
+        zona: 'regional',
+        descripcion: resolveVenueName(formValues.venue),
+        deporte_id: formValues.sport,
+        limite_equipos: 2,
+        premio_1: formValues.prize ? String(formValues.prize) : null,
+        equipos,
+      };
+
+      if (activeMode === 'edit' && selectedEvent?.id) {
+        const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        const updatedEvent = mapClubEvent(data?.evento);
+        setEvents((prev) =>
+          prev.map((item) => (item.id === selectedEvent.id ? updatedEvent : item))
+        );
+        return;
+      }
+
+      const data = await api.post('/eventos', payload);
+      if (data?.evento) {
+        setEvents((prev) => [mapClubEvent(data.evento), ...prev]);
+        return;
+      }
+
+      await loadClubEvents();
+    } catch (error) {
+      throw error;
+    }
+  };
 
   return (
     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
@@ -1187,7 +1901,19 @@ export default function EventosScreen() {
               Organizá tus eventos internos y controlá el estado de cada convocatoria.
             </Text>
             <View className="mt-4 gap-4">
-              {myEvents.map((event) => (
+              {eventsStatus.loading ? (
+                <Text className="text-white/60 text-sm">Cargando eventos...</Text>
+              ) : null}
+              {eventsStatus.error ? (
+                <Text className="text-rose-200 text-sm">{eventsStatus.error}</Text>
+              ) : null}
+              {!eventsStatus.loading &&
+              !eventsStatus.error &&
+              orderedEvents.length === 0 &&
+              finalizedEvents.length === 0 ? (
+                  <Text className="text-white/50 text-sm">No hay eventos registrados.</Text>
+                ) : null}
+              {orderedEvents.map((event) => (
                 <Pressable
                   key={event.id}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
@@ -1211,10 +1937,81 @@ export default function EventosScreen() {
                     >
                       <Text className="text-white text-xs font-semibold">Editar</Text>
                     </Pressable>
-                    <Pressable className="rounded-full border border-emerald-400/40 px-3 py-1">
+                    <Pressable
+                      className="rounded-full border border-emerald-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleStartEvent(event);
+                      }}
+                    >
                       <Text className="text-emerald-200 text-xs font-semibold">Iniciar</Text>
                     </Pressable>
-                    <Pressable className="rounded-full border border-amber-400/40 px-3 py-1">
+                    <Pressable
+                      className="rounded-full border border-amber-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handlePauseEvent(event);
+                      }}
+                    >
+                      <Text className="text-amber-200 text-xs font-semibold">Pausar</Text>
+                    </Pressable>
+                    <Pressable className="rounded-full border border-rose-500/40 px-3 py-1">
+                      <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
+                    </Pressable>
+                  </View>
+                </Pressable>
+              ))}
+              {finalizedEvents.length > 0 ? (
+                <View className="gap-3 pt-2">
+                  <View className="flex-row items-center gap-3">
+                    <View className="h-px flex-1 bg-white/10" />
+                    <Text className="text-white/50 text-xs font-semibold uppercase tracking-wide">
+                      Eventos finalizados
+                    </Text>
+                    <View className="h-px flex-1 bg-white/10" />
+                  </View>
+                </View>
+              ) : null}
+              {finalizedEvents.map((event) => (
+                <Pressable
+                  key={event.id}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  onPress={() => handleOpenEdit(event)}
+                >
+                  <View className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1">
+                      <Text className="text-white font-semibold">{event.title}</Text>
+                      <Text className="text-white/60 text-xs mt-1">{event.date}</Text>
+                      <Text className="text-white/40 text-xs mt-1">{event.location}</Text>
+                    </View>
+                    <StatusPill status={event.status} />
+                  </View>
+                  <View className="flex-row flex-wrap gap-2 mt-4">
+                    <Pressable
+                      className="rounded-full border border-white/10 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleOpenEdit(event);
+                      }}
+                    >
+                      <Text className="text-white text-xs font-semibold">Editar</Text>
+                    </Pressable>
+                    <Pressable
+                      className="rounded-full border border-emerald-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handleStartEvent(event);
+                      }}
+                    >
+                      <Text className="text-emerald-200 text-xs font-semibold">Iniciar</Text>
+                    </Pressable>
+                    <Pressable
+                      className="rounded-full border border-amber-400/40 px-3 py-1"
+                      onPress={(pressEvent) => {
+                        pressEvent?.stopPropagation?.();
+                        handlePauseEvent(event);
+                      }}
+                    >
                       <Text className="text-amber-200 text-xs font-semibold">Pausar</Text>
                     </Pressable>
                     <Pressable className="rounded-full border border-rose-500/40 px-3 py-1">
@@ -1293,6 +2090,9 @@ export default function EventosScreen() {
         mode={activeMode}
         initialValues={friendlyInitialValues}
         onClose={handleCloseModal}
+        venues={venues}
+        sports={sports}
+        onSave={handleSaveFriendly}
       />
       <TournamentEventModal
         visible={activeModal === 'torneo'}

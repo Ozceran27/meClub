@@ -816,6 +816,34 @@ function extractPlayerSearch(payload) {
   return [];
 }
 
+function normalizeTeam(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = raw.equipo_id ?? raw.id ?? raw.team_id ?? null;
+  return {
+    id,
+    nombre: raw.nombre ?? raw.name ?? raw.equipo_nombre ?? '',
+    descripcion: raw.descripcion ?? raw.club_nombre ?? raw.clubName ?? '',
+  };
+}
+
+function extractTeamSearch(payload) {
+  if (!payload || typeof payload !== 'object') return [];
+  const candidates = [payload.equipos, payload.data?.equipos, payload.data, payload];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate
+        .map((item) => normalizeTeam(item))
+        .filter((item) => item && item.id != null);
+    }
+    if (candidate && typeof candidate === 'object' && Array.isArray(candidate.equipos)) {
+      return candidate.equipos
+        .map((item) => normalizeTeam(item))
+        .filter((item) => item && item.id != null);
+    }
+  }
+  return [];
+}
+
 export async function getClubProfile() {
   const response = await api.get('/clubes/mis-datos');
   return extractClub(response);
@@ -1114,6 +1142,10 @@ export async function getClubCourts() {
   return extractCourts(response);
 }
 
+export async function fetchClubCourts() {
+  return getClubCourts();
+}
+
 export async function listPromotions() {
   const response = await api.get('/promociones');
   return extractPromotions(response);
@@ -1340,6 +1372,10 @@ export async function listSports() {
     return response.data;
   }
   return [];
+}
+
+export async function fetchSports() {
+  return listSports();
 }
 
 export async function listProvinces() {
@@ -1578,6 +1614,22 @@ export async function searchPlayers(term, { limit } = {}) {
   const search = params.toString();
   const response = await api.get(`/usuarios/buscar${search ? `?${search}` : ''}`);
   return extractPlayerSearch(response);
+}
+
+export async function searchTeams(term, { limit, clubId } = {}) {
+  const params = new URLSearchParams();
+  if (term) {
+    params.set('q', term);
+  }
+  if (limit) {
+    params.set('limit', limit);
+  }
+  if (clubId) {
+    params.set('club_id', clubId);
+  }
+  const search = params.toString();
+  const response = await api.get(`/equipos/buscar${search ? `?${search}` : ''}`);
+  return extractTeamSearch(response);
 }
 
 export async function getInbox({ page = 1, limit = 40 } = {}) {

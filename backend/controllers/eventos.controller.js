@@ -3,6 +3,7 @@ const EventoEquiposModel = require('../models/evento_equipos.model');
 const EventoPartidosModel = require('../models/evento_partidos.model');
 const EventoPosicionesModel = require('../models/evento_posiciones.model');
 const ClubesModel = require('../models/clubes.model');
+const { normalizeHour } = require('../utils/datetime');
 const {
   getLimitePorTipo,
   validateClubPermisoTipo,
@@ -33,6 +34,15 @@ const throwValidationError = (message, statusCode = 400) => {
 
 const ensureEventoNoFinalizado = (evento, message = 'El evento está finalizado y no admite cambios') => {
   if (evento?.estado === 'finalizado') {
+    throwValidationError(message);
+  }
+};
+
+const ensureEventoEditableResultados = (
+  evento,
+  message = 'Solo se pueden modificar partidos o posiciones cuando el evento está activo o pausado'
+) => {
+  if (!['activo', 'pausado'].includes(evento?.estado)) {
     throwValidationError(message);
   }
 };
@@ -68,6 +78,17 @@ const parseOptionalDate = (value, fieldName) => {
   return parsed;
 };
 
+const parseRequiredDate = (value, fieldName) => {
+  if (value === undefined || value === null || value === '') {
+    throwValidationError(`${fieldName} es obligatorio`);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throwValidationError(`${fieldName} inválido`);
+  }
+  return parsed;
+};
+
 const parseOptionalInteger = (value, fieldName) => {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
@@ -94,6 +115,57 @@ const parseOptionalDateTime = (value, fieldName) => {
     throwValidationError(`${fieldName} inválida`);
   }
   return parsed;
+};
+
+const parseOptionalHour = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const normalized = normalizeHour(String(value));
+  if (!normalized) {
+    throwValidationError(`${fieldName} inválida`);
+  }
+  return normalized;
+};
+
+const parseOptionalPrice = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    throwValidationError(`${fieldName} debe ser un número positivo`);
+  }
+  return Math.round(numeric * 100) / 100;
+};
+
+const parseEquiposPayload = (equiposInput, { requiredCount } = {}) => {
+  if (equiposInput === undefined) return [];
+  if (!Array.isArray(equiposInput)) {
+    throwValidationError('equipos debe ser una lista');
+  }
+  const equipos = equiposInput
+    .filter((equipo) => equipo)
+    .map((equipo, index) => {
+      const equipoId = parseRequiredInteger(
+        equipo?.equipo_id ?? equipo?.equipoId ?? equipo?.id,
+        `equipos[${index}].equipo_id`
+      );
+      const nombreEquipo = parseOptionalString(
+        equipo?.nombre_equipo ?? equipo?.nombre ?? equipo?.name
+      );
+      return {
+        equipo_id: equipoId,
+        nombre_equipo: nombreEquipo,
+      };
+    });
+  if (requiredCount && equipos.length !== requiredCount) {
+    throwValidationError(`equipos debe contener exactamente ${requiredCount} equipos`);
+  }
+  const ids = equipos.map((equipo) => equipo.equipo_id);
+  const uniqueIds = new Set(ids);
+  if (uniqueIds.size !== ids.length) {
+    throwValidationError('Los equipos deben ser distintos');
+  }
+  return equipos;
 };
 
 const validateFasePartido = (value) => {
@@ -176,7 +248,8 @@ const getEvento = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
-    res.json({ evento });
+    const equipos = await EventoEquiposModel.listarPorEvento(eventoId);
+    res.json({ evento: { ...evento, equipos } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
@@ -194,11 +267,20 @@ const createEvento = async (req, res) => {
 
     const estado = validateEstado(req.body?.estado) || 'inactivo';
     const descripcion = parseOptionalString(req.body?.descripcion);
-    const fecha_inicio = parseOptionalDate(req.body?.fecha_inicio, 'fecha_inicio');
+    const fecha_inicio = parseRequiredDate(req.body?.fecha_inicio, 'fecha_inicio');
     const fecha_fin = parseOptionalDate(req.body?.fecha_fin, 'fecha_fin');
-    const zona = parseOptionalString(req.body?.zona) || null;
-    const provincia_id = resolveRegionalProvincia(req.body || {}, req.club);
+    const zona = parseOptionalString(req.body?.zona) || 'regional';
+    const provincia_id = resolveRegionalProvincia({ ...(req.body || {}), zona }, req.club);
     const limite_equipos = validateLimiteEquipos(tipo, req.body?.limite_equipos);
+    const deporte_id = parseRequiredInteger(req.body?.deporte_id, 'deporte_id');
+    const hora_inicio = parseOptionalHour(req.body?.hora_inicio, 'hora_inicio');
+    const valor_inscripcion = parseOptionalPrice(req.body?.valor_inscripcion, 'valor_inscripcion');
+    const premio_1 = parseOptionalString(req.body?.premio_1);
+    const premio_2 = parseOptionalString(req.body?.premio_2);
+    const premio_3 = parseOptionalString(req.body?.premio_3);
+    const equipos = parseEquiposPayload(req.body?.equipos ?? [], {
+      requiredCount: tipo === 'amistoso' ? 2 : undefined,
+    });
 
     const evento = await EventosModel.crear(req.club.club_id, {
       nombre,
@@ -210,9 +292,32 @@ const createEvento = async (req, res) => {
       zona,
       provincia_id,
       limite_equipos,
+      deporte_id,
+      hora_inicio,
+      valor_inscripcion,
+      premio_1,
+      premio_2,
+      premio_3,
     });
 
-    res.status(201).json({ mensaje: 'Evento creado', evento });
+    if (equipos.length > 0) {
+      await Promise.all(
+        equipos.map((equipo) =>
+          EventoEquiposModel.crear(evento.evento_id, {
+            equipo_id: equipo.equipo_id,
+            estado: 'aprobado',
+            origen: 'club',
+          })
+        )
+      );
+    }
+
+    const eventoConEquipos =
+      equipos.length > 0
+        ? { ...evento, equipos: await EventoEquiposModel.listarPorEvento(evento.evento_id) }
+        : evento;
+
+    res.status(201).json({ mensaje: 'Evento creado', evento: eventoConEquipos });
   } catch (error) {
     if (error.statusCode === 400 || error.statusCode === 403) {
       return res.status(error.statusCode).json({ mensaje: error.message });
@@ -242,13 +347,23 @@ const updateEvento = async (req, res) => {
       'descripcion',
       'fecha_inicio',
       'fecha_fin',
+      'hora_inicio',
       'zona',
       'zona_regional',
       'provincia_id',
       'limite_equipos',
+      'deporte_id',
+      'valor_inscripcion',
+      'premio_1',
+      'premio_2',
+      'premio_3',
     ];
     const hasBaseUpdates = baseFields.some((field) => req.body?.[field] !== undefined);
     if (hasBaseUpdates && existente.estado !== 'inactivo') {
+      throwValidationError('El evento está en modo solo lectura');
+    }
+
+    if (req.body?.equipos !== undefined && existente.estado !== 'inactivo') {
       throwValidationError('El evento está en modo solo lectura');
     }
 
@@ -257,6 +372,13 @@ const updateEvento = async (req, res) => {
     }
 
     const updates = {};
+    const equiposInput = req.body?.equipos;
+    const equipos =
+      equiposInput !== undefined
+        ? parseEquiposPayload(equiposInput, {
+          requiredCount: existente.tipo === 'amistoso' ? 2 : undefined,
+        })
+        : [];
 
     if (req.body?.nombre !== undefined) {
       updates.nombre = parseRequiredString(req.body.nombre, 'nombre');
@@ -281,6 +403,10 @@ const updateEvento = async (req, res) => {
 
     if (req.body?.fecha_fin !== undefined) {
       updates.fecha_fin = parseOptionalDate(req.body.fecha_fin, 'fecha_fin');
+    }
+
+    if (req.body?.hora_inicio !== undefined) {
+      updates.hora_inicio = parseOptionalHour(req.body.hora_inicio, 'hora_inicio');
     }
 
     if (req.body?.estado !== undefined) {
@@ -311,8 +437,47 @@ const updateEvento = async (req, res) => {
       updates.limite_equipos = validateLimiteEquipos(tipoForLimit, req.body.limite_equipos);
     }
 
+    if (req.body?.deporte_id !== undefined) {
+      updates.deporte_id = parseRequiredInteger(req.body.deporte_id, 'deporte_id');
+    }
+
+    if (req.body?.valor_inscripcion !== undefined) {
+      updates.valor_inscripcion = parseOptionalPrice(req.body.valor_inscripcion, 'valor_inscripcion');
+    }
+
+    if (req.body?.premio_1 !== undefined) {
+      updates.premio_1 = parseOptionalString(req.body.premio_1);
+    }
+
+    if (req.body?.premio_2 !== undefined) {
+      updates.premio_2 = parseOptionalString(req.body.premio_2);
+    }
+
+    if (req.body?.premio_3 !== undefined) {
+      updates.premio_3 = parseOptionalString(req.body.premio_3);
+    }
+
     const evento = await EventosModel.actualizar(eventoId, req.club.club_id, updates);
-    res.json({ mensaje: 'Evento actualizado', evento });
+
+    if (equiposInput !== undefined) {
+      await EventoEquiposModel.eliminarPorEvento(eventoId);
+      await Promise.all(
+        equipos.map((equipo) =>
+          EventoEquiposModel.crear(eventoId, {
+            equipo_id: equipo.equipo_id,
+            estado: 'aprobado',
+            origen: 'club',
+          })
+        )
+      );
+    }
+
+    const eventoConEquipos =
+      equiposInput !== undefined
+        ? { ...evento, equipos: await EventoEquiposModel.listarPorEvento(eventoId) }
+        : evento;
+
+    res.json({ mensaje: 'Evento actualizado', evento: eventoConEquipos });
   } catch (error) {
     if (error.statusCode === 400 || error.statusCode === 403) {
       return res.status(error.statusCode).json({ mensaje: error.message });
@@ -327,6 +492,15 @@ const deleteEvento = async (req, res) => {
     const eventoId = Number.parseInt(req.params.evento_id, 10);
     if (!Number.isInteger(eventoId)) {
       return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const existente = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!existente) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (existente.estado === 'finalizado') {
+      return res.status(400).json({ mensaje: 'No se puede eliminar un evento finalizado' });
     }
 
     const deleted = await EventosModel.eliminar(eventoId, req.club.club_id);
@@ -489,6 +663,7 @@ const createPartido = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     const faseInput = req.body?.fase !== undefined ? validateFasePartido(req.body.fase) : null;
     const fase = resolveDefaultFase(evento.tipo, faseInput);
@@ -576,6 +751,7 @@ const updatePartido = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -670,6 +846,7 @@ const setGanadorPartido = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -748,6 +925,7 @@ const createPosicion = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
@@ -794,6 +972,7 @@ const updatePosicion = async (req, res) => {
     }
 
     ensureEventoNoFinalizado(evento);
+    ensureEventoEditableResultados(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
