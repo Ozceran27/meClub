@@ -61,6 +61,14 @@ const formatEventTime = (value) => {
   return normalized;
 };
 
+const formatCurrencyValue = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  const numeric = Number(digits);
+  if (!Number.isFinite(numeric)) return '';
+  return `$ ${numeric.toLocaleString('es-AR')}`;
+};
+
 const resolveLocationLabel = (evento) => {
   if (evento?.descripcion) return evento.descripcion;
   if (evento?.zona) return `Zona ${evento.zona}`;
@@ -319,8 +327,11 @@ function EventDetail({ label, value }) {
 
 function EventActionButton({ label, textClassName, borderClassName, onPress }) {
   return (
-    <Pressable className={`rounded-xl border px-2 py-2 ${borderClassName}`} onPress={onPress}>
-      <Text className={`text-[11px] font-semibold ${textClassName}`}>{label}</Text>
+    <Pressable
+      className={`items-center justify-center rounded-xl border px-2 py-2 ${borderClassName}`}
+      onPress={onPress}
+    >
+      <Text className={`text-center text-[11px] font-semibold ${textClassName}`}>{label}</Text>
     </Pressable>
   );
 }
@@ -329,8 +340,13 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
   const isCupOrTournament = ['copa', 'torneo', 'liga'].includes(String(event?.type ?? ''));
   const startDateLabel = event?.startDate ? formatEventDate(event.startDate) : event?.date;
   const endDateLabel = isCupOrTournament && event?.endDate ? formatEventDate(event.endDate) : '';
+  const dateLabel =
+    endDateLabel && startDateLabel ? `${startDateLabel} - ${endDateLabel}` : startDateLabel;
   const prizeDetail = event?.prize
-    ? { label: isCupOrTournament ? '1° premio' : 'Premio', value: event.prize }
+    ? {
+      label: isCupOrTournament ? '1° premio' : 'Premio',
+      value: formatCurrencyValue(event.prize),
+    }
     : null;
   const imageSource =
     event?.type === 'amistoso'
@@ -348,7 +364,7 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
         <View className="w-20">
           <View className="h-20 w-20 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
             {imageSource ? (
-              <Image source={imageSource} className="h-full w-full" resizeMode="cover" />
+              <Image source={imageSource} className="h-full w-full" resizeMode="contain" />
             ) : (
               <View className="flex-1 items-center justify-center">
                 <Ionicons name="image-outline" size={24} color="#94A3B8" />
@@ -357,21 +373,19 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
           </View>
         </View>
         <View className="flex-1 gap-2">
-          <View className="flex-row items-start justify-between gap-3">
-            <Text className="flex-1 text-white font-semibold">{event.title}</Text>
-            <StatusPill status={event.status} />
-          </View>
-          <View className="flex-row flex-wrap gap-x-4 gap-y-2">
-            <EventDetail label="Inicio" value={startDateLabel} />
+          <Text className="text-white font-semibold">{event.title}</Text>
+          <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2">
+            <EventDetail label="Fechas" value={dateLabel} />
             {event?.time ? <EventDetail label="Hora" value={event.time} /> : null}
-            {isCupOrTournament ? <EventDetail label="Fin" value={endDateLabel} /> : null}
+          </View>
+          <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2">
             <EventDetail label="Sedes" value={event.location} />
             {prizeDetail ? (
               <EventDetail label={prizeDetail.label} value={prizeDetail.value} />
             ) : null}
           </View>
         </View>
-        <View className="w-32">
+        <View className="w-32 items-end gap-3">
           <View className="grid grid-cols-2 gap-2">
             <EventActionButton
               label="Iniciar"
@@ -397,6 +411,9 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
               borderClassName="border-rose-500/40"
               onPress={onDelete}
             />
+          </View>
+          <View className="self-end">
+            <StatusPill status={event.status} />
           </View>
         </View>
       </View>
@@ -533,10 +550,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const formatPrizeValue = (value) => {
-    const digits = String(value ?? '').replace(/\D/g, '');
-    return digits ? `$ ${digits}` : '';
-  };
+  const formatPrizeValue = (value) => formatCurrencyValue(value);
 
   const handleTimeInputChange = (value) => {
     const { formatted, isComplete, isValid } = formatTimeInput(value);
