@@ -325,21 +325,15 @@ function EventDetail({ label, value }) {
   );
 }
 
-function EventActionButton({
-  label,
-  textClassName,
-  borderClassName,
-  iconName,
-  iconColor,
-  onPress,
-}) {
+function EventActionButton({ label, borderClassName, iconName, iconColor, onPress }) {
   return (
     <Pressable
-      className={`flex-row items-center justify-center gap-1 rounded-xl border px-2 py-2 ${borderClassName}`}
+      className={`h-9 w-9 items-center justify-center rounded-xl border ${borderClassName}`}
       onPress={onPress}
+      accessibilityLabel={label}
+      title={label}
     >
-      <Ionicons name={iconName} size={12} color={iconColor} />
-      <Text className={`text-center text-[11px] font-semibold ${textClassName}`}>{label}</Text>
+      <Ionicons name={iconName} size={18} color={iconColor} />
     </Pressable>
   );
 }
@@ -399,11 +393,10 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
             ) : null}
           </View>
         </View>
-        <View className="w-36">
+        <View className="w-36 justify-center">
           <View className="grid grid-cols-2 gap-2">
             <EventActionButton
               label="Iniciar"
-              textClassName="text-emerald-200"
               borderClassName="border-emerald-400/40"
               iconName="play"
               iconColor="#A7F3D0"
@@ -411,7 +404,6 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
             />
             <EventActionButton
               label="Pausar"
-              textClassName="text-amber-200"
               borderClassName="border-amber-400/40"
               iconName="pause"
               iconColor="#FCD34D"
@@ -419,7 +411,6 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
             />
             <EventActionButton
               label="Editar"
-              textClassName="text-white"
               borderClassName="border-white/10"
               iconName="create-outline"
               iconColor="#F8FAFC"
@@ -427,7 +418,6 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
             />
             <EventActionButton
               label="Eliminar"
-              textClassName="text-rose-200"
               borderClassName="border-rose-500/40"
               iconName="trash-outline"
               iconColor="#FECACA"
