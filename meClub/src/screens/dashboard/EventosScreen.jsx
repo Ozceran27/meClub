@@ -1919,8 +1919,10 @@ export default function EventosScreen() {
   const [eventsStatus, setEventsStatus] = useState({ loading: false, error: null });
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
+  const [globalPage, setGlobalPage] = useState(1);
   const [venues, setVenues] = useState([]);
   const [sports, setSports] = useState([]);
+  const pageSize = 10;
   const clubLevel = useMemo(() => {
     const parsed = Number(user?.nivel_id ?? 1);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -1928,8 +1930,36 @@ export default function EventosScreen() {
   const hasProAccess = clubLevel >= 2;
 
   const filteredGlobalEvents = useMemo(() => {
-    return globalEvents.filter((event) => event.scope === filter);
+    return [...globalEvents]
+      .filter((event) => {
+        const normalizedStatus = normalizeStatus(event?.status);
+        return (
+          event.scope === filter &&
+          (normalizedStatus === 'activo' || event?.status === 'activo')
+        );
+      })
+      .sort((a, b) => {
+        const aDate = new Date(a?.startDate ?? a?.fecha_inicio ?? 0).getTime();
+        const bDate = new Date(b?.startDate ?? b?.fecha_inicio ?? 0).getTime();
+        return aDate - bDate;
+      });
   }, [filter, globalEvents]);
+
+  const pagedGlobalEvents = useMemo(() => {
+    const startIndex = (globalPage - 1) * pageSize;
+    const endIndex = globalPage * pageSize;
+    return filteredGlobalEvents.slice(startIndex, endIndex);
+  }, [filteredGlobalEvents, globalPage, pageSize]);
+
+  const totalGlobalPages = Math.max(1, Math.ceil(filteredGlobalEvents.length / pageSize));
+
+  useEffect(() => {
+    setGlobalPage(1);
+  }, [filter, globalEvents.length]);
+
+  useEffect(() => {
+    setGlobalPage((prev) => Math.min(prev, totalGlobalPages));
+  }, [totalGlobalPages]);
 
   const { orderedEvents, finalizedEvents } = useMemo(() => {
     const sorted = [...events].sort((a, b) => {
@@ -2437,7 +2467,7 @@ export default function EventosScreen() {
                   No hay eventos globales disponibles para este filtro.
                 </Text>
               ) : null}
-              {filteredGlobalEvents.map((event) => {
+              {pagedGlobalEvents.map((event) => {
                 const eventDate = formatEventRange(event.startDate, event.endDate);
                 const priceLabel = formatCurrencyValue(event.price);
                 const prizeLabel = formatCurrencyValue(event.prize);
@@ -2476,6 +2506,33 @@ export default function EventosScreen() {
                   </Pressable>
                 );
               })}
+              {filteredGlobalEvents.length > 0 ? (
+                <View className="flex-row items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                  <Pressable
+                    onPress={() => setGlobalPage((prev) => Math.max(1, prev - 1))}
+                    disabled={globalPage === 1}
+                    className={`rounded-full px-3 py-1 ${
+                      globalPage === 1 ? 'bg-white/10' : 'bg-white/10 hover:bg-white/15'
+                    }`}
+                  >
+                    <Text className="text-white text-xs font-semibold">Anterior</Text>
+                  </Pressable>
+                  <Text className="text-white/70 text-xs font-semibold">
+                    Página {globalPage} de {totalGlobalPages}
+                  </Text>
+                  <Pressable
+                    onPress={() => setGlobalPage((prev) => Math.min(totalGlobalPages, prev + 1))}
+                    disabled={globalPage >= totalGlobalPages}
+                    className={`rounded-full px-3 py-1 ${
+                      globalPage >= totalGlobalPages
+                        ? 'bg-white/10'
+                        : 'bg-white/10 hover:bg-white/15'
+                    }`}
+                  >
+                    <Text className="text-white text-xs font-semibold">Siguiente</Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
           </Card>
         </View>
