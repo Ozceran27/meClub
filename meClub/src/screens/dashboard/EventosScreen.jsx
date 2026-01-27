@@ -2489,14 +2489,14 @@ export default function EventosScreen() {
                         <Text className="text-white font-semibold">{event.title}</Text>
                         <View className="flex-row flex-wrap items-center gap-2">
                           <Text className="text-white/60 text-xs">{eventDate}</Text>
+                          <Text className="text-white/50 text-xs">{event.organizer}</Text>
+                        </View>
+                        <View className="flex-row flex-wrap items-center gap-2">
                           {priceLabel ? (
                             <Text className="text-white/60 text-xs">
                               {priceLabel} inscripción
                             </Text>
                           ) : null}
-                        </View>
-                        <View className="flex-row flex-wrap items-center gap-2">
-                          <Text className="text-white/50 text-xs">{event.organizer}</Text>
                           {prizeLabel ? (
                             <Text className="text-white/50 text-xs">Premio {prizeLabel}</Text>
                           ) : null}
