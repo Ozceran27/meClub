@@ -2483,7 +2483,9 @@ export default function EventosScreen() {
                 const eventDate = formatEventRange(event.startDate, event.endDate);
                 const priceLabel = formatCurrencyValue(event.price);
                 const prizeLabel = formatCurrencyValue(event.prize);
-                const isFriendly = event.type === 'amistoso';
+                const normalizedType = String(event.type ?? '').trim().toLowerCase();
+                const isTournamentOrCup = ['torneo', 'copa'].includes(normalizedType);
+                const isFriendly = normalizedType === 'amistoso';
                 const typeLabel = resolveEventTypeLabel(event.type);
                 const imageSource = isFriendly
                   ? FRIENDLY_DEFAULT_IMAGE
@@ -2491,7 +2493,9 @@ export default function EventosScreen() {
                 return (
                   <Pressable
                     key={event.id}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                    className={`rounded-2xl border ${
+                      isTournamentOrCup ? 'border-sky-300/70' : 'border-white/10'
+                    } bg-white/5 p-4`}
                     onPress={() => setSelectedGlobalEvent(event)}
                   >
                     <View className="flex-row gap-4">
