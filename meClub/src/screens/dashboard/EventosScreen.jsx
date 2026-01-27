@@ -117,6 +117,8 @@ const mapGlobalEvent = (evento) => ({
   status: evento?.estado ?? 'programado',
   startDate: evento?.fecha_inicio ?? '',
   endDate: evento?.fecha_fin ?? '',
+  time: formatEventTime(evento?.hora_inicio),
+  location: resolveLocationLabel(evento),
   price: evento?.valor_inscripcion ?? '',
   prize: evento?.premio_1 ?? '',
   imageUrl: evento?.imagen_url ?? '',
@@ -467,6 +469,49 @@ function SectionTitle({ title, subtitle }) {
       <Text className="text-white text-sm font-semibold">{title}</Text>
       {subtitle ? <Text className="text-white/50 text-xs">{subtitle}</Text> : null}
     </View>
+  );
+}
+
+function GlobalEventModal({ event, onClose }) {
+  const dateLabel = formatEventRange(event?.startDate, event?.endDate);
+  const timeLabel = event?.time ? formatEventTime(event.time) : '';
+  const priceLabel = formatCurrencyValue(event?.price);
+  const prizeLabel = formatCurrencyValue(event?.prize);
+
+  return (
+    <ModalContainer
+      visible={Boolean(event)}
+      onRequestClose={onClose}
+      containerClassName="w-full max-w-2xl"
+    >
+      <View className="gap-5 rounded-3xl border border-white/10 bg-mc-surface p-6 shadow-xl">
+        <ModalHeader
+          title={event?.title ?? 'Evento global'}
+          subtitle="Detalles del evento global."
+          onClose={onClose}
+        />
+        <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <SectionTitle title="Información general" />
+          <View className="gap-2">
+            <EventDetail label="Fechas" value={dateLabel} />
+            {timeLabel ? <EventDetail label="Hora" value={timeLabel} /> : null}
+            <EventDetail label="Ubicación/descr." value={event?.location ?? 'Sin descripción'} />
+            {priceLabel ? (
+              <EventDetail label="Precio inscripción" value={priceLabel} />
+            ) : null}
+            {prizeLabel ? <EventDetail label="Premio" value={prizeLabel} /> : null}
+            <EventDetail label="Estado" value={resolveStatusLabel(event?.status)} />
+            <EventDetail label="Tipo" value={event?.type ?? 'Sin definir'} />
+            <EventDetail label="Club organizador" value={event?.organizer ?? 'Sin definir'} />
+          </View>
+        </View>
+        <View className="flex-row justify-end">
+          <Pressable onPress={onClose} className="rounded-full border border-white/15 px-4 py-2">
+            <Text className="text-white text-xs font-semibold">Cerrar</Text>
+          </Pressable>
+        </View>
+      </View>
+    </ModalContainer>
   );
 }
 
@@ -1869,6 +1914,7 @@ export default function EventosScreen() {
   const [activeModal, setActiveModal] = useState(null);
   const [activeMode, setActiveMode] = useState('create');
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedGlobalEvent, setSelectedGlobalEvent] = useState(null);
   const [events, setEvents] = useState([]);
   const [eventsStatus, setEventsStatus] = useState({ loading: false, error: null });
   const [globalEvents, setGlobalEvents] = useState([]);
@@ -2044,6 +2090,10 @@ export default function EventosScreen() {
   const handleCloseModal = () => {
     setActiveModal(null);
     setSelectedEvent(null);
+  };
+
+  const handleCloseGlobalEventModal = () => {
+    setSelectedGlobalEvent(null);
   };
 
   const updateEventStatus = (eventoId, estado) => {
@@ -2396,9 +2446,10 @@ export default function EventosScreen() {
                   ? FRIENDLY_DEFAULT_IMAGE
                   : { uri: resolveAssetUrl(event.imageUrl) };
                 return (
-                  <View
+                  <Pressable
                     key={event.id}
                     className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                    onPress={() => setSelectedGlobalEvent(event)}
                   >
                     <View className="flex-row gap-4">
                       <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5">
@@ -2422,7 +2473,7 @@ export default function EventosScreen() {
                         </View>
                       </View>
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -2452,6 +2503,7 @@ export default function EventosScreen() {
         onClose={handleCloseModal}
         onSave={handleSaveCup}
       />
+      <GlobalEventModal event={selectedGlobalEvent} onClose={handleCloseGlobalEventModal} />
     </ScrollView>
   );
 }
