@@ -113,6 +113,12 @@ const mapGlobalEvent = (evento) => ({
   date: formatEventDate(evento?.fecha_inicio ?? evento?.fecha_fin),
   scope: resolveGlobalScope(evento?.zona),
   organizer: resolveOrganizer(evento),
+  type: evento?.tipo ?? 'amistoso',
+  status: evento?.estado ?? 'programado',
+  startDate: evento?.fecha_inicio ?? '',
+  endDate: evento?.fecha_fin ?? '',
+  price: evento?.valor_inscripcion ?? '',
+  prize: evento?.premio_1 ?? '',
   imageUrl: evento?.imagen_url ?? '',
 });
 
@@ -2381,31 +2387,44 @@ export default function EventosScreen() {
                   No hay eventos globales disponibles para este filtro.
                 </Text>
               ) : null}
-              {filteredGlobalEvents.map((event) => (
-                <View
-                  key={event.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                >
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold">{event.title}</Text>
-                      <Text className="text-white/60 text-xs mt-1">{event.date}</Text>
-                      <Text className="text-white/40 text-xs mt-1">{event.organizer}</Text>
-                    </View>
-                    <View className="h-9 w-9 rounded-full bg-white/5 border border-white/10 items-center justify-center">
-                      <Ionicons name="calendar-outline" size={18} color="#E2E8F0" />
+              {filteredGlobalEvents.map((event) => {
+                const eventDate = formatEventRange(event.startDate, event.endDate);
+                const priceLabel = formatCurrencyValue(event.price);
+                const prizeLabel = formatCurrencyValue(event.prize);
+                const isFriendly = event.type === 'amistoso';
+                const imageSource = isFriendly
+                  ? FRIENDLY_DEFAULT_IMAGE
+                  : { uri: resolveAssetUrl(event.imageUrl) };
+                return (
+                  <View
+                    key={event.id}
+                    className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <View className="flex-row gap-4">
+                      <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5">
+                        <Image source={imageSource} className="h-full w-full" resizeMode="cover" />
+                      </View>
+                      <View className="flex-1 gap-2">
+                        <Text className="text-white font-semibold">{event.title}</Text>
+                        <View className="flex-row flex-wrap items-center gap-2">
+                          <Text className="text-white/60 text-xs">{eventDate}</Text>
+                          {priceLabel ? (
+                            <Text className="text-white/60 text-xs">
+                              {priceLabel} inscripción
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View className="flex-row flex-wrap items-center gap-2">
+                          <Text className="text-white/50 text-xs">{event.organizer}</Text>
+                          {prizeLabel ? (
+                            <Text className="text-white/50 text-xs">Premio {prizeLabel}</Text>
+                          ) : null}
+                        </View>
+                      </View>
                     </View>
                   </View>
-                  <View className="flex-row flex-wrap gap-2 mt-4">
-                    <Pressable className="rounded-full border border-white/10 px-3 py-1">
-                      <Text className="text-white text-xs font-semibold">Ver detalles</Text>
-                    </Pressable>
-                    <Pressable className="rounded-full border border-white/10 px-3 py-1">
-                      <Text className="text-white text-xs font-semibold">Postular club</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </Card>
         </View>
