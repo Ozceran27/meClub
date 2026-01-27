@@ -38,15 +38,6 @@ const ensureEventoNoFinalizado = (evento, message = 'El evento está finalizado 
   }
 };
 
-const ensureEventoEditableResultados = (
-  evento,
-  message = 'Solo se pueden modificar partidos o posiciones cuando el evento está activo o pausado'
-) => {
-  if (!['activo', 'pausado'].includes(evento?.estado)) {
-    throwValidationError(message);
-  }
-};
-
 const parseRequiredString = (value, fieldName) => {
   if (typeof value !== 'string') {
     throwValidationError(`${fieldName} es obligatorio`);
@@ -278,6 +269,7 @@ const createEvento = async (req, res) => {
     const premio_1 = parseOptionalString(req.body?.premio_1);
     const premio_2 = parseOptionalString(req.body?.premio_2);
     const premio_3 = parseOptionalString(req.body?.premio_3);
+    const imagen_url = parseOptionalString(req.body?.imagen_url);
     const equipos = parseEquiposPayload(req.body?.equipos ?? [], {
       requiredCount: tipo === 'amistoso' ? 2 : undefined,
     });
@@ -298,6 +290,7 @@ const createEvento = async (req, res) => {
       premio_1,
       premio_2,
       premio_3,
+      imagen_url,
     });
 
     if (equipos.length > 0) {
@@ -357,6 +350,7 @@ const updateEvento = async (req, res) => {
       'premio_1',
       'premio_2',
       'premio_3',
+      'imagen_url',
     ];
     const hasBaseUpdates = baseFields.some((field) => req.body?.[field] !== undefined);
     if (hasBaseUpdates && existente.estado !== 'inactivo') {
@@ -455,6 +449,10 @@ const updateEvento = async (req, res) => {
 
     if (req.body?.premio_3 !== undefined) {
       updates.premio_3 = parseOptionalString(req.body.premio_3);
+    }
+
+    if (req.body?.imagen_url !== undefined) {
+      updates.imagen_url = parseOptionalString(req.body.imagen_url);
     }
 
     const evento = await EventosModel.actualizar(eventoId, req.club.club_id, updates);
@@ -662,9 +660,6 @@ const createPartido = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
-    ensureEventoNoFinalizado(evento);
-    ensureEventoEditableResultados(evento);
-
     const faseInput = req.body?.fase !== undefined ? validateFasePartido(req.body.fase) : null;
     const fase = resolveDefaultFase(evento.tipo, faseInput);
 
@@ -749,9 +744,6 @@ const updatePartido = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
-
-    ensureEventoNoFinalizado(evento);
-    ensureEventoEditableResultados(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -845,9 +837,6 @@ const setGanadorPartido = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
-    ensureEventoNoFinalizado(evento);
-    ensureEventoEditableResultados(evento);
-
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
       return res.status(404).json({ mensaje: 'Partido no encontrado' });
@@ -924,9 +913,6 @@ const createPosicion = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
-    ensureEventoNoFinalizado(evento);
-    ensureEventoEditableResultados(evento);
-
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
     }
@@ -970,9 +956,6 @@ const updatePosicion = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
-
-    ensureEventoNoFinalizado(evento);
-    ensureEventoEditableResultados(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
