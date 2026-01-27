@@ -1881,7 +1881,7 @@ export default function EventosScreen() {
     : {
       badge: ADV_BADGE,
       backgroundClassName: 'bg-mc-warn/25',
-      className: 'border border-sky-400/50',
+      className: 'border border-sky-300/70',
     };
 
   const handleOpenCreate = (type) => {
