@@ -325,12 +325,20 @@ function EventDetail({ label, value }) {
   );
 }
 
-function EventActionButton({ label, textClassName, borderClassName, onPress }) {
+function EventActionButton({
+  label,
+  textClassName,
+  borderClassName,
+  iconName,
+  iconColor,
+  onPress,
+}) {
   return (
     <Pressable
-      className={`items-center justify-center rounded-xl border px-2 py-2 ${borderClassName}`}
+      className={`flex-row items-center justify-center gap-1 rounded-xl border px-2 py-2 ${borderClassName}`}
       onPress={onPress}
     >
+      <Ionicons name={iconName} size={12} color={iconColor} />
       <Text className={`text-center text-[11px] font-semibold ${textClassName}`}>{label}</Text>
     </Pressable>
   );
@@ -397,24 +405,32 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
               label="Iniciar"
               textClassName="text-emerald-200"
               borderClassName="border-emerald-400/40"
+              iconName="play"
+              iconColor="#A7F3D0"
               onPress={onStart}
             />
             <EventActionButton
               label="Pausar"
               textClassName="text-amber-200"
               borderClassName="border-amber-400/40"
+              iconName="pause"
+              iconColor="#FCD34D"
               onPress={onPause}
             />
             <EventActionButton
               label="Editar"
               textClassName="text-white"
               borderClassName="border-white/10"
+              iconName="create-outline"
+              iconColor="#F8FAFC"
               onPress={onEdit}
             />
             <EventActionButton
               label="Eliminar"
               textClassName="text-rose-200"
               borderClassName="border-rose-500/40"
+              iconName="trash-outline"
+              iconColor="#FECACA"
               onPress={onDelete}
             />
           </View>
