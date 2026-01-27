@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../features/auth/useAuth';
-import { api, fetchClubCourts, fetchSports, searchTeams } from '../../lib/api';
+import { api, fetchClubCourts, fetchSports, resolveAssetUrl, searchTeams } from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
@@ -10,6 +11,7 @@ import ModalContainer from '../../components/ModalContainer';
 import ScreenHeader from '../../components/ScreenHeader';
 
 const ADV_BADGE = 'ADV';
+const FRIENDLY_DEFAULT_IMAGE = require('../../../assets/Amistoso_predeterm..png');
 
 const STATUS_LABELS = {
   inactivo: 'Inactivo',
@@ -103,6 +105,7 @@ const mapGlobalEvent = (evento) => ({
   date: formatEventDate(evento?.fecha_inicio ?? evento?.fecha_fin),
   scope: resolveGlobalScope(evento?.zona),
   organizer: resolveOrganizer(evento),
+  imageUrl: evento?.imagen_url ?? '',
 });
 
 const mapClubEvent = (evento) => ({
@@ -118,6 +121,7 @@ const mapClubEvent = (evento) => ({
   sport: evento?.deporte_id ?? '',
   prize: evento?.premio_1 ?? '',
   venue: evento?.descripcion ?? '',
+  imageUrl: evento?.imagen_url ?? '',
   raw: evento,
 });
 
@@ -303,6 +307,103 @@ function ModalHeader({ title, subtitle, onClose }) {
   );
 }
 
+function EventDetail({ label, value }) {
+  if (!value) return null;
+  return (
+    <View className="flex-row flex-wrap items-center gap-1">
+      <Text className="text-[10px] uppercase tracking-wide text-white/50">{label}:</Text>
+      <Text className="text-xs text-white/80">{value}</Text>
+    </View>
+  );
+}
+
+function EventActionButton({ label, textClassName, borderClassName, onPress }) {
+  return (
+    <Pressable className={`rounded-xl border px-2 py-2 ${borderClassName}`} onPress={onPress}>
+      <Text className={`text-[11px] font-semibold ${textClassName}`}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
+  const isCupOrTournament = ['copa', 'torneo', 'liga'].includes(String(event?.type ?? ''));
+  const startDateLabel = event?.startDate ? formatEventDate(event.startDate) : event?.date;
+  const endDateLabel = isCupOrTournament && event?.endDate ? formatEventDate(event.endDate) : '';
+  const prizeDetail = event?.prize
+    ? { label: isCupOrTournament ? '1° premio' : 'Premio', value: event.prize }
+    : null;
+  const imageSource =
+    event?.type === 'amistoso'
+      ? FRIENDLY_DEFAULT_IMAGE
+      : event?.imageUrl
+        ? { uri: resolveAssetUrl(event.imageUrl) }
+        : null;
+
+  return (
+    <Pressable
+      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+      onPress={onPress}
+    >
+      <View className="flex-row items-stretch gap-4">
+        <View className="w-20">
+          <View className="h-20 w-20 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            {imageSource ? (
+              <Image source={imageSource} className="h-full w-full" resizeMode="cover" />
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <Ionicons name="image-outline" size={24} color="#94A3B8" />
+              </View>
+            )}
+          </View>
+        </View>
+        <View className="flex-1 gap-2">
+          <View className="flex-row items-start justify-between gap-3">
+            <Text className="flex-1 text-white font-semibold">{event.title}</Text>
+            <StatusPill status={event.status} />
+          </View>
+          <View className="flex-row flex-wrap gap-x-4 gap-y-2">
+            <EventDetail label="Inicio" value={startDateLabel} />
+            {event?.time ? <EventDetail label="Hora" value={event.time} /> : null}
+            {isCupOrTournament ? <EventDetail label="Fin" value={endDateLabel} /> : null}
+            <EventDetail label="Sedes" value={event.location} />
+            {prizeDetail ? (
+              <EventDetail label={prizeDetail.label} value={prizeDetail.value} />
+            ) : null}
+          </View>
+        </View>
+        <View className="w-32">
+          <View className="grid grid-cols-2 gap-2">
+            <EventActionButton
+              label="Iniciar"
+              textClassName="text-emerald-200"
+              borderClassName="border-emerald-400/40"
+              onPress={onStart}
+            />
+            <EventActionButton
+              label="Pausar"
+              textClassName="text-amber-200"
+              borderClassName="border-amber-400/40"
+              onPress={onPause}
+            />
+            <EventActionButton
+              label="Editar"
+              textClassName="text-white"
+              borderClassName="border-white/10"
+              onPress={onEdit}
+            />
+            <EventActionButton
+              label="Eliminar"
+              textClassName="text-rose-200"
+              borderClassName="border-rose-500/40"
+              onPress={onDelete}
+            />
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 function SectionTitle({ title, subtitle }) {
   return (
     <View className="gap-1">
@@ -335,6 +436,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
+  const resultsEditable = true;
 
   useEffect(() => {
     setForm(initialValues);
@@ -450,30 +552,32 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
   };
 
   const handleSubmit = async () => {
-    if (!editable || saving) return;
-    if (!form.title?.trim()) {
-      setSubmitError('Ingresá un título para el amistoso.');
-      return;
-    }
-    if (!form.date) {
-      setSubmitError('Seleccioná una fecha para el amistoso.');
-      return;
-    }
-    if (!form.venue) {
-      setSubmitError('Seleccioná una sede.');
-      return;
-    }
-    if (!form.sport) {
-      setSubmitError('Seleccioná un deporte.');
-      return;
-    }
-    if (!form.team1Id || !form.team2Id) {
-      setSubmitError('Seleccioná ambos equipos desde la búsqueda.');
-      return;
-    }
-    if (String(form.team1Id) === String(form.team2Id)) {
-      setSubmitError('Los equipos deben ser distintos.');
-      return;
+    if (saving) return;
+    if (!isEditLocked) {
+      if (!form.title?.trim()) {
+        setSubmitError('Ingresá un título para el amistoso.');
+        return;
+      }
+      if (!form.date) {
+        setSubmitError('Seleccioná una fecha para el amistoso.');
+        return;
+      }
+      if (!form.venue) {
+        setSubmitError('Seleccioná una sede.');
+        return;
+      }
+      if (!form.sport) {
+        setSubmitError('Seleccioná un deporte.');
+        return;
+      }
+      if (!form.team1Id || !form.team2Id) {
+        setSubmitError('Seleccioná ambos equipos desde la búsqueda.');
+        return;
+      }
+      if (String(form.team1Id) === String(form.team2Id)) {
+        setSubmitError('Los equipos deben ser distintos.');
+        return;
+      }
     }
     setSaving(true);
     setSubmitError('');
@@ -481,7 +585,10 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
       if (typeof onSave !== 'function') {
         throw new Error('No se encontró el manejador de guardado.');
       }
-      await onSave(form);
+      await onSave({
+        ...form,
+        resultOnly: isEditLocked,
+      });
       onClose();
     } catch (error) {
       setSubmitError(error?.message || 'No se pudo guardar el amistoso.');
@@ -791,7 +898,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                   placeholderTextColor="#94A3B8"
                   value={form.team1Score}
                   onChangeText={(value) => handleChange('team1Score', value.replace(/[^0-9]/g, ''))}
-                  editable={editable}
+                  editable={resultsEditable}
                   keyboardType="numeric"
                 />
               </View>
@@ -805,7 +912,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                   placeholderTextColor="#94A3B8"
                   value={form.team2Score}
                   onChangeText={(value) => handleChange('team2Score', value.replace(/[^0-9]/g, ''))}
-                  editable={editable}
+                  editable={resultsEditable}
                   keyboardType="numeric"
                 />
               </View>
@@ -821,7 +928,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
                     label={option}
                     active={form.winner === option}
                     onPress={() => handleChange('winner', option)}
-                    disabled={!editable}
+                    disabled={!resultsEditable}
                   />
                 ))}
               </View>
@@ -916,19 +1023,25 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
   );
 }
 
-function TournamentEventModal({ visible, mode, initialValues, onClose }) {
+function TournamentEventModal({ visible, mode, initialValues, onClose, onSave }) {
   const [form, setForm] = useState(() => initialValues);
   const [venues, setVenues] = useState(() => initialValues?.venues ?? []);
   const [newVenue, setNewVenue] = useState('');
   const [standings, setStandings] = useState(() => initialValues?.standings ?? []);
+  const [imageAsset, setImageAsset] = useState(null);
+  const [imageError, setImageError] = useState('');
+  const [pickingImage, setPickingImage] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
+  const resultsEditable = true;
 
   useEffect(() => {
     setForm(initialValues);
     setVenues(initialValues?.venues ?? []);
     setStandings(initialValues?.standings ?? []);
+    setImageAsset(null);
+    setImageError('');
   }, [initialValues]);
 
   const handleChange = (field, value) => {
@@ -966,7 +1079,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
   };
 
   const handleStandingChange = (index, field, value) => {
-    if (!editable) return;
+    if (!resultsEditable) return;
     setStandings((prev) =>
       prev.map((row, rowIndex) =>
         rowIndex === index ? { ...row, [field]: value } : row
@@ -975,7 +1088,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
   };
 
   const moveStanding = (index, direction) => {
-    if (!editable) return;
+    if (!resultsEditable) return;
     setStandings((prev) => {
       const targetIndex = index + direction;
       if (targetIndex < 0 || targetIndex >= prev.length) return prev;
@@ -984,6 +1097,53 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
       next.splice(targetIndex, 0, row);
       return next;
     });
+  };
+
+  const handlePickImage = async () => {
+    if (!editable || pickingImage) return;
+    setPickingImage(true);
+    setImageError('');
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          setImageError('Necesitamos permisos para acceder a tu galería.');
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (asset) {
+        setImageAsset(asset);
+        setForm((prev) => ({ ...prev, imageUrl: asset.uri }));
+      }
+    } catch (error) {
+      setImageError(error?.message || 'No pudimos seleccionar la imagen.');
+    } finally {
+      setPickingImage(false);
+    }
+  };
+
+  const imagePreview = useMemo(() => {
+    if (imageAsset?.uri) return imageAsset.uri;
+    return form?.imageUrl ? resolveAssetUrl(form.imageUrl) : null;
+  }, [imageAsset?.uri, form?.imageUrl]);
+
+  const handleSubmit = async () => {
+    if (typeof onSave !== 'function') {
+      onClose();
+      return;
+    }
+    await onSave({
+      ...form,
+      standings,
+    });
+    onClose();
   };
 
   return (
@@ -1009,6 +1169,34 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
             onChangeText={(value) => handleChange('name', value)}
             editable={editable}
           />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Imagen del evento
+            </Text>
+            <View className="flex-row items-center gap-3">
+              <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                {imagePreview ? (
+                  <Image source={{ uri: imagePreview }} className="h-full w-full" resizeMode="cover" />
+                ) : (
+                  <Ionicons name="image-outline" size={24} color="#94A3B8" />
+                )}
+              </View>
+              <View className="flex-1 gap-2">
+                <Pressable
+                  onPress={handlePickImage}
+                  disabled={!editable || pickingImage}
+                  className={`rounded-full px-4 py-2 ${
+                    editable && !pickingImage ? 'bg-sky-500/70' : 'bg-white/10'
+                  }`}
+                >
+                  <Text className="text-white text-xs font-semibold">
+                    {pickingImage ? 'Abriendo...' : 'Seleccionar imagen'}
+                  </Text>
+                </Pressable>
+                {imageError ? <Text className="text-rose-200 text-xs">{imageError}</Text> : null}
+              </View>
+            </View>
+          </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
               <FormField
@@ -1189,7 +1377,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
                     className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white text-xs"
                     value={row.team}
                     onChangeText={(value) => handleStandingChange(index, 'team', value)}
-                    editable={editable}
+                    editable={resultsEditable}
                   />
                   <TextInput
                     className="w-12 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-center text-white text-xs"
@@ -1197,7 +1385,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
                     onChangeText={(value) =>
                       handleStandingChange(index, 'played', value.replace(/[^0-9]/g, ''))
                     }
-                    editable={editable}
+                    editable={resultsEditable}
                     keyboardType="numeric"
                   />
                   <TextInput
@@ -1206,24 +1394,24 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
                     onChangeText={(value) =>
                       handleStandingChange(index, 'points', value.replace(/[^0-9]/g, ''))
                     }
-                    editable={editable}
+                    editable={resultsEditable}
                     keyboardType="numeric"
                   />
                   <View className="flex-row gap-1 w-16 justify-end">
                     <Pressable
                       onPress={() => moveStanding(index, -1)}
-                      disabled={!editable || index === 0}
+                      disabled={!resultsEditable || index === 0}
                       className={`h-7 w-7 items-center justify-center rounded-full ${
-                        !editable || index === 0 ? 'bg-white/10' : 'bg-white/5'
+                        !resultsEditable || index === 0 ? 'bg-white/10' : 'bg-white/5'
                       }`}
                     >
                       <Ionicons name="chevron-up" size={14} color="#E2E8F0" />
                     </Pressable>
                     <Pressable
                       onPress={() => moveStanding(index, 1)}
-                      disabled={!editable || index === standings.length - 1}
+                      disabled={!resultsEditable || index === standings.length - 1}
                       className={`h-7 w-7 items-center justify-center rounded-full ${
-                        !editable || index === standings.length - 1 ? 'bg-white/10' : 'bg-white/5'
+                        !resultsEditable || index === standings.length - 1 ? 'bg-white/10' : 'bg-white/5'
                       }`}
                     >
                       <Ionicons name="chevron-down" size={14} color="#E2E8F0" />
@@ -1239,8 +1427,11 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
             <Text className="text-white text-xs font-semibold">Cancelar</Text>
           </Pressable>
           <Pressable
-            disabled={!editable}
-            className={`rounded-full px-4 py-2 ${editable ? 'bg-emerald-500/80' : 'bg-white/10'}`}
+            disabled={!(editable || resultsEditable)}
+            onPress={handleSubmit}
+            className={`rounded-full px-4 py-2 ${
+              editable || resultsEditable ? 'bg-emerald-500/80' : 'bg-white/10'
+            }`}
           >
             <Text className="text-white text-xs font-semibold">
               {mode === 'edit' ? 'Guardar cambios' : 'Crear torneo'}
@@ -1252,19 +1443,25 @@ function TournamentEventModal({ visible, mode, initialValues, onClose }) {
   );
 }
 
-function CupEventModal({ visible, mode, initialValues, onClose }) {
+function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
   const [form, setForm] = useState(() => initialValues);
   const [venues, setVenues] = useState(() => initialValues?.venues ?? []);
   const [newVenue, setNewVenue] = useState('');
   const [bracket, setBracket] = useState(() => initialValues?.bracket ?? []);
+  const [imageAsset, setImageAsset] = useState(null);
+  const [imageError, setImageError] = useState('');
+  const [pickingImage, setPickingImage] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
+  const resultsEditable = true;
 
   useEffect(() => {
     setForm(initialValues);
     setVenues(initialValues?.venues ?? []);
     setBracket(initialValues?.bracket ?? []);
+    setImageAsset(null);
+    setImageError('');
   }, [initialValues]);
 
   const handleChange = (field, value) => {
@@ -1291,7 +1488,7 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
   };
 
   const handleSelectWinner = (roundIndex, matchIndex, team) => {
-    if (!editable) return;
+    if (!resultsEditable) return;
     setBracket((prev) => {
       const next = prev.map((round) => ({
         ...round,
@@ -1310,6 +1507,53 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
       }
       return next;
     });
+  };
+
+  const handlePickImage = async () => {
+    if (!editable || pickingImage) return;
+    setPickingImage(true);
+    setImageError('');
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          setImageError('Necesitamos permisos para acceder a tu galería.');
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (asset) {
+        setImageAsset(asset);
+        setForm((prev) => ({ ...prev, imageUrl: asset.uri }));
+      }
+    } catch (error) {
+      setImageError(error?.message || 'No pudimos seleccionar la imagen.');
+    } finally {
+      setPickingImage(false);
+    }
+  };
+
+  const imagePreview = useMemo(() => {
+    if (imageAsset?.uri) return imageAsset.uri;
+    return form?.imageUrl ? resolveAssetUrl(form.imageUrl) : null;
+  }, [imageAsset?.uri, form?.imageUrl]);
+
+  const handleSubmit = async () => {
+    if (typeof onSave !== 'function') {
+      onClose();
+      return;
+    }
+    await onSave({
+      ...form,
+      bracket,
+    });
+    onClose();
   };
 
   return (
@@ -1335,6 +1579,34 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
             onChangeText={(value) => handleChange('name', value)}
             editable={editable}
           />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Imagen del evento
+            </Text>
+            <View className="flex-row items-center gap-3">
+              <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                {imagePreview ? (
+                  <Image source={{ uri: imagePreview }} className="h-full w-full" resizeMode="cover" />
+                ) : (
+                  <Ionicons name="image-outline" size={24} color="#94A3B8" />
+                )}
+              </View>
+              <View className="flex-1 gap-2">
+                <Pressable
+                  onPress={handlePickImage}
+                  disabled={!editable || pickingImage}
+                  className={`rounded-full px-4 py-2 ${
+                    editable && !pickingImage ? 'bg-sky-500/70' : 'bg-white/10'
+                  }`}
+                >
+                  <Text className="text-white text-xs font-semibold">
+                    {pickingImage ? 'Abriendo...' : 'Seleccionar imagen'}
+                  </Text>
+                </Pressable>
+                {imageError ? <Text className="text-rose-200 text-xs">{imageError}</Text> : null}
+              </View>
+            </View>
+          </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
               <FormField
@@ -1492,16 +1764,16 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
                         className="gap-2 rounded-2xl border border-white/10 bg-white/5 p-3"
                       >
                         {[match.teamA, match.teamB].map((team) => (
-                          <Pressable
-                            key={`${match.id}-${team}`}
-                            onPress={() => handleSelectWinner(roundIndex, matchIndex, team)}
-                            disabled={!editable}
-                            className={`rounded-xl border px-3 py-2 ${
-                              match.winner === team
-                                ? 'border-emerald-400/60 bg-emerald-500/10'
-                                : 'border-white/10 bg-white/5'
-                            } ${!editable ? 'opacity-60' : ''}`}
-                          >
+                            <Pressable
+                              key={`${match.id}-${team}`}
+                              onPress={() => handleSelectWinner(roundIndex, matchIndex, team)}
+                              disabled={!resultsEditable}
+                              className={`rounded-xl border px-3 py-2 ${
+                                match.winner === team
+                                  ? 'border-emerald-400/60 bg-emerald-500/10'
+                                  : 'border-white/10 bg-white/5'
+                            } ${!resultsEditable ? 'opacity-60' : ''}`}
+                            >
                             <Text className="text-white text-xs font-semibold">{team}</Text>
                           </Pressable>
                         ))}
@@ -1521,8 +1793,11 @@ function CupEventModal({ visible, mode, initialValues, onClose }) {
             <Text className="text-white text-xs font-semibold">Cancelar</Text>
           </Pressable>
           <Pressable
-            disabled={!editable}
-            className={`rounded-full px-4 py-2 ${editable ? 'bg-emerald-500/80' : 'bg-white/10'}`}
+            disabled={!(editable || resultsEditable)}
+            onPress={handleSubmit}
+            className={`rounded-full px-4 py-2 ${
+              editable || resultsEditable ? 'bg-emerald-500/80' : 'bg-white/10'
+            }`}
           >
             <Text className="text-white text-xs font-semibold">
               {mode === 'edit' ? 'Guardar cambios' : 'Crear copa'}
@@ -1759,6 +2034,7 @@ export default function EventosScreen() {
       winner: selectedEvent?.winner ?? '',
       prize: selectedEvent?.prize ?? '',
       status: selectedEvent?.status ?? '',
+      imageUrl: selectedEvent?.imageUrl ?? '',
     }),
     [selectedEvent]
   );
@@ -1779,6 +2055,7 @@ export default function EventosScreen() {
       venues: selectedEvent?.venues ?? [],
       standings: selectedEvent?.standings ?? DEFAULT_STANDINGS,
       status: selectedEvent?.status ?? '',
+      imageUrl: selectedEvent?.imageUrl ?? '',
     }),
     [selectedEvent]
   );
@@ -1798,6 +2075,7 @@ export default function EventosScreen() {
       venues: selectedEvent?.venues ?? [],
       bracket: selectedEvent?.bracket ?? DEFAULT_BRACKET,
       status: selectedEvent?.status ?? '',
+      imageUrl: selectedEvent?.imageUrl ?? '',
     }),
     [selectedEvent]
   );
@@ -1812,6 +2090,27 @@ export default function EventosScreen() {
 
   const handleSaveFriendly = async (formValues) => {
     try {
+      const isResultOnly = formValues?.resultOnly;
+      if (
+        activeMode === 'edit' &&
+        selectedEvent?.id &&
+        selectedEvent?.status?.toLowerCase() !== 'inactivo' &&
+        isResultOnly
+      ) {
+        setEvents((prev) =>
+          prev.map((item) =>
+            item.id === selectedEvent.id
+              ? {
+                ...item,
+                team1Score: formValues.team1Score,
+                team2Score: formValues.team2Score,
+                winner: formValues.winner,
+              }
+              : item
+          )
+        );
+        return;
+      }
       const equipos =
         formValues.team1Id && formValues.team2Id
           ? [
@@ -1851,6 +2150,36 @@ export default function EventosScreen() {
     } catch (error) {
       throw error;
     }
+  };
+
+  const handleSaveTournament = async (formValues) => {
+    if (activeMode !== 'edit' || !selectedEvent?.id) return;
+    setEvents((prev) =>
+      prev.map((item) =>
+        item.id === selectedEvent.id
+          ? {
+            ...item,
+            standings: formValues.standings,
+            imageUrl: formValues.imageUrl ?? item.imageUrl,
+          }
+          : item
+      )
+    );
+  };
+
+  const handleSaveCup = async (formValues) => {
+    if (activeMode !== 'edit' || !selectedEvent?.id) return;
+    setEvents((prev) =>
+      prev.map((item) =>
+        item.id === selectedEvent.id
+          ? {
+            ...item,
+            bracket: formValues.bracket,
+            imageUrl: formValues.imageUrl ?? item.imageUrl,
+          }
+          : item
+      )
+    );
   };
 
   return (
@@ -1914,52 +2243,26 @@ export default function EventosScreen() {
                   <Text className="text-white/50 text-sm">No hay eventos registrados.</Text>
                 ) : null}
               {orderedEvents.map((event) => (
-                <Pressable
+                <EventCard
                   key={event.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  event={event}
                   onPress={() => handleOpenEdit(event)}
-                >
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold">{event.title}</Text>
-                      <Text className="text-white/60 text-xs mt-1">{event.date}</Text>
-                      <Text className="text-white/40 text-xs mt-1">{event.location}</Text>
-                    </View>
-                    <StatusPill status={event.status} />
-                  </View>
-                  <View className="flex-row flex-wrap gap-2 mt-4">
-                    <Pressable
-                      className="rounded-full border border-white/10 px-3 py-1"
-                      onPress={(pressEvent) => {
-                        pressEvent?.stopPropagation?.();
-                        handleOpenEdit(event);
-                      }}
-                    >
-                      <Text className="text-white text-xs font-semibold">Editar</Text>
-                    </Pressable>
-                    <Pressable
-                      className="rounded-full border border-emerald-400/40 px-3 py-1"
-                      onPress={(pressEvent) => {
-                        pressEvent?.stopPropagation?.();
-                        handleStartEvent(event);
-                      }}
-                    >
-                      <Text className="text-emerald-200 text-xs font-semibold">Iniciar</Text>
-                    </Pressable>
-                    <Pressable
-                      className="rounded-full border border-amber-400/40 px-3 py-1"
-                      onPress={(pressEvent) => {
-                        pressEvent?.stopPropagation?.();
-                        handlePauseEvent(event);
-                      }}
-                    >
-                      <Text className="text-amber-200 text-xs font-semibold">Pausar</Text>
-                    </Pressable>
-                    <Pressable className="rounded-full border border-rose-500/40 px-3 py-1">
-                      <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
-                    </Pressable>
-                  </View>
-                </Pressable>
+                  onEdit={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                    handleOpenEdit(event);
+                  }}
+                  onStart={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                    handleStartEvent(event);
+                  }}
+                  onPause={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                    handlePauseEvent(event);
+                  }}
+                  onDelete={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                  }}
+                />
               ))}
               {finalizedEvents.length > 0 ? (
                 <View className="gap-3 pt-2">
@@ -1973,52 +2276,26 @@ export default function EventosScreen() {
                 </View>
               ) : null}
               {finalizedEvents.map((event) => (
-                <Pressable
+                <EventCard
                   key={event.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  event={event}
                   onPress={() => handleOpenEdit(event)}
-                >
-                  <View className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold">{event.title}</Text>
-                      <Text className="text-white/60 text-xs mt-1">{event.date}</Text>
-                      <Text className="text-white/40 text-xs mt-1">{event.location}</Text>
-                    </View>
-                    <StatusPill status={event.status} />
-                  </View>
-                  <View className="flex-row flex-wrap gap-2 mt-4">
-                    <Pressable
-                      className="rounded-full border border-white/10 px-3 py-1"
-                      onPress={(pressEvent) => {
-                        pressEvent?.stopPropagation?.();
-                        handleOpenEdit(event);
-                      }}
-                    >
-                      <Text className="text-white text-xs font-semibold">Editar</Text>
-                    </Pressable>
-                    <Pressable
-                      className="rounded-full border border-emerald-400/40 px-3 py-1"
-                      onPress={(pressEvent) => {
-                        pressEvent?.stopPropagation?.();
-                        handleStartEvent(event);
-                      }}
-                    >
-                      <Text className="text-emerald-200 text-xs font-semibold">Iniciar</Text>
-                    </Pressable>
-                    <Pressable
-                      className="rounded-full border border-amber-400/40 px-3 py-1"
-                      onPress={(pressEvent) => {
-                        pressEvent?.stopPropagation?.();
-                        handlePauseEvent(event);
-                      }}
-                    >
-                      <Text className="text-amber-200 text-xs font-semibold">Pausar</Text>
-                    </Pressable>
-                    <Pressable className="rounded-full border border-rose-500/40 px-3 py-1">
-                      <Text className="text-rose-200 text-xs font-semibold">Eliminar</Text>
-                    </Pressable>
-                  </View>
-                </Pressable>
+                  onEdit={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                    handleOpenEdit(event);
+                  }}
+                  onStart={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                    handleStartEvent(event);
+                  }}
+                  onPause={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                    handlePauseEvent(event);
+                  }}
+                  onDelete={(pressEvent) => {
+                    pressEvent?.stopPropagation?.();
+                  }}
+                />
               ))}
             </View>
           </Card>
@@ -2099,12 +2376,14 @@ export default function EventosScreen() {
         mode={activeMode}
         initialValues={tournamentInitialValues}
         onClose={handleCloseModal}
+        onSave={handleSaveTournament}
       />
       <CupEventModal
         visible={activeModal === 'copa'}
         mode={activeMode}
         initialValues={cupInitialValues}
         onClose={handleCloseModal}
+        onSave={handleSaveCup}
       />
     </ScrollView>
   );
