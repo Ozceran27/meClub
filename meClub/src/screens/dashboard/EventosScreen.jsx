@@ -26,6 +26,18 @@ const resolveStatusLabel = (status) => {
   return STATUS_LABELS[normalized] ?? status;
 };
 
+const EVENT_TYPE_LABELS = {
+  amistoso: 'AMISTOSO',
+  torneo: 'TORNEO',
+  copa: 'COPA',
+};
+
+const resolveEventTypeLabel = (type) => {
+  if (!type) return '';
+  const normalized = String(type).trim().toLowerCase();
+  return EVENT_TYPE_LABELS[normalized] ?? normalized.toUpperCase();
+};
+
 const resolveGlobalScope = (zona) => {
   const normalized = String(zona ?? '').toLowerCase();
   if (['regional', 'provincial', 'provincia'].includes(normalized)) return 'provincia';
@@ -2472,6 +2484,7 @@ export default function EventosScreen() {
                 const priceLabel = formatCurrencyValue(event.price);
                 const prizeLabel = formatCurrencyValue(event.prize);
                 const isFriendly = event.type === 'amistoso';
+                const typeLabel = resolveEventTypeLabel(event.type);
                 const imageSource = isFriendly
                   ? FRIENDLY_DEFAULT_IMAGE
                   : { uri: resolveAssetUrl(event.imageUrl) };
@@ -2486,7 +2499,16 @@ export default function EventosScreen() {
                         <Image source={imageSource} className="h-full w-full" resizeMode="cover" />
                       </View>
                       <View className="flex-1 gap-2">
-                        <Text className="text-white font-semibold">{event.title}</Text>
+                        <View className="flex-row items-start justify-between gap-2">
+                          <Text className="flex-1 text-white font-semibold">{event.title}</Text>
+                          {typeLabel ? (
+                            <View className="rounded-full border border-white/15 bg-white/10 px-2 py-[2px]">
+                              <Text className="text-[10px] font-semibold text-white/70">
+                                {typeLabel}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
                         <View className="flex-row flex-wrap items-center gap-2">
                           <Text className="text-white/60 text-xs">{eventDate}</Text>
                           <Text className="text-white/50 text-xs">{event.organizer}</Text>
