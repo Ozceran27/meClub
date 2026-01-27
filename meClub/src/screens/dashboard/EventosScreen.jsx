@@ -357,7 +357,7 @@ function EventActionButton({ label, borderClassName, iconName, iconColor, onPres
       {showTooltip ? (
         <View
           pointerEvents="none"
-          className="absolute top-full z-20 mt-1 rounded-lg border border-white/20 bg-slate-950/95 px-2 py-1 shadow-lg shadow-black/40"
+          className="absolute top-full z-20 mt-1 rounded-lg border border-white/20 bg-slate-950/95 px-2 py-2 shadow-lg shadow-black/40"
         >
           <Text className="text-[11px] font-semibold text-white">{label}</Text>
         </View>
