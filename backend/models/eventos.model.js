@@ -48,12 +48,16 @@ const EventosModel = {
     }
 
     const [rows] = await db.query(
-      `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
-              premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
+      `SELECT eventos.evento_id, eventos.club_id, eventos.nombre, eventos.tipo, eventos.descripcion,
+              eventos.estado, eventos.fecha_inicio, eventos.fecha_fin, eventos.hora_inicio,
+              eventos.provincia_id, eventos.zona, eventos.deporte_id, eventos.cantidad_equipos,
+              eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2, eventos.premio_3,
+              eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
+              clubes.nombre AS club_nombre
        FROM eventos
+       LEFT JOIN clubes ON clubes.club_id = eventos.club_id
        WHERE ${whereClause}
-       ORDER BY creado_en DESC, evento_id DESC`,
+       ORDER BY eventos.creado_en DESC, eventos.evento_id DESC`,
       values
     );
     return rows.map((row) => normalizeEventoRow(row));

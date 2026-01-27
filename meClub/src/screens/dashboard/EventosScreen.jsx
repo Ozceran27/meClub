@@ -77,8 +77,8 @@ const resolveLocationLabel = (evento) => {
 };
 
 const resolveOrganizer = (evento) => {
-  if (evento?.organizador) return evento.organizador;
   if (evento?.club_nombre) return evento.club_nombre;
+  if (evento?.organizador) return evento.organizador;
   if (evento?.club_id) return `Club ${evento.club_id}`;
   return 'Organización';
 };
