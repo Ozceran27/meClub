@@ -1932,6 +1932,7 @@ export default function EventosScreen() {
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
   const [globalPage, setGlobalPage] = useState(1);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [venues, setVenues] = useState([]);
   const [sports, setSports] = useState([]);
   const pageSize = 10;
@@ -1942,12 +1943,18 @@ export default function EventosScreen() {
   const hasProAccess = clubLevel >= 2;
 
   const filteredGlobalEvents = useMemo(() => {
+    const normalizedQuery = globalSearchQuery.trim().toLowerCase();
     return [...globalEvents]
       .filter((event) => {
         const normalizedStatus = normalizeStatus(event?.status);
+        const matchesQuery =
+          !normalizedQuery ||
+          String(event?.organizer ?? '').toLowerCase().includes(normalizedQuery) ||
+          String(event?.title ?? '').toLowerCase().includes(normalizedQuery);
         return (
           event.scope === filter &&
-          (normalizedStatus === 'activo' || event?.status === 'activo')
+          (normalizedStatus === 'activo' || event?.status === 'activo') &&
+          matchesQuery
         );
       })
       .sort((a, b) => {
@@ -1955,7 +1962,7 @@ export default function EventosScreen() {
         const bDate = new Date(b?.startDate ?? b?.fecha_inicio ?? 0).getTime();
         return aDate - bDate;
       });
-  }, [filter, globalEvents]);
+  }, [filter, globalEvents, globalSearchQuery]);
 
   const pagedGlobalEvents = useMemo(() => {
     const startIndex = (globalPage - 1) * pageSize;
@@ -1967,7 +1974,7 @@ export default function EventosScreen() {
 
   useEffect(() => {
     setGlobalPage(1);
-  }, [filter, globalEvents.length]);
+  }, [filter, globalEvents.length, globalSearchQuery]);
 
   useEffect(() => {
     setGlobalPage((prev) => Math.min(prev, totalGlobalPages));
@@ -2467,6 +2474,23 @@ export default function EventosScreen() {
             <Text className="text-white/60">
               Explorá convocatorias oficiales y definí tu participación según región.
             </Text>
+            <View className="flex-row gap-2">
+              <TextInput
+                value={globalSearchQuery}
+                onChangeText={(value) => setGlobalSearchQuery(value)}
+                placeholder="Buscar por organizador o título"
+                placeholderTextColor="#94A3B8"
+                className={`${FORM_FIELD_CLASSNAME} flex-1`}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              <Pressable
+                onPress={() => setGlobalSearchQuery((prev) => prev.trim())}
+                className="rounded-full border border-white/10 px-4 py-3"
+              >
+                <Ionicons name="search-outline" size={16} color="#F8FAFC" />
+              </Pressable>
+            </View>
             <View className="mt-4 gap-4">
               {globalEventsStatus.loading ? (
                 <Text className="text-white/60 text-sm">Cargando eventos globales...</Text>
