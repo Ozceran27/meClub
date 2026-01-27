@@ -379,7 +379,7 @@ function EventCard({ event, onPress, onEdit, onStart, onPause, onDelete }) {
           </View>
         </View>
         <View className="flex-1 gap-2">
-          <Text className="text-white font-semibold">{event.title}</Text>
+          <Text className="text-white font-semibold text-base">{event.title}</Text>
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2">
             <EventDetail label="Fechas" value={dateLabel} />
             {event?.time ? <EventDetail label="Hora" value={event.time} /> : null}
