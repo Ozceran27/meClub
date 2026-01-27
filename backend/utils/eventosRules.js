@@ -28,7 +28,9 @@ const validateEstado = (estado) => {
   if (!estado) return null;
   const normalized = normalizeString(estado);
   if (!normalized || !ESTADOS_EVENTO.has(normalized)) {
-    throw new Error('estado inválido');
+    const error = new Error('estado inválido');
+    error.statusCode = 400;
+    throw error;
   }
   return normalized;
 };
@@ -37,7 +39,9 @@ const validateTipo = (tipo) => {
   if (!tipo) return null;
   const normalized = normalizeTipo(tipo);
   if (!normalized || !TIPOS_EVENTO.has(normalized)) {
-    throw new Error('tipo inválido');
+    const error = new Error('tipo inválido');
+    error.statusCode = 400;
+    throw error;
   }
   return normalized;
 };
@@ -55,11 +59,15 @@ const validateLimiteEquipos = (tipo, limite) => {
   if (limite === undefined || limite === null) return null;
   const numeric = Number(limite);
   if (!Number.isInteger(numeric) || numeric <= 0) {
-    throw new Error('limite_equipos debe ser un entero positivo');
+    const error = new Error('limite_equipos debe ser un entero positivo');
+    error.statusCode = 400;
+    throw error;
   }
   const max = getLimitePorTipo(tipo);
   if (max && numeric > max) {
-    throw new Error(`limite_equipos supera el máximo permitido para ${tipo}`);
+    const error = new Error(`limite_equipos supera el máximo permitido para ${tipo}`);
+    error.statusCode = 400;
+    throw error;
   }
   return numeric;
 };
@@ -69,10 +77,14 @@ const resolveRegionalProvincia = ({ zona, zona_regional, provincia_id }, club) =
   const zonaRegional = zonaValue === 'regional' || zona_regional === true || zona_regional === 1;
   if (!zonaRegional) return provincia_id ?? null;
   if (!club || !club.provincia_id) {
-    throw new Error('No se puede aplicar zona regional sin provincia en el club');
+    const error = new Error('No se puede aplicar zona regional sin provincia en el club');
+    error.statusCode = 400;
+    throw error;
   }
   if (provincia_id && Number(provincia_id) !== Number(club.provincia_id)) {
-    throw new Error('provincia_id debe coincidir con la provincia del club para zona regional');
+    const error = new Error('provincia_id debe coincidir con la provincia del club para zona regional');
+    error.statusCode = 400;
+    throw error;
   }
   return Number(club.provincia_id);
 };
