@@ -128,6 +128,14 @@ const parseOptionalPrice = (value, fieldName) => {
   return Math.round(numeric * 100) / 100;
 };
 
+const normalizeZonaFilter = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized) return null;
+  if (['regional', 'provincial', 'provincia'].includes(normalized)) return 'regional';
+  if (normalized === 'nacional') return 'nacional';
+  return null;
+};
+
 const parseEquiposPayload = (equiposInput, { requiredCount } = {}) => {
   if (equiposInput === undefined) return [];
   if (!Array.isArray(equiposInput)) {
@@ -212,13 +220,28 @@ const listEventos = async (req, res) => {
 
 const listEventosGlobales = async (req, res) => {
   try {
-    const clubId = parseRequiredInteger(req.query?.club_id ?? req.body?.club_id, 'club_id');
-    const club = await ClubesModel.obtenerClubPorId(clubId);
+    let club = req.club ?? null;
+    if (!club) {
+      const clubId = parseRequiredInteger(
+        req.query?.club_id ??
+          req.body?.club_id ??
+          req.usuario?.club_id ??
+          req.usuario?.clubId,
+        'club_id'
+      );
+      club = await ClubesModel.obtenerClubPorId(clubId);
+    }
     if (!club) {
       return res.status(404).json({ mensaje: 'Club no encontrado' });
     }
     const provinciaId = club.provincia_id ?? null;
-    const eventos = await EventosModel.listarGlobales({ provinciaId });
+    const zonaFilter = normalizeZonaFilter(
+      req.query?.zona ?? req.query?.scope ?? req.query?.filtro
+    );
+    if (zonaFilter === 'regional' && !provinciaId) {
+      return res.json({ eventos: [] });
+    }
+    const eventos = await EventosModel.listarGlobales({ provinciaId, zona: zonaFilter });
     res.json({ eventos });
   } catch (error) {
     if (error.statusCode === 400) {
