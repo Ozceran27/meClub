@@ -201,7 +201,7 @@ export default function LoginScreen() {
             }[mode]}
           </Text>
 
-          <View className="gap-4 max-h-[70vh] overflow-y-auto">
+          <View className="gap-4 max-h-[70vh] overflow-y-auto hide-scrollbar">
             {/* REGISTER extra */}
             {mode === 'register' && (
               <>
