@@ -19,6 +19,35 @@ const normalizeEventoRow = (row) => {
   };
 };
 
+let limiteColumnCache = null;
+let limiteColumnPromise = null;
+
+const resolveLimiteColumn = async () => {
+  if (limiteColumnCache) return limiteColumnCache;
+  if (limiteColumnPromise) return limiteColumnPromise;
+
+  limiteColumnPromise = (async () => {
+    const [limiteRows] = await db.query("SHOW COLUMNS FROM eventos LIKE 'limite_equipos'");
+    if (limiteRows.length > 0) {
+      limiteColumnCache = 'limite_equipos';
+      return limiteColumnCache;
+    }
+    const [cantidadRows] = await db.query("SHOW COLUMNS FROM eventos LIKE 'cantidad_equipos'");
+    if (cantidadRows.length > 0) {
+      limiteColumnCache = 'cantidad_equipos';
+      return limiteColumnCache;
+    }
+    limiteColumnCache = null;
+    return limiteColumnCache;
+  })();
+
+  try {
+    return await limiteColumnPromise;
+  } finally {
+    limiteColumnPromise = null;
+  }
+};
+
 const EventosModel = {
   listarPorClub: async (clubId, { provinciaId } = {}) => {
     const filters = ['club_id = ?'];
@@ -29,9 +58,7 @@ const EventosModel = {
     }
 
     const [rows] = await db.query(
-      `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              hora_inicio, hora_fin, provincia_id, zona, deporte_id, cantidad_equipos,
-              valor_inscripcion, premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
+      `SELECT eventos.*
        FROM eventos
        WHERE ${filters.join(' AND ')}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -59,11 +86,7 @@ const EventosModel = {
     }
 
     const [rows] = await db.query(
-      `SELECT eventos.evento_id, eventos.club_id, eventos.nombre, eventos.tipo, eventos.descripcion,
-              eventos.estado, eventos.fecha_inicio, eventos.fecha_fin, eventos.hora_inicio,
-              eventos.hora_fin, eventos.provincia_id, eventos.zona, eventos.deporte_id,
-              eventos.cantidad_equipos, eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2,
-              eventos.premio_3, eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
+      `SELECT eventos.*,
               clubes.nombre AS club_nombre
        FROM eventos
        LEFT JOIN clubes ON clubes.club_id = eventos.club_id
@@ -76,9 +99,7 @@ const EventosModel = {
 
   obtenerPorId: async (eventoId, clubId) => {
     const [rows] = await db.query(
-      `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              hora_inicio, hora_fin, provincia_id, zona, deporte_id, cantidad_equipos,
-              valor_inscripcion, premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
+      `SELECT eventos.*
        FROM eventos
        WHERE evento_id = ? AND club_id = ?
        LIMIT 1`,
@@ -89,11 +110,7 @@ const EventosModel = {
 
   obtenerGlobalPorId: async (eventoId) => {
     const [rows] = await db.query(
-      `SELECT eventos.evento_id, eventos.club_id, eventos.nombre, eventos.tipo, eventos.descripcion,
-              eventos.estado, eventos.fecha_inicio, eventos.fecha_fin, eventos.hora_inicio,
-              eventos.hora_fin, eventos.provincia_id, eventos.zona, eventos.deporte_id,
-              eventos.cantidad_equipos, eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2,
-              eventos.premio_3, eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
+      `SELECT eventos.*,
               clubes.nombre AS club_nombre
        FROM eventos
        LEFT JOIN clubes ON clubes.club_id = eventos.club_id
@@ -107,10 +124,11 @@ const EventosModel = {
   crear: async (clubId, payload) => {
     const cantidadEquipos =
       payload.cantidad_equipos ?? payload.limite_equipos ?? null;
+    const limiteColumn = (await resolveLimiteColumn()) || 'cantidad_equipos';
     const [result] = await db.query(
       `INSERT INTO eventos
        (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio, hora_fin,
-        provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion, premio_1, premio_2,
+        provincia_id, zona, deporte_id, ${limiteColumn}, valor_inscripcion, premio_1, premio_2,
         premio_3, imagen_url)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -140,8 +158,13 @@ const EventosModel = {
   actualizar: async (eventoId, clubId, updates) => {
     const normalizedUpdates = { ...updates };
     if (normalizedUpdates.limite_equipos !== undefined) {
-      normalizedUpdates.cantidad_equipos = normalizedUpdates.limite_equipos;
-      delete normalizedUpdates.limite_equipos;
+      const limiteColumn = (await resolveLimiteColumn()) || 'cantidad_equipos';
+      if (limiteColumn === 'limite_equipos') {
+        normalizedUpdates.limite_equipos = normalizedUpdates.limite_equipos;
+      } else {
+        normalizedUpdates[limiteColumn] = normalizedUpdates.limite_equipos;
+        delete normalizedUpdates.limite_equipos;
+      }
     }
 
     const fields = Object.entries(normalizedUpdates).filter(([, value]) => value !== undefined);
