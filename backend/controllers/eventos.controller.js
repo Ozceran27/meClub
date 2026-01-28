@@ -287,8 +287,12 @@ const getEvento = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
-    const equipos = await EventoEquiposModel.listarPorEvento(eventoId);
-    res.json({ evento: { ...evento, equipos } });
+    const [equipos, partidos, posiciones] = await Promise.all([
+      EventoEquiposModel.listarPorEvento(eventoId),
+      EventoPartidosModel.listarPorEvento(eventoId),
+      EventoPosicionesModel.listarPorEvento(eventoId),
+    ]);
+    res.json({ evento: { ...evento, equipos, partidos, posiciones } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: 'Error interno del servidor' });

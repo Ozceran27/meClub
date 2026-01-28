@@ -38,6 +38,19 @@ const resolveEventTypeLabel = (type) => {
   return EVENT_TYPE_LABELS[normalized] ?? normalized.toUpperCase();
 };
 
+const resolveEventDetailType = (type) => {
+  if (!type) return 'amistoso';
+  const normalized = String(type).trim().toLowerCase();
+  if (normalized === 'liga') return 'torneo';
+  if (['amistoso', 'torneo', 'copa'].includes(normalized)) return normalized;
+  return normalized;
+};
+
+const resolveEventDetailsEndpoint = (event) => {
+  const isGlobal = Boolean(event?.isGlobal) || Boolean(event?.scope);
+  return isGlobal ? `/eventos/globales/${event.id}` : `/eventos/${event.id}`;
+};
+
 const resolveGlobalScope = (zona) => {
   const normalized = String(zona ?? '').toLowerCase();
   if (['regional', 'provincial', 'provincia'].includes(normalized)) return 'provincia';
@@ -137,18 +150,23 @@ const buildMatchResult = (evento) => {
   const match = partidos.find(
     (partido) => String(partido?.fase ?? '').toLowerCase() === 'amistoso'
   ) ?? partidos[0];
+  const team1Score = match?.marcador_local ?? null;
+  const team2Score = match?.marcador_visitante ?? null;
+  const hasTeams = Boolean(friendlyTeams.team1 || friendlyTeams.team2);
+  const hasScores = team1Score !== null || team2Score !== null;
+  if (!hasTeams && !hasScores) return null;
   return {
     team1: friendlyTeams.team1,
     team2: friendlyTeams.team2,
-    team1Score: match?.marcador_local ?? null,
-    team2Score: match?.marcador_visitante ?? null,
+    team1Score,
+    team2Score,
   };
 };
 
 const buildStandings = (evento) => {
   const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
   const posiciones = Array.isArray(evento?.posiciones) ? evento.posiciones : [];
-  if (posiciones.length === 0) return DEFAULT_STANDINGS;
+  if (posiciones.length === 0) return [];
   return posiciones.map((posicion, index) => ({
     id: posicion?.evento_posicion_id ?? posicion?.equipo_id ?? `st-${index}`,
     team: resolveEquipoName(equipos, posicion?.equipo_id) || `Equipo ${index + 1}`,
@@ -160,6 +178,7 @@ const buildStandings = (evento) => {
 const buildBracket = (evento) => {
   const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
   const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
+  if (partidos.length === 0) return [];
   const matchesByFase = partidos.reduce((acc, partido) => {
     const fase = String(partido?.fase ?? '').toLowerCase();
     if (!fase) return acc;
@@ -199,6 +218,7 @@ const mapGlobalEvent = (evento) => ({
   title: evento?.nombre ?? 'Evento',
   date: formatEventDate(evento?.fecha_inicio ?? evento?.fecha_fin),
   scope: resolveGlobalScope(evento?.zona),
+  isGlobal: true,
   organizer: resolveOrganizer(evento),
   type: evento?.tipo ?? 'amistoso',
   status: evento?.estado ?? 'programado',
@@ -219,6 +239,7 @@ const mapClubEvent = (evento) => ({
   title: evento?.nombre ?? 'Evento',
   date: formatEventRange(evento?.fecha_inicio, evento?.fecha_fin),
   location: resolveLocationLabel(evento),
+  isGlobal: false,
   type: evento?.tipo ?? 'amistoso',
   status: evento?.estado ?? 'programado',
   startDate: evento?.fecha_inicio ?? '',
@@ -567,10 +588,19 @@ function GlobalEventModal({ event, detailStatus, onClose }) {
   const timeLabel = event?.time ? formatEventTime(event.time) : '';
   const priceLabel = formatCurrencyValue(event?.price);
   const prizeLabel = formatCurrencyValue(event?.prize);
-  const normalizedType = String(event?.type ?? '').toLowerCase();
+  const normalizedType = resolveEventDetailType(event?.type);
   const matchResult = event?.matchResult;
-  const standings = event?.standings ?? DEFAULT_STANDINGS;
-  const bracket = event?.bracket ?? DEFAULT_BRACKET;
+  const standings = Array.isArray(event?.standings) ? event.standings : [];
+  const bracket = Array.isArray(event?.bracket) ? event.bracket : [];
+  const hasMatchResult = Boolean(
+    matchResult &&
+      (matchResult.team1 ||
+        matchResult.team2 ||
+        matchResult.team1Score !== null ||
+        matchResult.team2Score !== null)
+  );
+  const hasStandings = standings.length > 0;
+  const hasBracket = bracket.length > 0;
 
   return (
     <ModalContainer
@@ -612,76 +642,88 @@ function GlobalEventModal({ event, detailStatus, onClose }) {
         {!detailStatus?.loading && !detailStatus?.error && normalizedType === 'amistoso' ? (
           <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <SectionTitle title="Resultado" subtitle="Marcador final del amistoso." />
-            <View className="flex-row items-center justify-between gap-3">
-              <View className="flex-1">
-                <Text className="text-white text-sm font-semibold">
-                  {matchResult?.team1 || 'Equipo 1'}
-                </Text>
-                <Text className="text-white/40 text-xs">Equipo 1</Text>
+            {hasMatchResult ? (
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="flex-1">
+                  <Text className="text-white text-sm font-semibold">
+                    {matchResult?.team1 || 'Equipo 1'}
+                  </Text>
+                  <Text className="text-white/40 text-xs">Equipo 1</Text>
+                </View>
+                <View className="items-center">
+                  <Text className="text-white/70 text-xs font-semibold">VS</Text>
+                  <Text className="text-white text-lg font-semibold">
+                    {matchResult?.team1Score ?? '-'} : {matchResult?.team2Score ?? '-'}
+                  </Text>
+                </View>
+                <View className="flex-1 items-end">
+                  <Text className="text-white text-sm font-semibold">
+                    {matchResult?.team2 || 'Equipo 2'}
+                  </Text>
+                  <Text className="text-white/40 text-xs">Equipo 2</Text>
+                </View>
               </View>
-              <View className="items-center">
-                <Text className="text-white/70 text-xs font-semibold">VS</Text>
-                <Text className="text-white text-lg font-semibold">
-                  {matchResult?.team1Score ?? '-'} : {matchResult?.team2Score ?? '-'}
-                </Text>
-              </View>
-              <View className="flex-1 items-end">
-                <Text className="text-white text-sm font-semibold">
-                  {matchResult?.team2 || 'Equipo 2'}
-                </Text>
-                <Text className="text-white/40 text-xs">Equipo 2</Text>
-              </View>
-            </View>
+            ) : (
+              <Text className="text-white/60 text-sm">Sin resultados disponibles.</Text>
+            )}
           </View>
         ) : null}
         {!detailStatus?.loading && !detailStatus?.error && normalizedType === 'torneo' ? (
           <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <SectionTitle title="Tabla de posiciones" subtitle="Equipos y puntos acumulados." />
-            <View className="gap-2">
-              {standings.map((row, index) => (
-                <View
-                  key={row.id ?? `${row.team}-${index}`}
-                  className="flex-row items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2"
-                >
-                  <View className="flex-1">
-                    <Text className="text-white text-xs font-semibold">{row.team}</Text>
-                    <Text className="text-white/40 text-[10px]">
-                      PJ {row.played ?? 0}
-                    </Text>
+            {hasStandings ? (
+              <View className="gap-2">
+                {standings.map((row, index) => (
+                  <View
+                    key={row.id ?? `${row.team}-${index}`}
+                    className="flex-row items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                  >
+                    <View className="flex-1">
+                      <Text className="text-white text-xs font-semibold">{row.team}</Text>
+                      <Text className="text-white/40 text-[10px]">
+                        PJ {row.played ?? 0}
+                      </Text>
+                    </View>
+                    <Text className="text-white text-xs font-semibold">{row.points ?? 0} pts</Text>
                   </View>
-                  <Text className="text-white text-xs font-semibold">{row.points ?? 0} pts</Text>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="text-white/60 text-sm">Sin resultados disponibles.</Text>
+            )}
           </View>
         ) : null}
         {!detailStatus?.loading && !detailStatus?.error && normalizedType === 'copa' ? (
           <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <SectionTitle title="Fixture" subtitle="Cruces y ganadores por ronda." />
-            <View className="gap-4">
-              {bracket.map((round) => (
-                <View key={round.name} className="gap-2">
-                  <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
-                    {round.name}
-                  </Text>
-                  <View className="gap-2">
-                    {round.matches.map((match, index) => (
-                      <View
-                        key={match.id ?? `${round.name}-${index}`}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
-                      >
-                        <Text className="text-white text-xs">
-                          {match.teamA} <Text className="text-white/40">vs</Text> {match.teamB}
-                        </Text>
-                        <Text className="text-white/40 text-[10px]">
-                          Ganador: {match.winner || 'Sin definir'}
-                        </Text>
-                      </View>
-                    ))}
+            {hasBracket ? (
+              <View className="gap-4">
+                {bracket.map((round) => (
+                  <View key={round.name} className="gap-2">
+                    <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                      {round.name}
+                    </Text>
+                    <View className="gap-2">
+                      {round.matches.map((match, index) => (
+                        <View
+                          key={match.id ?? `${round.name}-${index}`}
+                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                        >
+                          <Text className="text-white text-xs">
+                            {match.teamA} <Text className="text-white/40">vs</Text> {match.teamB}
+                          </Text>
+                          <Text className="text-white/40 text-[10px]">
+                            Ganador: {match.winner || 'Sin definir'}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="text-white/60 text-sm">Sin resultados disponibles.</Text>
+            )}
           </View>
         ) : null}
         <View className="flex-row justify-end">
@@ -2322,13 +2364,17 @@ export default function EventosScreen() {
     setSelectedGlobalEvent(event);
     setGlobalEventDetailStatus({ loading: true, error: null });
     try {
-      const data = await api.get(`/eventos/globales/${event.id}`);
+      const detailType = resolveEventDetailType(event?.type);
+      const endpoint = resolveEventDetailsEndpoint(event);
+      const data = await api.get(endpoint);
       if (data?.evento) {
+        const isGlobal = Boolean(event?.isGlobal) || Boolean(event?.scope);
+        const mappedEvent = isGlobal ? mapGlobalEvent(data.evento) : mapClubEvent(data.evento);
         const detailedEvent = {
-          ...mapGlobalEvent(data.evento),
-          matchResult: buildMatchResult(data.evento),
-          standings: buildStandings(data.evento),
-          bracket: buildBracket(data.evento),
+          ...mappedEvent,
+          matchResult: detailType === 'amistoso' ? buildMatchResult(data.evento) : null,
+          standings: detailType === 'torneo' ? buildStandings(data.evento) : [],
+          bracket: detailType === 'copa' ? buildBracket(data.evento) : [],
         };
         setSelectedGlobalEvent((prev) => {
           if (!prev || prev.id !== event.id) return prev;
