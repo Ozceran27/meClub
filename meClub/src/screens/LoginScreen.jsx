@@ -182,7 +182,7 @@ export default function LoginScreen() {
 
       {/* Contenedor central */}
       <View className="flex-1 items-center justify-center px-6">
-        <View className="w-full max-w-md bg-mc-surface/60 backdrop-blur
+        <View className="w-full max-w-lg bg-mc-surface/60 backdrop-blur
                          border border-mc-stroke rounded-2xl p-6
                          shadow-[0_18px_40px_rgba(6,9,14,0.45)]">
           <Text className="text-mc-text text-3xl font-bold mb-2 text-center">
