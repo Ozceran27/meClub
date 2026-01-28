@@ -1,7 +1,7 @@
 // src/screens/LoginScreen.jsx
 import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, Platform, Keyboard } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../features/auth/useAuth';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,10 +60,12 @@ const formatPhoneInput = (value = '') => value.replace(/[^0-9\s()-]/g, '');
 
 export default function LoginScreen() {
   const nav  = useNavigation();
+  const route = useRoute();
+  const routeMode = route?.params?.mode;
   const { login, register, isLogged, isClub, ready } = useAuth();
 
   // 'login' | 'register' | 'success'
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(() => (routeMode === 'register' ? 'register' : 'login'));
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -115,6 +117,14 @@ export default function LoginScreen() {
     }
     setShowAreaOptions(false);
   }, [mode, reset]);
+
+  useEffect(() => {
+    if (routeMode === 'register') {
+      setMode('register');
+    } else if (routeMode === 'login') {
+      setMode('login');
+    }
+  }, [routeMode]);
 
   const submitLogin = async ({ email, password }) => {
     setBusy(true); setErr('');

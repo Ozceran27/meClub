@@ -63,6 +63,7 @@ const linking = {
     screens: {
       Landing: '',
       Login: 'login',
+      Register: 'register',
       WorkInProgress: 'working',
       Dashboard: 'dashboard',
     },
@@ -106,6 +107,7 @@ export default function RootNavigator() {
       >
         <Stack.Screen name="Landing" component={LandingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" initialParams={{ mode: 'register' }} component={LoginScreen} />
         <Stack.Screen name="WorkInProgress">
           {() => (
             <ProtectedRoute>

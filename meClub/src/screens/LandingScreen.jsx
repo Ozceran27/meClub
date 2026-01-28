@@ -76,7 +76,7 @@ export default function LandingScreen() {
               {/* CTA */}
               <View className="flex-row gap-3 mt-8">
                 <Pressable
-                  onPress={() => nav.navigate('Login')}
+                  onPress={() => nav.navigate('Register')}
                   className="bg-mc-primary px-6 py-3 rounded-xl2 shadow-soft
                              transition-transform duration-150 hover:-translate-y-0.5
                              hover:shadow-[0_12px_32px_rgba(43,130,128,0.35)]
