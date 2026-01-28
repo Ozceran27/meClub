@@ -316,6 +316,7 @@ const createEvento = async (req, res) => {
     const limite_equipos = validateLimiteEquipos(tipo, req.body?.limite_equipos);
     const deporte_id = parseRequiredInteger(req.body?.deporte_id, 'deporte_id');
     const hora_inicio = parseOptionalHour(req.body?.hora_inicio, 'hora_inicio');
+    const hora_fin = parseOptionalHour(req.body?.hora_fin, 'hora_fin');
     const valor_inscripcion = parseOptionalPrice(req.body?.valor_inscripcion, 'valor_inscripcion');
     const premio_1 = parseOptionalString(req.body?.premio_1);
     const premio_2 = parseOptionalString(req.body?.premio_2);
@@ -324,6 +325,9 @@ const createEvento = async (req, res) => {
     const equipos = parseEquiposPayload(req.body?.equipos ?? [], {
       requiredCount: tipo === 'amistoso' ? 2 : undefined,
     });
+    if (['torneo', 'copa'].includes(tipo) && !hora_fin) {
+      throwValidationError('hora_fin es obligatoria para torneos y copas');
+    }
 
     const evento = await EventosModel.crear(req.club.club_id, {
       nombre,
@@ -337,6 +341,7 @@ const createEvento = async (req, res) => {
       limite_equipos,
       deporte_id,
       hora_inicio,
+      hora_fin,
       valor_inscripcion,
       premio_1,
       premio_2,
@@ -392,6 +397,7 @@ const updateEvento = async (req, res) => {
       'fecha_inicio',
       'fecha_fin',
       'hora_inicio',
+      'hora_fin',
       'zona',
       'zona_regional',
       'provincia_id',
@@ -463,6 +469,9 @@ const updateEvento = async (req, res) => {
     if (req.body?.hora_inicio !== undefined) {
       updates.hora_inicio = parseOptionalHour(req.body.hora_inicio, 'hora_inicio');
     }
+    if (req.body?.hora_fin !== undefined) {
+      updates.hora_fin = parseOptionalHour(req.body.hora_fin, 'hora_fin');
+    }
 
     if (req.body?.estado !== undefined) {
       updates.estado = validateEstado(req.body.estado);
@@ -514,6 +523,16 @@ const updateEvento = async (req, res) => {
 
     if (req.body?.imagen_url !== undefined) {
       updates.imagen_url = parseOptionalString(req.body.imagen_url);
+    }
+
+    const tipoFinal = updates.tipo || existente.tipo;
+    const horaFinFinal = updates.hora_fin ?? existente.hora_fin;
+    const horaFinTouched =
+      req.body?.hora_fin !== undefined ||
+      req.body?.tipo !== undefined ||
+      req.body?.fecha_fin !== undefined;
+    if (['torneo', 'copa'].includes(tipoFinal) && horaFinTouched && !horaFinFinal) {
+      throwValidationError('hora_fin es obligatoria para torneos y copas');
     }
 
     const evento = await EventosModel.actualizar(eventoId, req.club.club_id, updates);

@@ -30,8 +30,8 @@ const EventosModel = {
 
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
-              premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
+              hora_inicio, hora_fin, provincia_id, zona, deporte_id, cantidad_equipos,
+              valor_inscripcion, premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
        FROM eventos
        WHERE ${filters.join(' AND ')}
        ORDER BY creado_en DESC, evento_id DESC`,
@@ -61,9 +61,9 @@ const EventosModel = {
     const [rows] = await db.query(
       `SELECT eventos.evento_id, eventos.club_id, eventos.nombre, eventos.tipo, eventos.descripcion,
               eventos.estado, eventos.fecha_inicio, eventos.fecha_fin, eventos.hora_inicio,
-              eventos.provincia_id, eventos.zona, eventos.deporte_id, eventos.cantidad_equipos,
-              eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2, eventos.premio_3,
-              eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
+              eventos.hora_fin, eventos.provincia_id, eventos.zona, eventos.deporte_id,
+              eventos.cantidad_equipos, eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2,
+              eventos.premio_3, eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
               clubes.nombre AS club_nombre
        FROM eventos
        LEFT JOIN clubes ON clubes.club_id = eventos.club_id
@@ -77,8 +77,8 @@ const EventosModel = {
   obtenerPorId: async (eventoId, clubId) => {
     const [rows] = await db.query(
       `SELECT evento_id, club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin,
-              hora_inicio, provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion,
-              premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
+              hora_inicio, hora_fin, provincia_id, zona, deporte_id, cantidad_equipos,
+              valor_inscripcion, premio_1, premio_2, premio_3, imagen_url, creado_en, actualizado_en
        FROM eventos
        WHERE evento_id = ? AND club_id = ?
        LIMIT 1`,
@@ -91,9 +91,9 @@ const EventosModel = {
     const [rows] = await db.query(
       `SELECT eventos.evento_id, eventos.club_id, eventos.nombre, eventos.tipo, eventos.descripcion,
               eventos.estado, eventos.fecha_inicio, eventos.fecha_fin, eventos.hora_inicio,
-              eventos.provincia_id, eventos.zona, eventos.deporte_id, eventos.cantidad_equipos,
-              eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2, eventos.premio_3,
-              eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
+              eventos.hora_fin, eventos.provincia_id, eventos.zona, eventos.deporte_id,
+              eventos.cantidad_equipos, eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2,
+              eventos.premio_3, eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
               clubes.nombre AS club_nombre
        FROM eventos
        LEFT JOIN clubes ON clubes.club_id = eventos.club_id
@@ -109,10 +109,10 @@ const EventosModel = {
       payload.cantidad_equipos ?? payload.limite_equipos ?? null;
     const [result] = await db.query(
       `INSERT INTO eventos
-       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio,
-        provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion, premio_1, premio_2, premio_3,
-        imagen_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio, hora_fin,
+        provincia_id, zona, deporte_id, cantidad_equipos, valor_inscripcion, premio_1, premio_2,
+        premio_3, imagen_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         clubId,
         payload.nombre,
@@ -122,6 +122,7 @@ const EventosModel = {
         payload.fecha_inicio,
         payload.fecha_fin,
         payload.hora_inicio,
+        payload.hora_fin,
         payload.provincia_id,
         payload.zona,
         payload.deporte_id,
@@ -182,11 +183,13 @@ const EventosModel = {
          AND (
            (tipo = 'amistoso'
              AND fecha_inicio IS NOT NULL
-             AND fecha_inicio < DATE_SUB(?, INTERVAL 1 DAY))
+             AND hora_inicio IS NOT NULL
+             AND TIMESTAMP(fecha_inicio, hora_inicio) <= ?)
            OR
            (tipo IN ('torneo', 'copa')
              AND fecha_fin IS NOT NULL
-             AND fecha_fin < DATE_SUB(?, INTERVAL 1 DAY))
+             AND hora_fin IS NOT NULL
+             AND TIMESTAMP(fecha_fin, hora_fin) <= ?)
          )`,
       [referenceDate, referenceDate]
     );
