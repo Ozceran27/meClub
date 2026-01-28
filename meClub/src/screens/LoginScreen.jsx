@@ -201,7 +201,7 @@ export default function LoginScreen() {
             }[mode]}
           </Text>
 
-          <View className="gap-4">
+          <View className="gap-4 max-h-[70vh] overflow-y-auto">
             {/* REGISTER extra */}
             {mode === 'register' && (
               <>
