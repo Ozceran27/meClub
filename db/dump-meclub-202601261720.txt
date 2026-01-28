@@ -470,6 +470,7 @@ CREATE TABLE `eventos` (
   `fecha_inicio` date NOT NULL,
   `fecha_fin` date DEFAULT NULL,
   `hora_inicio` time DEFAULT NULL,
+  `hora_fin` time DEFAULT NULL,
   `cantidad_equipos` int DEFAULT NULL,
   `ida_vuelta` tinyint(1) NOT NULL DEFAULT '0',
   `valor_inscripcion` decimal(10,2) NOT NULL DEFAULT '0.00',
