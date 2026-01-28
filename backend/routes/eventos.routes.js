@@ -7,6 +7,7 @@ const loadClub = require('../middleware/club.middleware');
 const eventosController = require('../controllers/eventos.controller');
 
 router.get('/globales', verifyToken, eventosController.listEventosGlobales);
+router.get('/globales/:evento_id', verifyToken, eventosController.getEventoGlobal);
 
 router.use(verifyToken, requireRole('club'), loadClub);
 

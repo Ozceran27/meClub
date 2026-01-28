@@ -87,6 +87,23 @@ const EventosModel = {
     return normalizeEventoRow(rows[0]);
   },
 
+  obtenerGlobalPorId: async (eventoId) => {
+    const [rows] = await db.query(
+      `SELECT eventos.evento_id, eventos.club_id, eventos.nombre, eventos.tipo, eventos.descripcion,
+              eventos.estado, eventos.fecha_inicio, eventos.fecha_fin, eventos.hora_inicio,
+              eventos.provincia_id, eventos.zona, eventos.deporte_id, eventos.cantidad_equipos,
+              eventos.valor_inscripcion, eventos.premio_1, eventos.premio_2, eventos.premio_3,
+              eventos.imagen_url, eventos.creado_en, eventos.actualizado_en,
+              clubes.nombre AS club_nombre
+       FROM eventos
+       LEFT JOIN clubes ON clubes.club_id = eventos.club_id
+       WHERE eventos.evento_id = ?
+       LIMIT 1`,
+      [eventoId]
+    );
+    return normalizeEventoRow(rows[0]);
+  },
+
   crear: async (clubId, payload) => {
     const cantidadEquipos =
       payload.cantidad_equipos ?? payload.limite_equipos ?? null;
