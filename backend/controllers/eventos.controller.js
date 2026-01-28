@@ -206,6 +206,31 @@ const resolveLimiteEvento = (evento) => {
   return getLimitePorTipo(evento.tipo);
 };
 
+const ensureArray = (value) => (Array.isArray(value) ? value : []);
+
+const cargarDetallesEvento = async (eventoId) => {
+  const results = await Promise.allSettled([
+    EventoEquiposModel.listarPorEvento(eventoId),
+    EventoPartidosModel.listarPorEvento(eventoId),
+    EventoPosicionesModel.listarPorEvento(eventoId),
+  ]);
+
+  const [equiposResult, partidosResult, posicionesResult] = results;
+  const safeValue = (result, label) => {
+    if (result.status === 'fulfilled') {
+      return ensureArray(result.value);
+    }
+    console.warn(`No se pudieron cargar ${label} para el evento ${eventoId}`, result.reason);
+    return [];
+  };
+
+  return {
+    equipos: safeValue(equiposResult, 'equipos'),
+    partidos: safeValue(partidosResult, 'partidos'),
+    posiciones: safeValue(posicionesResult, 'posiciones'),
+  };
+};
+
 const listEventos = async (req, res) => {
   try {
     const zonaRegional = isZonaRegional(req.query?.zona, req.query?.zona_regional);
@@ -264,11 +289,7 @@ const getEventoGlobal = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
-    const [equipos, partidos, posiciones] = await Promise.all([
-      EventoEquiposModel.listarPorEvento(eventoId),
-      EventoPartidosModel.listarPorEvento(eventoId),
-      EventoPosicionesModel.listarPorEvento(eventoId),
-    ]);
+    const { equipos, partidos, posiciones } = await cargarDetallesEvento(eventoId);
 
     res.json({ evento: { ...evento, equipos, partidos, posiciones } });
   } catch (error) {

@@ -11,10 +11,22 @@ const resolveLimiteEquipos = (row) => {
   return toNullableInteger(row.limite_equipos ?? row.cantidad_equipos);
 };
 
+const normalizeTipoEvento = (tipo) => {
+  if (!tipo) return tipo;
+  const normalized = String(tipo).trim().toLowerCase();
+  if (normalized === 'liga') return 'torneo';
+  return normalized;
+};
+
 const normalizeEventoRow = (row) => {
   if (!row) return null;
   return {
     ...row,
+    evento_id: toNullableInteger(row.evento_id),
+    club_id: toNullableInteger(row.club_id),
+    provincia_id: toNullableInteger(row.provincia_id),
+    deporte_id: toNullableInteger(row.deporte_id),
+    tipo: normalizeTipoEvento(row.tipo),
     limite_equipos: resolveLimiteEquipos(row),
   };
 };

@@ -4,6 +4,8 @@ const normalizePosicionRow = (row) => {
   if (!row) return null;
   return {
     ...row,
+    evento_posicion_id: row.evento_posicion_id === null ? null : Number(row.evento_posicion_id),
+    evento_id: row.evento_id === null ? null : Number(row.evento_id),
     equipo_id: row.equipo_id === null ? null : Number(row.equipo_id),
     puntos: row.puntos === null ? null : Number(row.puntos),
     orden: row.orden === null ? null : Number(row.orden),
