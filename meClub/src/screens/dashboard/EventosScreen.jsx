@@ -285,12 +285,12 @@ const statusStyles = {
     text: 'text-amber-100',
   },
   Finalizado: {
-    container: 'bg-slate-500/10 border-slate-400/40',
-    text: 'text-slate-200',
-  },
-  Inactivo: {
     container: 'bg-indigo-500/10 border-indigo-400/40',
     text: 'text-indigo-100',
+  },
+  Inactivo: {
+    container: 'bg-rose-500/10 border-rose-400/40',
+    text: 'text-rose-100',
   },
 };
 
