@@ -143,13 +143,34 @@ const resolveEquipoName = (equipos, equipoId) => {
   );
 };
 
+const normalizeScoreValue = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const resolveFriendlyMatch = (evento) => {
+  const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
+  if (partidos.length === 0) return null;
+  const match =
+    partidos.find((partido) => String(partido?.fase ?? '').toLowerCase() === 'amistoso') ??
+    partidos[0];
+  if (!match) return null;
+  return {
+    matchId: match?.evento_partido_id ?? match?.partido_id ?? match?.id ?? null,
+    marcador_local: match?.marcador_local ?? match?.goles_local ?? null,
+    marcador_visitante: match?.marcador_visitante ?? match?.goles_visitante ?? null,
+    equipo_local_id: match?.equipo_local_id ?? match?.equipoLocalId ?? null,
+    equipo_visitante_id: match?.equipo_visitante_id ?? match?.equipoVisitanteId ?? null,
+    ganador_equipo_id: match?.ganador_equipo_id ?? match?.ganadorEquipoId ?? null,
+    estado: match?.estado ?? null,
+  };
+};
+
 const buildMatchResult = (evento) => {
   const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
-  const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
   const friendlyTeams = resolveFriendlyTeams({ equipos });
-  const match = partidos.find(
-    (partido) => String(partido?.fase ?? '').toLowerCase() === 'amistoso'
-  ) ?? partidos[0];
+  const match = resolveFriendlyMatch(evento);
   const team1Score = match?.marcador_local ?? null;
   const team2Score = match?.marcador_visitante ?? null;
   const hasTeams = Boolean(friendlyTeams.team1 || friendlyTeams.team2);
@@ -160,6 +181,8 @@ const buildMatchResult = (evento) => {
     team2: friendlyTeams.team2,
     team1Score,
     team2Score,
+    matchId: match?.matchId ?? null,
+    winnerId: match?.ganador_equipo_id ?? null,
   };
 };
 
@@ -2337,9 +2360,26 @@ export default function EventosScreen() {
         const data = await api.get(`/eventos/${event.id}`);
         if (data?.evento) {
           const friendlyTeams = resolveFriendlyTeams(data.evento);
+          const matchResult = buildMatchResult(data.evento);
+          const winnerLabel = matchResult?.winnerId
+            ? resolveEquipoName(
+              Array.isArray(data.evento?.equipos) ? data.evento.equipos : [],
+              matchResult.winnerId
+            )
+            : '';
           setSelectedEvent({
             ...mapClubEvent(data.evento),
             ...friendlyTeams,
+            team1Score:
+              matchResult?.team1Score !== null && matchResult?.team1Score !== undefined
+                ? String(matchResult.team1Score)
+                : '',
+            team2Score:
+              matchResult?.team2Score !== null && matchResult?.team2Score !== undefined
+                ? String(matchResult.team2Score)
+                : '',
+            winner: winnerLabel,
+            matchId: matchResult?.matchId ?? null,
           });
         }
       } catch (error) {
@@ -2427,8 +2467,14 @@ export default function EventosScreen() {
       team1Id: selectedEvent?.team1Id ?? '',
       team2: selectedEvent?.team2 ?? '',
       team2Id: selectedEvent?.team2Id ?? '',
-      team1Score: selectedEvent?.team1Score ?? '',
-      team2Score: selectedEvent?.team2Score ?? '',
+      team1Score:
+        selectedEvent?.team1Score !== undefined && selectedEvent?.team1Score !== null
+          ? String(selectedEvent.team1Score)
+          : '',
+      team2Score:
+        selectedEvent?.team2Score !== undefined && selectedEvent?.team2Score !== null
+          ? String(selectedEvent.team2Score)
+          : '',
       winner: selectedEvent?.winner ?? '',
       prize: selectedEvent?.prize ?? '',
       status: selectedEvent?.status ?? '',
@@ -2486,6 +2532,31 @@ export default function EventosScreen() {
     return match?.nombre ?? match?.label ?? String(venueValue);
   };
 
+  const upsertFriendlyMatch = async (eventId, formValues, matchId) => {
+    if (!eventId) return;
+    const team1Score = normalizeScoreValue(formValues.team1Score);
+    const team2Score = normalizeScoreValue(formValues.team2Score);
+    const team1Id = formValues.team1Id ? Number(formValues.team1Id) : null;
+    const team2Id = formValues.team2Id ? Number(formValues.team2Id) : null;
+    const payload = {
+      fase: 'amistoso',
+      equipo_local_id: team1Id,
+      equipo_visitante_id: team2Id,
+      marcador_local: team1Score,
+      marcador_visitante: team2Score,
+      estado: team1Score !== null || team2Score !== null ? 'jugado' : 'pendiente',
+    };
+
+    if (matchId) {
+      await api.put(`/eventos/${eventId}/partidos/${matchId}`, payload);
+      return;
+    }
+
+    if (team1Id && team2Id && (team1Score !== null || team2Score !== null)) {
+      await api.post(`/eventos/${eventId}/partidos`, payload);
+    }
+  };
+
   const handleSaveFriendly = async (formValues) => {
     try {
       const isResultOnly = formValues?.resultOnly;
@@ -2495,6 +2566,7 @@ export default function EventosScreen() {
         selectedEvent?.status?.toLowerCase() !== 'inactivo' &&
         isResultOnly
       ) {
+        await upsertFriendlyMatch(selectedEvent.id, formValues, selectedEvent?.matchId);
         setEvents((prev) =>
           prev.map((item) =>
             item.id === selectedEvent.id
@@ -2531,6 +2603,7 @@ export default function EventosScreen() {
 
       if (activeMode === 'edit' && selectedEvent?.id) {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        await upsertFriendlyMatch(selectedEvent.id, formValues, selectedEvent?.matchId);
         const updatedEvent = mapClubEvent(data?.evento);
         setEvents((prev) =>
           prev.map((item) => (item.id === selectedEvent.id ? updatedEvent : item))
@@ -2540,6 +2613,8 @@ export default function EventosScreen() {
 
       const data = await api.post('/eventos', payload);
       if (data?.evento) {
+        const createdId = data.evento?.evento_id ?? data.evento?.id;
+        await upsertFriendlyMatch(createdId, formValues, null);
         setEvents((prev) => [mapClubEvent(data.evento), ...prev]);
         return;
       }
