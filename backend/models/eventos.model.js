@@ -60,6 +60,37 @@ const resolveLimiteColumn = async () => {
   }
 };
 
+let horaFinColumnCache = null;
+let horaFinColumnPromise = null;
+
+const resolveHoraFinColumn = async () => {
+  if (horaFinColumnCache !== null) return horaFinColumnCache;
+  if (horaFinColumnPromise) return horaFinColumnPromise;
+
+  horaFinColumnPromise = (async () => {
+    const [horaFinRows] = await db.query("SHOW COLUMNS FROM eventos LIKE 'hora_fin'");
+    if (horaFinRows.length > 0) {
+      horaFinColumnCache = 'hora_fin';
+      return horaFinColumnCache;
+    }
+    const [horaFinalizacionRows] = await db.query(
+      "SHOW COLUMNS FROM eventos LIKE 'hora_finalizacion'"
+    );
+    if (horaFinalizacionRows.length > 0) {
+      horaFinColumnCache = 'hora_finalizacion';
+      return horaFinColumnCache;
+    }
+    horaFinColumnCache = null;
+    return horaFinColumnCache;
+  })();
+
+  try {
+    return await horaFinColumnPromise;
+  } finally {
+    horaFinColumnPromise = null;
+  }
+};
+
 const EventosModel = {
   listarPorClub: async (clubId, { provinciaId } = {}) => {
     const filters = ['club_id = ?'];
@@ -211,6 +242,11 @@ const EventosModel = {
   },
 
   finalizarEventosVencidos: async (referenceDate = new Date()) => {
+    const horaFinColumn = await resolveHoraFinColumn();
+    const torneoHoraCondition = horaFinColumn
+      ? `AND ${horaFinColumn} IS NOT NULL
+             AND TIMESTAMP(fecha_fin, ${horaFinColumn}) <= ?`
+      : 'AND fecha_fin <= DATE(?)';
     const [rows] = await db.query(
       `SELECT evento_id, club_id
        FROM eventos
@@ -223,8 +259,7 @@ const EventosModel = {
            OR
            (tipo IN ('torneo', 'copa')
              AND fecha_fin IS NOT NULL
-             AND hora_fin IS NOT NULL
-             AND TIMESTAMP(fecha_fin, hora_fin) <= ?)
+             ${torneoHoraCondition})
          )`,
       [referenceDate, referenceDate]
     );
