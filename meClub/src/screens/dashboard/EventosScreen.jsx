@@ -2511,6 +2511,12 @@ export default function EventosScreen() {
                 const isTournamentOrCup = ['torneo', 'copa'].includes(normalizedType);
                 const isFriendly = normalizedType === 'amistoso';
                 const typeLabel = resolveEventTypeLabel(event.type);
+                const badgeClassName = isTournamentOrCup
+                  ? 'rounded-full border border-sky-400/50 bg-sky-500/20 px-2 py-[2px]'
+                  : 'rounded-full border border-white/15 bg-white/10 px-2 py-[2px]';
+                const badgeTextClassName = isTournamentOrCup
+                  ? 'text-[10px] font-semibold text-sky-100'
+                  : 'text-[10px] font-semibold text-white/70';
                 const imageSource = isFriendly
                   ? FRIENDLY_DEFAULT_IMAGE
                   : { uri: resolveAssetUrl(event.imageUrl) };
@@ -2530,10 +2536,8 @@ export default function EventosScreen() {
                         <View className="flex-row items-start justify-between gap-2">
                           <Text className="flex-1 text-white font-semibold">{event.title}</Text>
                           {typeLabel ? (
-                            <View className="rounded-full border border-white/15 bg-white/10 px-2 py-[2px]">
-                              <Text className="text-[10px] font-semibold text-white/70">
-                                {typeLabel}
-                              </Text>
+                            <View className={badgeClassName}>
+                              <Text className={badgeTextClassName}>{typeLabel}</Text>
                             </View>
                           ) : null}
                         </View>
