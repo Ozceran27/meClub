@@ -4,6 +4,8 @@ const normalizePartidoRow = (row) => {
   if (!row) return null;
   return {
     ...row,
+    evento_partido_id: row.evento_partido_id === null ? null : Number(row.evento_partido_id),
+    evento_id: row.evento_id === null ? null : Number(row.evento_id),
     jornada: row.jornada === null ? null : Number(row.jornada),
     orden: row.orden === null ? null : Number(row.orden),
     sede_id: row.sede_id === null ? null : Number(row.sede_id),
