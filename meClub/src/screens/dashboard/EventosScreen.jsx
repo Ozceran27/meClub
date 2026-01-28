@@ -119,6 +119,81 @@ const resolveFriendlyTeams = (evento) => {
   };
 };
 
+const resolveEquipoName = (equipos, equipoId) => {
+  const equipo = equipos.find(
+    (item) => String(item?.equipo_id ?? item?.equipoId ?? item?.id) === String(equipoId)
+  );
+  return (
+    equipo?.nombre_equipo ??
+    equipo?.nombre ??
+    (equipoId ? `Equipo ${equipoId}` : '')
+  );
+};
+
+const buildMatchResult = (evento) => {
+  const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
+  const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
+  const friendlyTeams = resolveFriendlyTeams({ equipos });
+  const match = partidos.find(
+    (partido) => String(partido?.fase ?? '').toLowerCase() === 'amistoso'
+  ) ?? partidos[0];
+  return {
+    team1: friendlyTeams.team1,
+    team2: friendlyTeams.team2,
+    team1Score: match?.marcador_local ?? null,
+    team2Score: match?.marcador_visitante ?? null,
+  };
+};
+
+const buildStandings = (evento) => {
+  const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
+  const posiciones = Array.isArray(evento?.posiciones) ? evento.posiciones : [];
+  if (posiciones.length === 0) return DEFAULT_STANDINGS;
+  return posiciones.map((posicion, index) => ({
+    id: posicion?.evento_posicion_id ?? posicion?.equipo_id ?? `st-${index}`,
+    team: resolveEquipoName(equipos, posicion?.equipo_id) || `Equipo ${index + 1}`,
+    played: posicion?.partidos_jugados ?? 0,
+    points: posicion?.puntos ?? 0,
+  }));
+};
+
+const buildBracket = (evento) => {
+  const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
+  const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
+  const matchesByFase = partidos.reduce((acc, partido) => {
+    const fase = String(partido?.fase ?? '').toLowerCase();
+    if (!fase) return acc;
+    if (!acc[fase]) acc[fase] = [];
+    acc[fase].push(partido);
+    return acc;
+  }, {});
+
+  return DEFAULT_BRACKET.map((round) => {
+    const faseKey = String(round?.name ?? '').toLowerCase();
+    const roundMatches = matchesByFase[faseKey];
+    if (!roundMatches || roundMatches.length === 0) {
+      return {
+        ...round,
+        matches: round.matches.map((match) => ({ ...match })),
+      };
+    }
+    const mappedMatches = [...roundMatches]
+      .sort((a, b) => {
+        const orderA = a?.orden ?? 0;
+        const orderB = b?.orden ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a?.evento_partido_id ?? 0) - (b?.evento_partido_id ?? 0);
+      })
+      .map((match, index) => ({
+        id: match?.evento_partido_id ?? `${faseKey}-${index}`,
+        teamA: resolveEquipoName(equipos, match?.equipo_local_id) || '—',
+        teamB: resolveEquipoName(equipos, match?.equipo_visitante_id) || '—',
+        winner: resolveEquipoName(equipos, match?.ganador_equipo_id) || '',
+      }));
+    return { ...round, matches: mappedMatches };
+  });
+};
+
 const mapGlobalEvent = (evento) => ({
   id: evento?.evento_id ?? evento?.id ?? `global-${Math.random()}`,
   title: evento?.nombre ?? 'Evento',
@@ -134,6 +209,9 @@ const mapGlobalEvent = (evento) => ({
   price: evento?.valor_inscripcion ?? '',
   prize: evento?.premio_1 ?? '',
   imageUrl: evento?.imagen_url ?? '',
+  matchResult: evento?.matchResult,
+  standings: evento?.standings,
+  bracket: evento?.bracket,
 });
 
 const mapClubEvent = (evento) => ({
@@ -484,11 +562,15 @@ function SectionTitle({ title, subtitle }) {
   );
 }
 
-function GlobalEventModal({ event, onClose }) {
+function GlobalEventModal({ event, detailStatus, onClose }) {
   const dateLabel = formatEventRange(event?.startDate, event?.endDate);
   const timeLabel = event?.time ? formatEventTime(event.time) : '';
   const priceLabel = formatCurrencyValue(event?.price);
   const prizeLabel = formatCurrencyValue(event?.prize);
+  const normalizedType = String(event?.type ?? '').toLowerCase();
+  const matchResult = event?.matchResult;
+  const standings = event?.standings ?? DEFAULT_STANDINGS;
+  const bracket = event?.bracket ?? DEFAULT_BRACKET;
 
   return (
     <ModalContainer
@@ -517,6 +599,91 @@ function GlobalEventModal({ event, onClose }) {
             <EventDetail label="Club organizador" value={event?.organizer ?? 'Sin definir'} />
           </View>
         </View>
+        {detailStatus?.loading ? (
+          <View className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <Text className="text-white/70 text-sm">Cargando detalles...</Text>
+          </View>
+        ) : null}
+        {detailStatus?.error ? (
+          <View className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4">
+            <Text className="text-rose-100 text-sm">{detailStatus.error}</Text>
+          </View>
+        ) : null}
+        {!detailStatus?.loading && !detailStatus?.error && normalizedType === 'amistoso' ? (
+          <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <SectionTitle title="Resultado" subtitle="Marcador final del amistoso." />
+            <View className="flex-row items-center justify-between gap-3">
+              <View className="flex-1">
+                <Text className="text-white text-sm font-semibold">
+                  {matchResult?.team1 || 'Equipo 1'}
+                </Text>
+                <Text className="text-white/40 text-xs">Equipo 1</Text>
+              </View>
+              <View className="items-center">
+                <Text className="text-white/70 text-xs font-semibold">VS</Text>
+                <Text className="text-white text-lg font-semibold">
+                  {matchResult?.team1Score ?? '-'} : {matchResult?.team2Score ?? '-'}
+                </Text>
+              </View>
+              <View className="flex-1 items-end">
+                <Text className="text-white text-sm font-semibold">
+                  {matchResult?.team2 || 'Equipo 2'}
+                </Text>
+                <Text className="text-white/40 text-xs">Equipo 2</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+        {!detailStatus?.loading && !detailStatus?.error && normalizedType === 'torneo' ? (
+          <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <SectionTitle title="Tabla de posiciones" subtitle="Equipos y puntos acumulados." />
+            <View className="gap-2">
+              {standings.map((row, index) => (
+                <View
+                  key={row.id ?? `${row.team}-${index}`}
+                  className="flex-row items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                >
+                  <View className="flex-1">
+                    <Text className="text-white text-xs font-semibold">{row.team}</Text>
+                    <Text className="text-white/40 text-[10px]">
+                      PJ {row.played ?? 0}
+                    </Text>
+                  </View>
+                  <Text className="text-white text-xs font-semibold">{row.points ?? 0} pts</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+        {!detailStatus?.loading && !detailStatus?.error && normalizedType === 'copa' ? (
+          <View className="gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <SectionTitle title="Fixture" subtitle="Cruces y ganadores por ronda." />
+            <View className="gap-4">
+              {bracket.map((round) => (
+                <View key={round.name} className="gap-2">
+                  <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                    {round.name}
+                  </Text>
+                  <View className="gap-2">
+                    {round.matches.map((match, index) => (
+                      <View
+                        key={match.id ?? `${round.name}-${index}`}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                      >
+                        <Text className="text-white text-xs">
+                          {match.teamA} <Text className="text-white/40">vs</Text> {match.teamB}
+                        </Text>
+                        <Text className="text-white/40 text-[10px]">
+                          Ganador: {match.winner || 'Sin definir'}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
         <View className="flex-row justify-end">
           <Pressable onPress={onClose} className="rounded-full border border-white/15 px-4 py-2">
             <Text className="text-white text-xs font-semibold">Cerrar</Text>
@@ -1931,6 +2098,10 @@ export default function EventosScreen() {
   const [eventsStatus, setEventsStatus] = useState({ loading: false, error: null });
   const [globalEvents, setGlobalEvents] = useState([]);
   const [globalEventsStatus, setGlobalEventsStatus] = useState({ loading: false, error: null });
+  const [globalEventDetailStatus, setGlobalEventDetailStatus] = useState({
+    loading: false,
+    error: null,
+  });
   const [globalPage, setGlobalPage] = useState(1);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [venues, setVenues] = useState([]);
@@ -2143,6 +2314,34 @@ export default function EventosScreen() {
 
   const handleCloseGlobalEventModal = () => {
     setSelectedGlobalEvent(null);
+    setGlobalEventDetailStatus({ loading: false, error: null });
+  };
+
+  const handleOpenGlobalEvent = async (event) => {
+    if (!event?.id) return;
+    setSelectedGlobalEvent(event);
+    setGlobalEventDetailStatus({ loading: true, error: null });
+    try {
+      const data = await api.get(`/eventos/globales/${event.id}`);
+      if (data?.evento) {
+        const detailedEvent = {
+          ...mapGlobalEvent(data.evento),
+          matchResult: buildMatchResult(data.evento),
+          standings: buildStandings(data.evento),
+          bracket: buildBracket(data.evento),
+        };
+        setSelectedGlobalEvent((prev) => {
+          if (!prev || prev.id !== event.id) return prev;
+          return { ...prev, ...detailedEvent };
+        });
+      }
+      setGlobalEventDetailStatus({ loading: false, error: null });
+    } catch (error) {
+      setGlobalEventDetailStatus({
+        loading: false,
+        error: error?.message || 'No se pudieron cargar los detalles del evento.',
+      });
+    }
   };
 
   const updateEventStatus = (eventoId, estado) => {
@@ -2526,7 +2725,7 @@ export default function EventosScreen() {
                     className={`rounded-2xl border ${
                       isTournamentOrCup ? 'border-sky-300/70' : 'border-white/10'
                     } bg-white/5 p-4`}
-                    onPress={() => setSelectedGlobalEvent(event)}
+                    onPress={() => handleOpenGlobalEvent(event)}
                   >
                     <View className="flex-row gap-4">
                       <View className="h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5">
@@ -2614,7 +2813,11 @@ export default function EventosScreen() {
         onClose={handleCloseModal}
         onSave={handleSaveCup}
       />
-      <GlobalEventModal event={selectedGlobalEvent} onClose={handleCloseGlobalEventModal} />
+      <GlobalEventModal
+        event={selectedGlobalEvent}
+        detailStatus={globalEventDetailStatus}
+        onClose={handleCloseGlobalEventModal}
+      />
     </ScrollView>
   );
 }

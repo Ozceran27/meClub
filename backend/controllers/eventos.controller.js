@@ -252,6 +252,31 @@ const listEventosGlobales = async (req, res) => {
   }
 };
 
+const getEventoGlobal = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const evento = await EventosModel.obtenerGlobalPorId(eventoId);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    const [equipos, partidos, posiciones] = await Promise.all([
+      EventoEquiposModel.listarPorEvento(eventoId),
+      EventoPartidosModel.listarPorEvento(eventoId),
+      EventoPosicionesModel.listarPorEvento(eventoId),
+    ]);
+
+    res.json({ evento: { ...evento, equipos, partidos, posiciones } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
 const getEvento = async (req, res) => {
   try {
     const eventoId = Number.parseInt(req.params.evento_id, 10);
@@ -1024,6 +1049,7 @@ const updatePosicion = async (req, res) => {
 module.exports = {
   listEventos,
   listEventosGlobales,
+  getEventoGlobal,
   getEvento,
   createEvento,
   updateEvento,
