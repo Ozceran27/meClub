@@ -1428,8 +1428,7 @@ export default function ReservasScreen({ summary, go }) {
       <View style={{ maxWidth: '100%', overflow: 'hidden', position: 'relative' }}>
         <ScrollView
           horizontal
-          showsHorizontalScrollIndicator
-          persistentScrollbar
+          showsHorizontalScrollIndicator={false}
           contentContainerClassName="px-5"
           style={{ overflowX: 'auto' }}
           contentContainerStyle={{ overflowX: 'auto' }}
