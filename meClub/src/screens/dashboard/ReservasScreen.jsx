@@ -1421,6 +1421,8 @@ export default function ReservasScreen({ summary, go }) {
     const maxScroll = Math.max(0, timelineScrollState.contentWidth - timelineScrollState.layoutWidth);
     const canScrollLeft = timelineScrollState.scrollX > 0;
     const canScrollRight = timelineScrollState.scrollX < maxScroll - 1;
+    const leftArrowOpacity = hoveredTimelineEdge === 'left' ? 1 : 0;
+    const rightArrowOpacity = hoveredTimelineEdge === 'right' ? 1 : 0;
 
     return (
       <View style={{ maxWidth: '100%', overflow: 'hidden', position: 'relative' }}>
@@ -1560,15 +1562,28 @@ export default function ReservasScreen({ summary, go }) {
               top: 0,
               bottom: 0,
               width: 48,
-              justifyContent: 'center',
               alignItems: 'flex-start',
             }}
           >
-            <View
-              className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
-              style={{ opacity: hoveredTimelineEdge === 'left' ? 1 : 0 }}
-            >
-              <Ionicons name="chevron-back" size={20} color="#E2E8F0" />
+            <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 12 }}>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+                style={{ opacity: leftArrowOpacity }}
+              >
+                <Ionicons name="chevron-back" size={20} color="#E2E8F0" />
+              </View>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+                style={{ opacity: leftArrowOpacity }}
+              >
+                <Ionicons name="chevron-back" size={20} color="#E2E8F0" />
+              </View>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+                style={{ opacity: leftArrowOpacity }}
+              >
+                <Ionicons name="chevron-back" size={20} color="#E2E8F0" />
+              </View>
             </View>
           </Pressable>
         ) : null}
@@ -1585,15 +1600,28 @@ export default function ReservasScreen({ summary, go }) {
               top: 0,
               bottom: 0,
               width: 48,
-              justifyContent: 'center',
               alignItems: 'flex-end',
             }}
           >
-            <View
-              className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
-              style={{ opacity: hoveredTimelineEdge === 'right' ? 1 : 0 }}
-            >
-              <Ionicons name="chevron-forward" size={20} color="#E2E8F0" />
+            <View style={{ flex: 1, justifyContent: 'space-between', paddingVertical: 12 }}>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+                style={{ opacity: rightArrowOpacity }}
+              >
+                <Ionicons name="chevron-forward" size={20} color="#E2E8F0" />
+              </View>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+                style={{ opacity: rightArrowOpacity }}
+              >
+                <Ionicons name="chevron-forward" size={20} color="#E2E8F0" />
+              </View>
+              <View
+                className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+                style={{ opacity: rightArrowOpacity }}
+              >
+                <Ionicons name="chevron-forward" size={20} color="#E2E8F0" />
+              </View>
             </View>
           </Pressable>
         ) : null}
