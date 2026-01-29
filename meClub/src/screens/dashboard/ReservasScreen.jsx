@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -163,6 +163,7 @@ const SLOT_MINUTES = 60;
 const SLOT_HEIGHT = 96;
 const TIME_COLUMN_WIDTH = 120;
 const COURT_COLUMN_MIN_WIDTH = 220;
+const TIMELINE_SCROLL_STEP = COURT_COLUMN_MIN_WIDTH;
 
 function pad(value) {
   return String(value).padStart(2, '0');
@@ -993,6 +994,13 @@ export default function ReservasScreen({ summary, go }) {
   const [updatingReservationStatus, setUpdatingReservationStatus] = useState(false);
   const [statusUpdateError, setStatusUpdateError] = useState('');
   const [promotions, setPromotions] = useState([]);
+  const [timelineScrollState, setTimelineScrollState] = useState({
+    scrollX: 0,
+    contentWidth: 0,
+    layoutWidth: 0,
+  });
+  const [hoveredTimelineEdge, setHoveredTimelineEdge] = useState(null);
+  const timelineScrollRef = useRef(null);
 
   const allReservations = useMemo(() => {
     if (!panelData?.agenda) return [];
@@ -1361,6 +1369,43 @@ export default function ReservasScreen({ summary, go }) {
     [setRefreshToken, statusMenuReservation]
   );
 
+  const handleTimelineScroll = useCallback((event) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent || {};
+    setTimelineScrollState((prev) => ({
+      scrollX: contentOffset?.x ?? prev.scrollX,
+      contentWidth: contentSize?.width ?? prev.contentWidth,
+      layoutWidth: layoutMeasurement?.width ?? prev.layoutWidth,
+    }));
+  }, []);
+
+  const handleTimelineLayout = useCallback((event) => {
+    const { width } = event.nativeEvent?.layout || {};
+    setTimelineScrollState((prev) => ({
+      ...prev,
+      layoutWidth: Number.isFinite(width) ? width : prev.layoutWidth,
+    }));
+  }, []);
+
+  const handleTimelineContentSizeChange = useCallback((width) => {
+    setTimelineScrollState((prev) => ({
+      ...prev,
+      contentWidth: Number.isFinite(width) ? width : prev.contentWidth,
+    }));
+  }, []);
+
+  const handleTimelineScrollBy = useCallback(
+    (direction) => {
+      if (!timelineScrollRef.current) return;
+      const maxScroll = Math.max(0, timelineScrollState.contentWidth - timelineScrollState.layoutWidth);
+      const nextX = Math.max(
+        0,
+        Math.min(maxScroll, timelineScrollState.scrollX + direction * TIMELINE_SCROLL_STEP)
+      );
+      timelineScrollRef.current.scrollTo({ x: nextX, animated: true });
+    },
+    [timelineScrollState]
+  );
+
   const renderTimeline = () => {
     if (!panelData?.agenda?.length) {
       return (
@@ -1373,8 +1418,12 @@ export default function ReservasScreen({ summary, go }) {
       );
     }
 
+    const maxScroll = Math.max(0, timelineScrollState.contentWidth - timelineScrollState.layoutWidth);
+    const canScrollLeft = timelineScrollState.scrollX > 0;
+    const canScrollRight = timelineScrollState.scrollX < maxScroll - 1;
+
     return (
-      <View style={{ maxWidth: '100%', overflow: 'hidden' }}>
+      <View style={{ maxWidth: '100%', overflow: 'hidden', position: 'relative' }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator
@@ -1382,6 +1431,11 @@ export default function ReservasScreen({ summary, go }) {
           contentContainerClassName="px-5"
           style={{ overflowX: 'auto' }}
           contentContainerStyle={{ overflowX: 'auto' }}
+          ref={timelineScrollRef}
+          onScroll={handleTimelineScroll}
+          scrollEventThrottle={16}
+          onLayout={handleTimelineLayout}
+          onContentSizeChange={handleTimelineContentSizeChange}
         >
           <View className="flex-row">
             <View style={{ width: TIME_COLUMN_WIDTH }}>
@@ -1493,6 +1547,56 @@ export default function ReservasScreen({ summary, go }) {
           })}
         </View>
         </ScrollView>
+        {canScrollLeft ? (
+          <Pressable
+            onPress={() => handleTimelineScrollBy(-1)}
+            onHoverIn={() => setHoveredTimelineEdge('left')}
+            onHoverOut={() =>
+              setHoveredTimelineEdge((current) => (current === 'left' ? null : current))
+            }
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 48,
+              justifyContent: 'center',
+              alignItems: 'flex-start',
+            }}
+          >
+            <View
+              className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+              style={{ opacity: hoveredTimelineEdge === 'left' ? 1 : 0 }}
+            >
+              <Ionicons name="chevron-back" size={20} color="#E2E8F0" />
+            </View>
+          </Pressable>
+        ) : null}
+        {canScrollRight ? (
+          <Pressable
+            onPress={() => handleTimelineScrollBy(1)}
+            onHoverIn={() => setHoveredTimelineEdge('right')}
+            onHoverOut={() =>
+              setHoveredTimelineEdge((current) => (current === 'right' ? null : current))
+            }
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 48,
+              justifyContent: 'center',
+              alignItems: 'flex-end',
+            }}
+          >
+            <View
+              className="h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-slate-900/80"
+              style={{ opacity: hoveredTimelineEdge === 'right' ? 1 : 0 }}
+            >
+              <Ionicons name="chevron-forward" size={20} color="#E2E8F0" />
+            </View>
+          </Pressable>
+        ) : null}
       </View>
     );
   };
