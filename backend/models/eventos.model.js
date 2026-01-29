@@ -20,6 +20,7 @@ const normalizeTipoEvento = (tipo) => {
 
 const normalizeEventoRow = (row) => {
   if (!row) return null;
+  const horaFin = row.hora_fin ?? row.hora_finalizacion ?? null;
   return {
     ...row,
     evento_id: toNullableInteger(row.evento_id),
@@ -28,6 +29,7 @@ const normalizeEventoRow = (row) => {
     deporte_id: toNullableInteger(row.deporte_id),
     tipo: normalizeTipoEvento(row.tipo),
     limite_equipos: resolveLimiteEquipos(row),
+    hora_fin: horaFin,
   };
 };
 
@@ -168,9 +170,10 @@ const EventosModel = {
     const cantidadEquipos =
       payload.cantidad_equipos ?? payload.limite_equipos ?? null;
     const limiteColumn = (await resolveLimiteColumn()) || 'cantidad_equipos';
+    const horaFinColumn = (await resolveHoraFinColumn()) || 'hora_fin';
     const [result] = await db.query(
       `INSERT INTO eventos
-       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio, hora_fin,
+       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio, ${horaFinColumn},
         provincia_id, zona, deporte_id, ${limiteColumn}, valor_inscripcion, premio_1, premio_2,
         premio_3, imagen_url)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -207,6 +210,13 @@ const EventosModel = {
       } else {
         normalizedUpdates[limiteColumn] = normalizedUpdates.limite_equipos;
         delete normalizedUpdates.limite_equipos;
+      }
+    }
+    if (normalizedUpdates.hora_fin !== undefined) {
+      const horaFinColumn = (await resolveHoraFinColumn()) || 'hora_fin';
+      if (horaFinColumn !== 'hora_fin') {
+        normalizedUpdates[horaFinColumn] = normalizedUpdates.hora_fin;
+        delete normalizedUpdates.hora_fin;
       }
     }
 
