@@ -14,7 +14,8 @@ const EventoEquiposModel = {
     const [rows] = await db.query(
       `SELECT evento_equipos.evento_id, evento_equipos.equipo_id, evento_equipos.estado, evento_equipos.origen,
               evento_equipos.creado_en, evento_equipos.actualizado_en,
-              equipos_usuarios.nombre AS nombre_equipo, equipos_usuarios.descripcion AS descripcion_equipo
+              COALESCE(evento_equipos.nombre_equipo, equipos_usuarios.nombre) AS nombre_equipo,
+              equipos_usuarios.descripcion AS descripcion_equipo
        FROM evento_equipos
        LEFT JOIN equipos_usuarios ON equipos_usuarios.equipo_id = evento_equipos.equipo_id
        WHERE evento_equipos.evento_id = ?
@@ -28,7 +29,8 @@ const EventoEquiposModel = {
     const [rows] = await db.query(
       `SELECT evento_equipos.evento_id, evento_equipos.equipo_id, evento_equipos.estado, evento_equipos.origen,
               evento_equipos.creado_en, evento_equipos.actualizado_en,
-              equipos_usuarios.nombre AS nombre_equipo, equipos_usuarios.descripcion AS descripcion_equipo
+              COALESCE(evento_equipos.nombre_equipo, equipos_usuarios.nombre) AS nombre_equipo,
+              equipos_usuarios.descripcion AS descripcion_equipo
        FROM evento_equipos
        LEFT JOIN equipos_usuarios ON equipos_usuarios.equipo_id = evento_equipos.equipo_id
        WHERE evento_equipos.equipo_id = ? AND evento_equipos.evento_id = ?
@@ -42,7 +44,8 @@ const EventoEquiposModel = {
     const [rows] = await db.query(
       `SELECT evento_equipos.evento_id, evento_equipos.equipo_id, evento_equipos.estado, evento_equipos.origen,
               evento_equipos.creado_en, evento_equipos.actualizado_en,
-              equipos_usuarios.nombre AS nombre_equipo, equipos_usuarios.descripcion AS descripcion_equipo
+              COALESCE(evento_equipos.nombre_equipo, equipos_usuarios.nombre) AS nombre_equipo,
+              equipos_usuarios.descripcion AS descripcion_equipo
        FROM evento_equipos
        LEFT JOIN equipos_usuarios ON equipos_usuarios.equipo_id = evento_equipos.equipo_id
        WHERE evento_equipos.evento_id = ? AND evento_equipos.equipo_id = ?
@@ -71,9 +74,15 @@ const EventoEquiposModel = {
   crear: async (eventoId, payload) => {
     await db.query(
       `INSERT INTO evento_equipos
-       (evento_id, equipo_id, estado, origen)
-       VALUES (?, ?, ?, ?)`,
-      [eventoId, payload.equipo_id, payload.estado, payload.origen ?? 'equipo']
+       (evento_id, equipo_id, estado, origen, nombre_equipo)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        eventoId,
+        payload.equipo_id,
+        payload.estado,
+        payload.origen ?? 'equipo',
+        payload.nombre_equipo ?? null,
+      ]
     );
     return EventoEquiposModel.obtenerPorEquipo(eventoId, payload.equipo_id);
   },
