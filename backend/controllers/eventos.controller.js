@@ -590,6 +590,39 @@ const updateEvento = async (req, res) => {
   }
 };
 
+const uploadEventoImagen = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const existente = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!existente) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ mensaje: 'Debe adjuntar un archivo "imagen"' });
+    }
+
+    await EventosModel.actualizarImagen(eventoId, req.club.club_id, req.file);
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+
+    res.json({
+      mensaje: 'Imagen actualizada',
+      imagen_url: evento ? evento.imagen_url : null,
+      evento,
+    });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
 const deleteEvento = async (req, res) => {
   try {
     const eventoId = Number.parseInt(req.params.evento_id, 10);
@@ -1115,6 +1148,7 @@ module.exports = {
   getEvento,
   createEvento,
   updateEvento,
+  uploadEventoImagen,
   deleteEvento,
   iniciarEvento,
   pausarEvento,

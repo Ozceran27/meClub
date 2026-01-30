@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { normalizeCourtImage } = require('../utils/courtImage');
 
 const toNullableInteger = (value) => {
   if (value === undefined || value === null) return null;
@@ -30,6 +31,7 @@ const normalizeEventoRow = (row) => {
     tipo: normalizeTipoEvento(row.tipo),
     limite_equipos: resolveLimiteEquipos(row),
     hora_fin: horaFin,
+    imagen_url: normalizeCourtImage(row.imagen_url),
   };
 };
 
@@ -249,6 +251,27 @@ const EventosModel = {
       [eventoId, clubId]
     );
     return result.affectedRows > 0;
+  },
+
+  guardarImagen: async (eventoId, file) => {
+    if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
+      throw new Error('Archivo de imagen inválido');
+    }
+
+    await db.query(`UPDATE eventos SET imagen_url = ? WHERE evento_id = ?`, [
+      file.buffer,
+      eventoId,
+    ]);
+    return normalizeCourtImage(file.buffer);
+  },
+
+  actualizarImagen: async (eventoId, clubId, file) => {
+    const existente = await EventosModel.obtenerPorId(eventoId, clubId);
+    if (!existente) {
+      throw new Error('Evento no encontrado');
+    }
+
+    return EventosModel.guardarImagen(eventoId, file);
   },
 
   finalizarEventosVencidos: async (referenceDate = new Date()) => {
