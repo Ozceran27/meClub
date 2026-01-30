@@ -1056,7 +1056,7 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
-  const resultsEditable = true;
+  const resultsEditable = normalizeStatus(initialValues?.status) !== 'finalizado';
 
   useEffect(() => {
     setForm(initialValues);
@@ -1668,7 +1668,7 @@ function TournamentEventModal({
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
-  const resultsEditable = true;
+  const resultsEditable = normalizeStatus(initialValues?.status) !== 'finalizado';
 
   useEffect(() => {
     setForm(initialValues);
@@ -2245,7 +2245,7 @@ function CupEventModal({
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
-  const resultsEditable = true;
+  const resultsEditable = normalizeStatus(initialValues?.status) !== 'finalizado';
 
   useEffect(() => {
     setForm(initialValues);
