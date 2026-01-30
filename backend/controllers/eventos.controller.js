@@ -331,6 +331,7 @@ const getEvento = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+    ensureEventoNoFinalizado(evento);
     const { equipos, partidos, posiciones, sedes } = await cargarDetallesEvento(eventoId);
     res.json({ evento: { ...evento, equipos, partidos, posiciones, sedes } });
   } catch (error) {
@@ -749,6 +750,7 @@ const getEventoReglamento = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+    ensureEventoNoFinalizado(evento);
 
     if (!evento.reglamento_blob) {
       return res.status(404).json({ mensaje: 'Reglamento no disponible' });
@@ -1031,6 +1033,7 @@ const updatePartido = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+    ensureEventoNoFinalizado(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -1129,6 +1132,7 @@ const setGanadorPartido = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+    ensureEventoNoFinalizado(evento);
 
     const partido = await EventoPartidosModel.obtenerPorId(partidoId, eventoId);
     if (!partido) {
@@ -1208,6 +1212,7 @@ const createPosicion = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+    ensureEventoNoFinalizado(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
@@ -1255,6 +1260,7 @@ const updatePosicion = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
+    ensureEventoNoFinalizado(evento);
 
     if (!['torneo', 'liga'].includes(evento.tipo)) {
       return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
