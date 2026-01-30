@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../features/auth/useAuth';
 import { api, fetchClubCourts, fetchSports, resolveAssetUrl, searchTeams } from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
@@ -84,6 +85,41 @@ const formatEventTime = (value) => {
     return normalized.slice(0, 5);
   }
   return normalized;
+};
+
+const isValidDate = (value) => {
+  if (!value) return false;
+  const [year, month, day] = String(value).split('-').map(Number);
+  if (!year || !month || !day) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+};
+
+const formatDateInput = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeDateInputValue = (value) => {
+  if (!value) return '';
+  if (isValidDate(value)) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return formatDateInput(parsed);
+};
+
+const parseDateInput = (value) => {
+  if (!isValidDate(value)) return null;
+  const [year, month, day] = String(value).split('-').map(Number);
+  return new Date(year, month - 1, day);
 };
 
 const formatCurrencyValue = (value) => {
@@ -411,6 +447,35 @@ function FilterPill({ active, label, onPress }) {
 
 const FORM_FIELD_CLASSNAME =
   'min-h-[44px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white';
+
+const WebDateInput = ({ value, onChange, placeholder, className, disabled }) => {
+  if (Platform.OS === 'web') {
+    return (
+      <input
+        type="date"
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className={className}
+        autoComplete="off"
+        disabled={disabled}
+      />
+    );
+  }
+
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor="#94A3B8"
+      className={className}
+      autoCorrect={false}
+      autoCapitalize="none"
+      editable={!disabled}
+    />
+  );
+};
 
 const EVENT_DATE_OPTIONS = (() => {
   const formatter = new Intl.DateTimeFormat('es-AR', {
@@ -1416,6 +1481,8 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
   const [pickingImage, setPickingImage] = useState(false);
+  const [datePicker, setDatePicker] = useState({ visible: false, field: null });
+  const [dateError, setDateError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -1427,10 +1494,42 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
     setStandings(initialValues?.standings ?? []);
     setImageAsset(null);
     setImageError('');
+    setDatePicker({ visible: false, field: null });
+    setDateError('');
   }, [initialValues]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleOpenDatePicker = (field) => {
+    if (!editable) return;
+    setDatePicker({ visible: true, field });
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (!datePicker.field) return;
+    if (event?.type === 'dismissed') {
+      setDatePicker({ visible: false, field: null });
+      return;
+    }
+    const nextDate = selectedDate ?? new Date();
+    handleChange(datePicker.field, formatDateInput(nextDate));
+    setDateError('');
+    if (Platform.OS !== 'ios') {
+      setDatePicker({ visible: false, field: null });
+    }
+  };
+
+  const validateDateRange = () => {
+    const start = parseDateInput(form?.startDate);
+    const end = parseDateInput(form?.endDate);
+    if (start && end && end < start) {
+      setDateError('La fecha de fin debe ser posterior o igual a la fecha de inicio.');
+      return false;
+    }
+    setDateError('');
+    return true;
   };
 
   const handleAddVenue = () => {
@@ -1524,6 +1623,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
       onClose();
       return;
     }
+    if (!validateDateRange()) return;
     await onSave({
       ...form,
       standings,
@@ -1584,24 +1684,78 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
           </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Fechas"
-                placeholder="Sep - Nov"
-                value={form.dates}
-                onChangeText={(value) => handleChange('dates', value)}
-                editable={editable}
-              />
+              <View className="gap-2">
+                <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                  Fecha inicio
+                </Text>
+                {Platform.OS === 'web' ? (
+                  <WebDateInput
+                    value={form.startDate}
+                    onChange={(value) => {
+                      handleChange('startDate', value);
+                      setDateError('');
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    className={FORM_FIELD_CLASSNAME}
+                    disabled={!editable}
+                  />
+                ) : (
+                  <Pressable
+                    onPress={() => handleOpenDatePicker('startDate')}
+                    disabled={!editable}
+                    className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                      !editable ? 'opacity-70' : ''
+                    }`}
+                  >
+                    <Text className={form.startDate ? 'text-white' : 'text-white/50'}>
+                      {form.startDate || 'Fecha inicio'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={16} color="#E2E8F0" />
+                  </Pressable>
+                )}
+              </View>
             </View>
             <View className="flex-1">
-              <FormField
-                label="Zona"
-                placeholder="Zona Norte"
-                value={form.zone}
-                onChangeText={(value) => handleChange('zone', value)}
-                editable={editable}
-              />
+              <View className="gap-2">
+                <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                  Fecha fin
+                </Text>
+                {Platform.OS === 'web' ? (
+                  <WebDateInput
+                    value={form.endDate}
+                    onChange={(value) => {
+                      handleChange('endDate', value);
+                      setDateError('');
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    className={FORM_FIELD_CLASSNAME}
+                    disabled={!editable}
+                  />
+                ) : (
+                  <Pressable
+                    onPress={() => handleOpenDatePicker('endDate')}
+                    disabled={!editable}
+                    className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                      !editable ? 'opacity-70' : ''
+                    }`}
+                  >
+                    <Text className={form.endDate ? 'text-white' : 'text-white/50'}>
+                      {form.endDate || 'Fecha fin'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={16} color="#E2E8F0" />
+                  </Pressable>
+                )}
+              </View>
             </View>
           </View>
+          {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
+          <FormField
+            label="Zona"
+            placeholder="Zona Norte"
+            value={form.zone}
+            onChangeText={(value) => handleChange('zone', value)}
+            editable={editable}
+          />
           <View className="gap-3">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Sedes (máximo 10)
@@ -1824,6 +1978,14 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
           </Pressable>
         </View>
       </View>
+      {datePicker.visible && Platform.OS !== 'web' ? (
+        <DateTimePicker
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+          value={parseDateInput(form[datePicker.field]) ?? new Date()}
+          onChange={handleDateChange}
+        />
+      ) : null}
     </ModalContainer>
   );
 }
@@ -1836,6 +1998,8 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
   const [pickingImage, setPickingImage] = useState(false);
+  const [datePicker, setDatePicker] = useState({ visible: false, field: null });
+  const [dateError, setDateError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -1847,10 +2011,42 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
     setBracket(initialValues?.bracket ?? []);
     setImageAsset(null);
     setImageError('');
+    setDatePicker({ visible: false, field: null });
+    setDateError('');
   }, [initialValues]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleOpenDatePicker = (field) => {
+    if (!editable) return;
+    setDatePicker({ visible: true, field });
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (!datePicker.field) return;
+    if (event?.type === 'dismissed') {
+      setDatePicker({ visible: false, field: null });
+      return;
+    }
+    const nextDate = selectedDate ?? new Date();
+    handleChange(datePicker.field, formatDateInput(nextDate));
+    setDateError('');
+    if (Platform.OS !== 'ios') {
+      setDatePicker({ visible: false, field: null });
+    }
+  };
+
+  const validateDateRange = () => {
+    const start = parseDateInput(form?.startDate);
+    const end = parseDateInput(form?.endDate);
+    if (start && end && end < start) {
+      setDateError('La fecha de fin debe ser posterior o igual a la fecha de inicio.');
+      return false;
+    }
+    setDateError('');
+    return true;
   };
 
   const handleAddVenue = () => {
@@ -1934,6 +2130,7 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
       onClose();
       return;
     }
+    if (!validateDateRange()) return;
     await onSave({
       ...form,
       bracket,
@@ -1994,24 +2191,78 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
           </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Fechas"
-                placeholder="Octubre"
-                value={form.dates}
-                onChangeText={(value) => handleChange('dates', value)}
-                editable={editable}
-              />
+              <View className="gap-2">
+                <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                  Fecha inicio
+                </Text>
+                {Platform.OS === 'web' ? (
+                  <WebDateInput
+                    value={form.startDate}
+                    onChange={(value) => {
+                      handleChange('startDate', value);
+                      setDateError('');
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    className={FORM_FIELD_CLASSNAME}
+                    disabled={!editable}
+                  />
+                ) : (
+                  <Pressable
+                    onPress={() => handleOpenDatePicker('startDate')}
+                    disabled={!editable}
+                    className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                      !editable ? 'opacity-70' : ''
+                    }`}
+                  >
+                    <Text className={form.startDate ? 'text-white' : 'text-white/50'}>
+                      {form.startDate || 'Fecha inicio'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={16} color="#E2E8F0" />
+                  </Pressable>
+                )}
+              </View>
             </View>
             <View className="flex-1">
-              <FormField
-                label="Zona"
-                placeholder="Zona Sur"
-                value={form.zone}
-                onChangeText={(value) => handleChange('zone', value)}
-                editable={editable}
-              />
+              <View className="gap-2">
+                <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                  Fecha fin
+                </Text>
+                {Platform.OS === 'web' ? (
+                  <WebDateInput
+                    value={form.endDate}
+                    onChange={(value) => {
+                      handleChange('endDate', value);
+                      setDateError('');
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    className={FORM_FIELD_CLASSNAME}
+                    disabled={!editable}
+                  />
+                ) : (
+                  <Pressable
+                    onPress={() => handleOpenDatePicker('endDate')}
+                    disabled={!editable}
+                    className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                      !editable ? 'opacity-70' : ''
+                    }`}
+                  >
+                    <Text className={form.endDate ? 'text-white' : 'text-white/50'}>
+                      {form.endDate || 'Fecha fin'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={16} color="#E2E8F0" />
+                  </Pressable>
+                )}
+              </View>
             </View>
           </View>
+          {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
+          <FormField
+            label="Zona"
+            placeholder="Zona Sur"
+            value={form.zone}
+            onChangeText={(value) => handleChange('zone', value)}
+            editable={editable}
+          />
           <View className="gap-3">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Sedes (máximo 10)
@@ -2190,6 +2441,14 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
           </Pressable>
         </View>
       </View>
+      {datePicker.visible && Platform.OS !== 'web' ? (
+        <DateTimePicker
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+          value={parseDateInput(form[datePicker.field]) ?? new Date()}
+          onChange={handleDateChange}
+        />
+      ) : null}
     </ModalContainer>
   );
 }
@@ -2537,8 +2796,12 @@ export default function EventosScreen() {
           );
           return range === 'Sin fecha' ? '' : range;
         })(),
-      startDate: selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio ?? '',
-      endDate: selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? '',
+      startDate: normalizeDateInputValue(
+        selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio ?? ''
+      ),
+      endDate: normalizeDateInputValue(
+        selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? ''
+      ),
       zone: selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? '',
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
       sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
@@ -2568,8 +2831,12 @@ export default function EventosScreen() {
           );
           return range === 'Sin fecha' ? '' : range;
         })(),
-      startDate: selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio ?? '',
-      endDate: selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? '',
+      startDate: normalizeDateInputValue(
+        selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio ?? ''
+      ),
+      endDate: normalizeDateInputValue(
+        selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? ''
+      ),
       zone: selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? '',
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
       sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
