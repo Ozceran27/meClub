@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../features/auth/useAuth';
 import {
@@ -11,6 +12,7 @@ import {
   resolveAssetUrl,
   searchTeams,
   uploadEventImage,
+  uploadEventReglamento,
 } from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
 import Card from '../../components/Card';
@@ -1518,9 +1520,11 @@ function TournamentEventModal({
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
   const [pickingImage, setPickingImage] = useState(false);
+  const [pdfAsset, setPdfAsset] = useState(null);
+  const [pdfError, setPdfError] = useState('');
+  const [pickingPdf, setPickingPdf] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
-  const [submitError, setSubmitError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
@@ -1533,6 +1537,8 @@ function TournamentEventModal({
     setStandings(initialValues?.standings ?? []);
     setImageAsset(null);
     setImageError('');
+    setPdfAsset(null);
+    setPdfError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
     setSubmitError('');
@@ -1586,10 +1592,27 @@ function TournamentEventModal({
     });
   };
 
-  const handleUploadPdf = () => {
-    if (!editable) return;
-    const filename = `reglamento-${Date.now()}.pdf`;
-    setForm((prev) => ({ ...prev, pdfName: filename }));
+  const handleUploadPdf = async () => {
+    if (!editable || pickingPdf) return;
+    setPickingPdf(true);
+    setPdfError('');
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (asset) {
+        const filename = asset.name || `reglamento-${Date.now()}.pdf`;
+        setPdfAsset(asset);
+        setForm((prev) => ({ ...prev, pdfName: filename }));
+      }
+    } catch (error) {
+      setPdfError(error?.message || 'No pudimos seleccionar el PDF.');
+    } finally {
+      setPickingPdf(false);
+    }
   };
 
   const handleTeamCount = (value) => {
@@ -1678,6 +1701,7 @@ function TournamentEventModal({
       ...form,
       standings,
       imageAsset,
+      pdfFile: pdfAsset,
       venues: selectedVenues,
     });
     onClose();
@@ -1963,17 +1987,20 @@ function TournamentEventModal({
             <View className="flex-row items-center gap-3">
               <Pressable
                 onPress={handleUploadPdf}
-                disabled={!editable}
+                disabled={!editable || pickingPdf}
                 className={`rounded-full px-4 py-2 ${
-                  editable ? 'bg-sky-500/70' : 'bg-white/10'
+                  editable && !pickingPdf ? 'bg-sky-500/70' : 'bg-white/10'
                 }`}
               >
-                <Text className="text-white text-xs font-semibold">Subir PDF</Text>
+                <Text className="text-white text-xs font-semibold">
+                  {pickingPdf ? 'Abriendo...' : 'Subir PDF'}
+                </Text>
               </Pressable>
               <Text className="text-white/60 text-xs">
                 {form.pdfName ? form.pdfName : 'Sin archivo cargado'}
               </Text>
             </View>
+            {pdfError ? <Text className="text-rose-200 text-xs">{pdfError}</Text> : null}
             <FormField
               label="URL del reglamento"
               placeholder="https://..."
@@ -2101,8 +2128,12 @@ function CupEventModal({
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
   const [pickingImage, setPickingImage] = useState(false);
+  const [pdfAsset, setPdfAsset] = useState(null);
+  const [pdfError, setPdfError] = useState('');
+  const [pickingPdf, setPickingPdf] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -2114,6 +2145,8 @@ function CupEventModal({
     setBracket(initialValues?.bracket ?? []);
     setImageAsset(null);
     setImageError('');
+    setPdfAsset(null);
+    setPdfError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
     setSubmitError('');
@@ -2167,10 +2200,27 @@ function CupEventModal({
     });
   };
 
-  const handleUploadPdf = () => {
-    if (!editable) return;
-    const filename = `reglamento-${Date.now()}.pdf`;
-    setForm((prev) => ({ ...prev, pdfName: filename }));
+  const handleUploadPdf = async () => {
+    if (!editable || pickingPdf) return;
+    setPickingPdf(true);
+    setPdfError('');
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (asset) {
+        const filename = asset.name || `reglamento-${Date.now()}.pdf`;
+        setPdfAsset(asset);
+        setForm((prev) => ({ ...prev, pdfName: filename }));
+      }
+    } catch (error) {
+      setPdfError(error?.message || 'No pudimos seleccionar el PDF.');
+    } finally {
+      setPickingPdf(false);
+    }
   };
 
   const handleSelectWinner = (roundIndex, matchIndex, team) => {
@@ -2249,6 +2299,7 @@ function CupEventModal({
       ...form,
       bracket,
       imageAsset,
+      pdfFile: pdfAsset,
       venues: selectedVenues,
     });
     onClose();
@@ -2518,17 +2569,20 @@ function CupEventModal({
             <View className="flex-row items-center gap-3">
               <Pressable
                 onPress={handleUploadPdf}
-                disabled={!editable}
+                disabled={!editable || pickingPdf}
                 className={`rounded-full px-4 py-2 ${
-                  editable ? 'bg-sky-500/70' : 'bg-white/10'
+                  editable && !pickingPdf ? 'bg-sky-500/70' : 'bg-white/10'
                 }`}
               >
-                <Text className="text-white text-xs font-semibold">Subir PDF</Text>
+                <Text className="text-white text-xs font-semibold">
+                  {pickingPdf ? 'Abriendo...' : 'Subir PDF'}
+                </Text>
               </Pressable>
               <Text className="text-white/60 text-xs">
                 {form.pdfName ? form.pdfName : 'Sin archivo cargado'}
               </Text>
             </View>
+            {pdfError ? <Text className="text-rose-200 text-xs">{pdfError}</Text> : null}
             <FormField
               label="URL del reglamento"
               placeholder="https://..."
@@ -3185,10 +3239,23 @@ export default function EventosScreen() {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
         await saveEventVenues(selectedEvent.id, formValues?.venues);
         let uploadedImageUrl = null;
+        let uploadedReglamentoUrl = null;
         if (formValues?.imageAsset) {
           uploadedImageUrl = await uploadEventImage(selectedEvent.id, formValues.imageAsset);
         }
+        if (formValues?.pdfFile) {
+          uploadedReglamentoUrl = await uploadEventReglamento(
+            selectedEvent.id,
+            formValues.pdfFile
+          );
+        }
         const updatedEvent = mapClubEvent(data?.evento ?? { ...payload, id: selectedEvent.id });
+        const reglamentoUrl =
+          uploadedReglamentoUrl ??
+          formValues?.pdfUrl ??
+          updatedEvent.raw?.reglamento_url ??
+          selectedEvent?.raw?.reglamento_url ??
+          null;
         setEvents((prev) =>
           prev.map((item) =>
             item.id === selectedEvent.id
@@ -3201,6 +3268,10 @@ export default function EventosScreen() {
                   formValues.imageUrl ??
                   updatedEvent.imageUrl ??
                   item.imageUrl,
+                raw: {
+                  ...updatedEvent.raw,
+                  reglamento_url: reglamentoUrl,
+                },
               }
               : item
           )
@@ -3213,15 +3284,28 @@ export default function EventosScreen() {
         const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
         await saveEventVenues(createdId, formValues?.venues);
         let uploadedImageUrl = null;
+        let uploadedReglamentoUrl = null;
         if (formValues?.imageAsset && createdId) {
           uploadedImageUrl = await uploadEventImage(createdId, formValues.imageAsset);
         }
+        if (formValues?.pdfFile && createdId) {
+          uploadedReglamentoUrl = await uploadEventReglamento(createdId, formValues.pdfFile);
+        }
+        const reglamentoUrl =
+          uploadedReglamentoUrl ??
+          formValues?.pdfUrl ??
+          created.raw?.reglamento_url ??
+          null;
         setEvents((prev) => [
           {
             ...created,
             standings: formValues.standings ?? DEFAULT_STANDINGS,
             venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
+            raw: {
+              ...created.raw,
+              reglamento_url: reglamentoUrl,
+            },
           },
           ...prev,
         ]);
@@ -3241,10 +3325,23 @@ export default function EventosScreen() {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
         await saveEventVenues(selectedEvent.id, formValues?.venues);
         let uploadedImageUrl = null;
+        let uploadedReglamentoUrl = null;
         if (formValues?.imageAsset) {
           uploadedImageUrl = await uploadEventImage(selectedEvent.id, formValues.imageAsset);
         }
+        if (formValues?.pdfFile) {
+          uploadedReglamentoUrl = await uploadEventReglamento(
+            selectedEvent.id,
+            formValues.pdfFile
+          );
+        }
         const updatedEvent = mapClubEvent(data?.evento ?? { ...payload, id: selectedEvent.id });
+        const reglamentoUrl =
+          uploadedReglamentoUrl ??
+          formValues?.pdfUrl ??
+          updatedEvent.raw?.reglamento_url ??
+          selectedEvent?.raw?.reglamento_url ??
+          null;
         setEvents((prev) =>
           prev.map((item) =>
             item.id === selectedEvent.id
@@ -3257,6 +3354,10 @@ export default function EventosScreen() {
                   formValues.imageUrl ??
                   updatedEvent.imageUrl ??
                   item.imageUrl,
+                raw: {
+                  ...updatedEvent.raw,
+                  reglamento_url: reglamentoUrl,
+                },
               }
               : item
           )
@@ -3269,15 +3370,28 @@ export default function EventosScreen() {
         const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
         await saveEventVenues(createdId, formValues?.venues);
         let uploadedImageUrl = null;
+        let uploadedReglamentoUrl = null;
         if (formValues?.imageAsset && createdId) {
           uploadedImageUrl = await uploadEventImage(createdId, formValues.imageAsset);
         }
+        if (formValues?.pdfFile && createdId) {
+          uploadedReglamentoUrl = await uploadEventReglamento(createdId, formValues.pdfFile);
+        }
+        const reglamentoUrl =
+          uploadedReglamentoUrl ??
+          formValues?.pdfUrl ??
+          created.raw?.reglamento_url ??
+          null;
         setEvents((prev) => [
           {
             ...created,
             bracket: formValues.bracket ?? DEFAULT_BRACKET,
             venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
+            raw: {
+              ...created.raw,
+              reglamento_url: reglamentoUrl,
+            },
           },
           ...prev,
         ]);

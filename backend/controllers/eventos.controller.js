@@ -694,6 +694,78 @@ const uploadEventoImagen = async (req, res) => {
   }
 };
 
+const uploadEventoReglamento = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const existente = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!existente) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ mensaje: 'Debe adjuntar un archivo "reglamento"' });
+    }
+
+    const isPdf =
+      req.file.mimetype === 'application/pdf' ||
+      String(req.file.originalname || '').toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      return res.status(400).json({ mensaje: 'El reglamento debe ser un PDF' });
+    }
+
+    const reglamentoUrl = await EventosModel.actualizarReglamento(
+      eventoId,
+      req.club.club_id,
+      req.file
+    );
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+
+    res.json({
+      mensaje: 'Reglamento actualizado',
+      reglamento_url: reglamentoUrl,
+      evento,
+    });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const getEventoReglamento = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+
+    if (!evento.reglamento_blob) {
+      return res.status(404).json({ mensaje: 'Reglamento no disponible' });
+    }
+
+    res.setHeader('Content-Type', evento.reglamento_mime || 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${evento.reglamento_nombre || 'reglamento.pdf'}"`
+    );
+    res.send(evento.reglamento_blob);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
 const deleteEvento = async (req, res) => {
   try {
     const eventoId = Number.parseInt(req.params.evento_id, 10);
@@ -1220,6 +1292,8 @@ module.exports = {
   createEvento,
   updateEvento,
   uploadEventoImagen,
+  uploadEventoReglamento,
+  getEventoReglamento,
   deleteEvento,
   listEventoSedes,
   updateEventoSedes,

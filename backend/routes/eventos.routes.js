@@ -13,6 +13,7 @@ router.get('/globales/:evento_id', verifyToken, eventosController.getEventoGloba
 router.use(verifyToken, requireRole('club'), loadClub);
 
 const uploadEventoImagen = buildSingleUploadMiddleware('imagen');
+const uploadEventoReglamento = buildSingleUploadMiddleware('reglamento');
 
 router.get('/', eventosController.listEventos);
 router.get('/:evento_id', eventosController.getEvento);
@@ -21,6 +22,8 @@ router.put('/:evento_id', eventosController.updateEvento);
 router.get('/:evento_id/sedes', eventosController.listEventoSedes);
 router.put('/:evento_id/sedes', eventosController.updateEventoSedes);
 router.post('/:evento_id/imagen', uploadEventoImagen, eventosController.uploadEventoImagen);
+router.post('/:evento_id/reglamento', uploadEventoReglamento, eventosController.uploadEventoReglamento);
+router.get('/:evento_id/reglamento', eventosController.getEventoReglamento);
 router.delete('/:evento_id', eventosController.deleteEvento);
 
 router.post('/:evento_id/iniciar', eventosController.iniciarEvento);
