@@ -4,7 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../features/auth/useAuth';
-import { api, fetchClubCourts, fetchSports, resolveAssetUrl, searchTeams } from '../../lib/api';
+import {
+  api,
+  fetchClubCourts,
+  fetchSports,
+  resolveAssetUrl,
+  searchTeams,
+  uploadEventImage,
+} from '../../lib/api';
 import ActionButton from '../../components/ActionButton';
 import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
@@ -1627,6 +1634,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
     await onSave({
       ...form,
       standings,
+      imageAsset,
     });
     onClose();
   };
@@ -2134,6 +2142,7 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
     await onSave({
       ...form,
       bracket,
+      imageAsset,
     });
     onClose();
   };
@@ -3016,6 +3025,10 @@ export default function EventosScreen() {
       const payload = buildTournamentPayload('torneo', formValues, selectedEvent);
       if (activeMode === 'edit' && selectedEvent?.id) {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        let uploadedImageUrl = null;
+        if (formValues?.imageAsset) {
+          uploadedImageUrl = await uploadEventImage(selectedEvent.id, formValues.imageAsset);
+        }
         const updatedEvent = mapClubEvent(data?.evento ?? { ...payload, id: selectedEvent.id });
         setEvents((prev) =>
           prev.map((item) =>
@@ -3023,7 +3036,11 @@ export default function EventosScreen() {
               ? {
                 ...updatedEvent,
                 standings: formValues.standings ?? item.standings,
-                imageUrl: formValues.imageUrl ?? updatedEvent.imageUrl ?? item.imageUrl,
+                imageUrl:
+                  uploadedImageUrl ??
+                  formValues.imageUrl ??
+                  updatedEvent.imageUrl ??
+                  item.imageUrl,
               }
               : item
           )
@@ -3033,11 +3050,16 @@ export default function EventosScreen() {
       const data = await api.post('/eventos', payload);
       if (data?.evento) {
         const created = mapClubEvent(data.evento);
+        const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
+        let uploadedImageUrl = null;
+        if (formValues?.imageAsset && createdId) {
+          uploadedImageUrl = await uploadEventImage(createdId, formValues.imageAsset);
+        }
         setEvents((prev) => [
           {
             ...created,
             standings: formValues.standings ?? DEFAULT_STANDINGS,
-            imageUrl: formValues.imageUrl ?? created.imageUrl,
+            imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
           },
           ...prev,
         ]);
@@ -3055,6 +3077,10 @@ export default function EventosScreen() {
       const payload = buildTournamentPayload('copa', formValues, selectedEvent);
       if (activeMode === 'edit' && selectedEvent?.id) {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        let uploadedImageUrl = null;
+        if (formValues?.imageAsset) {
+          uploadedImageUrl = await uploadEventImage(selectedEvent.id, formValues.imageAsset);
+        }
         const updatedEvent = mapClubEvent(data?.evento ?? { ...payload, id: selectedEvent.id });
         setEvents((prev) =>
           prev.map((item) =>
@@ -3062,7 +3088,11 @@ export default function EventosScreen() {
               ? {
                 ...updatedEvent,
                 bracket: formValues.bracket ?? item.bracket,
-                imageUrl: formValues.imageUrl ?? updatedEvent.imageUrl ?? item.imageUrl,
+                imageUrl:
+                  uploadedImageUrl ??
+                  formValues.imageUrl ??
+                  updatedEvent.imageUrl ??
+                  item.imageUrl,
               }
               : item
           )
@@ -3072,11 +3102,16 @@ export default function EventosScreen() {
       const data = await api.post('/eventos', payload);
       if (data?.evento) {
         const created = mapClubEvent(data.evento);
+        const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
+        let uploadedImageUrl = null;
+        if (formValues?.imageAsset && createdId) {
+          uploadedImageUrl = await uploadEventImage(createdId, formValues.imageAsset);
+        }
         setEvents((prev) => [
           {
             ...created,
             bracket: formValues.bracket ?? DEFAULT_BRACKET,
-            imageUrl: formValues.imageUrl ?? created.imageUrl,
+            imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
           },
           ...prev,
         ]);

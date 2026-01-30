@@ -4,6 +4,7 @@ const router = express.Router();
 const verifyToken = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/roles.middleware');
 const loadClub = require('../middleware/club.middleware');
+const { buildSingleUploadMiddleware } = require('../middleware/logoUpload.middleware');
 const eventosController = require('../controllers/eventos.controller');
 
 router.get('/globales', verifyToken, eventosController.listEventosGlobales);
@@ -11,10 +12,13 @@ router.get('/globales/:evento_id', verifyToken, eventosController.getEventoGloba
 
 router.use(verifyToken, requireRole('club'), loadClub);
 
+const uploadEventoImagen = buildSingleUploadMiddleware('imagen');
+
 router.get('/', eventosController.listEventos);
 router.get('/:evento_id', eventosController.getEvento);
 router.post('/', eventosController.createEvento);
 router.put('/:evento_id', eventosController.updateEvento);
+router.post('/:evento_id/imagen', uploadEventoImagen, eventosController.uploadEventoImagen);
 router.delete('/:evento_id', eventosController.deleteEvento);
 
 router.post('/:evento_id/iniciar', eventosController.iniciarEvento);

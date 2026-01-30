@@ -1355,6 +1355,133 @@ export async function uploadClubCourtImage(canchaId, file) {
   return court?.imagen_url ?? response?.imagen_url ?? null;
 }
 
+export async function uploadEventImage(eventoId, file) {
+  if (!eventoId) {
+    throw new Error('Identificador de evento inválido');
+  }
+  if (!file) {
+    throw new Error('Debés seleccionar una imagen');
+  }
+
+  if (typeof FormData === 'undefined') {
+    throw new Error('La plataforma no soporta uploads');
+  }
+
+  const buildFormData = async () => {
+    if (typeof FormData !== 'undefined' && file instanceof FormData) {
+      return file;
+    }
+
+    const formData = new FormData();
+
+    if (typeof File !== 'undefined' && file instanceof File) {
+      formData.append('imagen', file);
+      return formData;
+    }
+
+    const candidate = file && typeof file === 'object' ? file : null;
+    const nestedFile = candidate?.file || null;
+    const uri = candidate?.uri || candidate?.url || candidate?.path || nestedFile?.uri;
+    const name =
+      candidate?.name ||
+      candidate?.fileName ||
+      nestedFile?.name ||
+      (uri ? uri.split('/').pop() : null) ||
+      `evento-${Date.now()}`;
+
+    const resolveMimeType = () => {
+      const normalize = (value) => {
+        if (!value) return null;
+        const normalized = String(value).trim().toLowerCase();
+        if (!normalized) return null;
+        const map = {
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          heic: 'image/heic',
+          heif: 'image/heif',
+          bmp: 'image/bmp',
+          svg: 'image/svg+xml',
+          'image/jpg': 'image/jpeg',
+        };
+        if (normalized in map) {
+          return map[normalized];
+        }
+        if (normalized === 'image' || normalized === 'img') {
+          return 'image/jpeg';
+        }
+        if (normalized.startsWith('image/')) {
+          return map[normalized] || normalized;
+        }
+        return map[normalized] || null;
+      };
+
+      const candidateType =
+        normalize(candidate?.mimeType) ||
+        normalize(candidate?.type) ||
+        normalize(candidate?.fileType) ||
+        normalize(nestedFile?.type) ||
+        normalize(nestedFile?.mimeType);
+
+      return candidateType || 'image/jpeg';
+    };
+
+    const type = resolveMimeType();
+
+    if (nestedFile) {
+      if (typeof File !== 'undefined' && nestedFile instanceof File) {
+        const typedFile =
+          type && nestedFile.type !== type
+            ? new File([nestedFile], nestedFile.name || name, { type })
+            : nestedFile;
+        formData.append('imagen', typedFile);
+      } else {
+        formData.append('imagen', nestedFile);
+      }
+      return formData;
+    }
+
+    if (!uri) {
+      throw new Error('Imagen inválida');
+    }
+
+    let blob;
+    try {
+      const res = await fetch(uri);
+      if (!res?.ok) {
+        throw new Error('No se pudo leer la imagen');
+      }
+      blob = await res.blob();
+    } catch {
+      throw new Error('No se pudo leer la imagen');
+    }
+
+    const fallbackType = type || blob.type || 'application/octet-stream';
+
+    if (typeof File !== 'undefined') {
+      const fileFromBlob = new File([blob], name, { type: fallbackType });
+      formData.append('imagen', fileFromBlob);
+    } else {
+      const typedBlob =
+        blob.type === fallbackType || !blob.slice
+          ? blob
+          : blob.slice(0, blob.size, fallbackType);
+      formData.append('imagen', typedBlob, name);
+    }
+
+    return formData;
+  };
+
+  const formData = await buildFormData();
+  const response = await api.post(
+    `/eventos/${encodeURIComponent(eventoId)}/imagen`,
+    formData
+  );
+  return response?.evento?.imagen_url ?? response?.imagen_url ?? null;
+}
+
 export async function getClubCourtSummary(canchaId) {
   if (!canchaId) {
     throw new Error('Identificador de cancha inválido');
