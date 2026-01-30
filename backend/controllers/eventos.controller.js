@@ -1269,6 +1269,12 @@ const updatePosicion = async (req, res) => {
     if (req.body?.puntos !== undefined) {
       updates.puntos = parseOptionalInteger(req.body.puntos, 'puntos');
     }
+    if (req.body?.partidos_jugados !== undefined || req.body?.pj !== undefined) {
+      updates.partidos_jugados = parseOptionalInteger(
+        req.body?.partidos_jugados ?? req.body?.pj,
+        'partidos_jugados'
+      );
+    }
     if (req.body?.orden !== undefined) {
       updates.orden = parseOptionalInteger(req.body.orden, 'orden');
     }

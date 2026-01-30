@@ -225,6 +225,22 @@ const normalizeNumberValue = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const sortStandingsByPoints = (rows) => {
+  const standings = Array.isArray(rows) ? rows : [];
+  return standings
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const pointsA = Number(a.row.points ?? 0);
+      const pointsB = Number(b.row.points ?? 0);
+      if (pointsA !== pointsB) return pointsB - pointsA;
+      const playedA = Number(a.row.played ?? 0);
+      const playedB = Number(b.row.played ?? 0);
+      if (playedA !== playedB) return playedB - playedA;
+      return a.index - b.index;
+    })
+    .map(({ row }) => row);
+};
+
 
 const resolveDateRangeInput = (formValues, fallbackStart, fallbackEnd) => {
   const explicitStart = formValues?.startDate ?? formValues?.fecha_inicio ?? '';
@@ -297,12 +313,14 @@ const buildStandings = (evento) => {
   const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
   const posiciones = Array.isArray(evento?.posiciones) ? evento.posiciones : [];
   if (posiciones.length === 0) return [];
-  return posiciones.map((posicion, index) => ({
+  const mapped = posiciones.map((posicion, index) => ({
     id: posicion?.evento_posicion_id ?? posicion?.equipo_id ?? `st-${index}`,
+    equipoId: posicion?.equipo_id ?? null,
     team: resolveEquipoName(equipos, posicion?.equipo_id) || `Equipo ${index + 1}`,
     played: posicion?.partidos_jugados ?? 0,
     points: posicion?.puntos ?? 0,
   }));
+  return sortStandingsByPoints(mapped);
 };
 
 const buildBracket = (evento) => {
@@ -751,6 +769,7 @@ function GlobalEventModal({ event, detailStatus, onClose }) {
   const normalizedType = resolveEventDetailType(event?.type);
   const matchResult = event?.matchResult;
   const standings = Array.isArray(event?.standings) ? event.standings : [];
+  const orderedStandings = useMemo(() => sortStandingsByPoints(standings), [standings]);
   const bracket = Array.isArray(event?.bracket) ? event.bracket : [];
   const hasMatchResult = Boolean(
     matchResult &&
@@ -759,7 +778,7 @@ function GlobalEventModal({ event, detailStatus, onClose }) {
         matchResult.team1Score !== null ||
         matchResult.team2Score !== null)
   );
-  const hasStandings = standings.length > 0;
+  const hasStandings = orderedStandings.length > 0;
   const hasBracket = bracket.length > 0;
 
   return (
@@ -833,7 +852,7 @@ function GlobalEventModal({ event, detailStatus, onClose }) {
             <SectionTitle title="Tabla de posiciones" subtitle="Equipos y puntos acumulados." />
             {hasStandings ? (
               <View className="gap-2">
-                {standings.map((row, index) => (
+                {orderedStandings.map((row, index) => (
                   <View
                     key={row.id ?? `${row.team}-${index}`}
                     className="flex-row items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2"
@@ -1516,7 +1535,9 @@ function TournamentEventModal({
   const [selectedVenues, setSelectedVenues] = useState(() =>
     normalizeVenueIds(initialValues?.venues)
   );
-  const [standings, setStandings] = useState(() => initialValues?.standings ?? []);
+  const [standings, setStandings] = useState(() =>
+    sortStandingsByPoints(initialValues?.standings ?? [])
+  );
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
   const [pickingImage, setPickingImage] = useState(false);
@@ -1534,7 +1555,7 @@ function TournamentEventModal({
   useEffect(() => {
     setForm(initialValues);
     setSelectedVenues(normalizeVenueIds(initialValues?.venues));
-    setStandings(initialValues?.standings ?? []);
+    setStandings(sortStandingsByPoints(initialValues?.standings ?? []));
     setImageAsset(null);
     setImageError('');
     setPdfAsset(null);
@@ -1629,22 +1650,12 @@ function TournamentEventModal({
   const handleStandingChange = (index, field, value) => {
     if (!resultsEditable) return;
     setStandings((prev) =>
-      prev.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, [field]: value } : row
+      sortStandingsByPoints(
+        prev.map((row, rowIndex) =>
+          rowIndex === index ? { ...row, [field]: value } : row
+        )
       )
     );
-  };
-
-  const moveStanding = (index, direction) => {
-    if (!resultsEditable) return;
-    setStandings((prev) => {
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
-      const next = [...prev];
-      const [row] = next.splice(index, 1);
-      next.splice(targetIndex, 0, row);
-      return next;
-    });
   };
 
   const handlePickImage = async () => {
@@ -1699,7 +1710,7 @@ function TournamentEventModal({
     setSubmitError('');
     await onSave({
       ...form,
-      standings,
+      standings: sortStandingsByPoints(standings),
       imageAsset,
       pdfFile: pdfAsset,
       venues: selectedVenues,
@@ -2019,7 +2030,6 @@ function TournamentEventModal({
               <Text className="text-white/50 text-xs flex-1">Equipo</Text>
               <Text className="text-white/50 text-xs w-12 text-center">PJ</Text>
               <Text className="text-white/50 text-xs w-12 text-center">PTS</Text>
-              <Text className="text-white/50 text-xs w-16 text-right">Orden</Text>
             </View>
             {standings.length === 0 ? (
               <Text className="text-white/40 text-xs">Sin posiciones cargadas.</Text>
@@ -2054,26 +2064,6 @@ function TournamentEventModal({
                     editable={resultsEditable}
                     keyboardType="numeric"
                   />
-                  <View className="flex-row gap-1 w-16 justify-end">
-                    <Pressable
-                      onPress={() => moveStanding(index, -1)}
-                      disabled={!resultsEditable || index === 0}
-                      className={`h-7 w-7 items-center justify-center rounded-full ${
-                        !resultsEditable || index === 0 ? 'bg-white/10' : 'bg-white/5'
-                      }`}
-                    >
-                      <Ionicons name="chevron-up" size={14} color="#E2E8F0" />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => moveStanding(index, 1)}
-                      disabled={!resultsEditable || index === standings.length - 1}
-                      className={`h-7 w-7 items-center justify-center rounded-full ${
-                        !resultsEditable || index === standings.length - 1 ? 'bg-white/10' : 'bg-white/5'
-                      }`}
-                    >
-                      <Ionicons name="chevron-down" size={14} color="#E2E8F0" />
-                    </Pressable>
-                  </View>
                 </View>
               ))
             )}
@@ -2897,7 +2887,14 @@ export default function EventosScreen() {
             });
             return;
           }
-          setSelectedEvent((prev) => ({ ...prev, ...baseEvent }));
+          setSelectedEvent((prev) => ({
+            ...prev,
+            ...baseEvent,
+            standings:
+              resolveEventDetailType(event?.type) === 'torneo'
+                ? buildStandings(data.evento)
+                : baseEvent.standings,
+          }));
         }
       } catch (error) {
         console.error(error);
@@ -3139,6 +3136,36 @@ export default function EventosScreen() {
     await api.put(`/eventos/${eventId}/sedes`, { sedes });
   };
 
+  const saveEventStandings = async (eventId, standingsRows) => {
+    const orderedStandings = sortStandingsByPoints(standingsRows);
+    if (!eventId) return orderedStandings;
+    const rowsWithEquipo = orderedStandings.filter(
+      (row) => row?.equipoId ?? row?.equipo_id
+    );
+    await Promise.all(
+      rowsWithEquipo.map(async (row, index) => {
+        const equipoId = row?.equipoId ?? row?.equipo_id;
+        if (!equipoId) return;
+        const payload = {
+          equipo_id: equipoId,
+          puntos: normalizeNumberValue(row?.points) ?? 0,
+          pj: normalizeNumberValue(row?.played) ?? 0,
+          orden: index + 1,
+        };
+        try {
+          await api.put(`/eventos/${eventId}/posiciones/${equipoId}`, payload);
+        } catch (error) {
+          if (error?.status === 404) {
+            await api.post(`/eventos/${eventId}/posiciones`, payload);
+            return;
+          }
+          throw error;
+        }
+      })
+    );
+    return orderedStandings;
+  };
+
   const upsertFriendlyMatch = async (eventId, formValues, matchId) => {
     if (!eventId) return;
     const team1Score = normalizeScoreValue(formValues.team1Score);
@@ -3256,12 +3283,16 @@ export default function EventosScreen() {
           updatedEvent.raw?.reglamento_url ??
           selectedEvent?.raw?.reglamento_url ??
           null;
+        const orderedStandings = await saveEventStandings(
+          selectedEvent.id,
+          formValues?.standings ?? []
+        );
         setEvents((prev) =>
           prev.map((item) =>
             item.id === selectedEvent.id
               ? {
                 ...updatedEvent,
-                standings: formValues.standings ?? item.standings,
+                standings: orderedStandings.length ? orderedStandings : item.standings,
                 venues: normalizeVenueIds(formValues?.venues),
                 imageUrl:
                   uploadedImageUrl ??
@@ -3291,6 +3322,10 @@ export default function EventosScreen() {
         if (formValues?.pdfFile && createdId) {
           uploadedReglamentoUrl = await uploadEventReglamento(createdId, formValues.pdfFile);
         }
+        const orderedStandings = await saveEventStandings(
+          createdId,
+          formValues?.standings ?? []
+        );
         const reglamentoUrl =
           uploadedReglamentoUrl ??
           formValues?.pdfUrl ??
@@ -3299,7 +3334,7 @@ export default function EventosScreen() {
         setEvents((prev) => [
           {
             ...created,
-            standings: formValues.standings ?? DEFAULT_STANDINGS,
+            standings: orderedStandings.length ? orderedStandings : DEFAULT_STANDINGS,
             venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
             raw: {

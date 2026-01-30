@@ -38,7 +38,7 @@ const EventoPosicionesModel = {
               orden, creado_en, actualizado_en
        FROM evento_posiciones
        WHERE evento_id = ?
-       ORDER BY orden ASC, puntos DESC, gf DESC`,
+       ORDER BY puntos DESC, pj DESC, gf DESC, orden ASC`,
       [eventoId]
     );
     return rows.map((row) => normalizePosicionRow(row));
