@@ -1515,6 +1515,7 @@ function TournamentEventModal({
   onClose,
   onSave,
   availableVenues,
+  sports,
 }) {
   const [form, setForm] = useState(() => initialValues);
   const [selectedVenues, setSelectedVenues] = useState(() =>
@@ -1871,15 +1872,38 @@ function TournamentEventModal({
               />
               <Text className="text-white/40 text-xs mt-1">Min 5 · Max 40</Text>
             </View>
-            <View className="flex-1">
-              <FormField
-                label="Deporte"
-                placeholder="Fútbol"
-                value={form.sport}
-                onChangeText={(value) => handleChange('sport', value)}
-                editable={editable}
-              />
-            </View>
+          </View>
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Deporte
+            </Text>
+            {sports?.length ? (
+              <View className="flex-row flex-wrap gap-2">
+                {sports.map((sport) => {
+                  const sportId = sport.id ?? sport.deporte_id;
+                  return (
+                    <OptionPill
+                      key={`sport-${sportId}`}
+                      label={
+                        sport.nombre ??
+                        sport.label ??
+                        `Deporte #${sportId ?? ''}`
+                      }
+                      active={String(form.sport) === String(sportId)}
+                      onPress={() =>
+                        handleChange(
+                          'sport',
+                          normalizeNumberValue(sportId) ?? sportId
+                        )
+                      }
+                      disabled={!editable}
+                    />
+                  );
+                })}
+              </View>
+            ) : (
+              <Text className="text-white/40 text-xs">Sin deportes disponibles.</Text>
+            )}
           </View>
           <View className="gap-2">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">Formato</Text>
@@ -2050,7 +2074,15 @@ function TournamentEventModal({
   );
 }
 
-function CupEventModal({ visible, mode, initialValues, onClose, onSave, availableVenues }) {
+function CupEventModal({
+  visible,
+  mode,
+  initialValues,
+  onClose,
+  onSave,
+  availableVenues,
+  sports,
+}) {
   const [form, setForm] = useState(() => initialValues);
   const [selectedVenues, setSelectedVenues] = useState(() =>
     normalizeVenueIds(initialValues?.venues)
@@ -2403,15 +2435,6 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave, availabl
           <View className="flex-row gap-4">
             <View className="flex-1">
               <FormField
-                label="Deporte"
-                placeholder="Fútbol"
-                value={form.sport}
-                onChangeText={(value) => handleChange('sport', value)}
-                editable={editable}
-              />
-            </View>
-            <View className="flex-1">
-              <FormField
                 label="Días de juego"
                 placeholder="Fines de semana"
                 value={form.days}
@@ -2419,6 +2442,38 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave, availabl
                 editable={editable}
               />
             </View>
+          </View>
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Deporte
+            </Text>
+            {sports?.length ? (
+              <View className="flex-row flex-wrap gap-2">
+                {sports.map((sport) => {
+                  const sportId = sport.id ?? sport.deporte_id;
+                  return (
+                    <OptionPill
+                      key={`sport-${sportId}`}
+                      label={
+                        sport.nombre ??
+                        sport.label ??
+                        `Deporte #${sportId ?? ''}`
+                      }
+                      active={String(form.sport) === String(sportId)}
+                      onPress={() =>
+                        handleChange(
+                          'sport',
+                          normalizeNumberValue(sportId) ?? sportId
+                        )
+                      }
+                      disabled={!editable}
+                    />
+                  );
+                })}
+              </View>
+            ) : (
+              <Text className="text-white/40 text-xs">Sin deportes disponibles.</Text>
+            )}
           </View>
           <FormField
             label="Premios"
@@ -3482,6 +3537,7 @@ export default function EventosScreen() {
         onClose={handleCloseModal}
         onSave={handleSaveTournament}
         availableVenues={venues}
+        sports={sports}
       />
       <CupEventModal
         visible={activeModal === 'copa'}
@@ -3490,6 +3546,7 @@ export default function EventosScreen() {
         onClose={handleCloseModal}
         onSave={handleSaveCup}
         availableVenues={venues}
+        sports={sports}
       />
       <GlobalEventModal
         event={selectedGlobalEvent}
