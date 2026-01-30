@@ -17,6 +17,12 @@ import Card from '../../components/Card';
 import CardTitle from '../../components/CardTitle';
 import ModalContainer from '../../components/ModalContainer';
 import ScreenHeader from '../../components/ScreenHeader';
+import {
+  formatCurrencyInput,
+  formatCurrencyValue,
+  normalizeCurrencyInput,
+  parseCurrencyInput,
+} from '../../lib/currency';
 
 const ADV_BADGE = 'ADV';
 const FRIENDLY_DEFAULT_IMAGE = require('../../../assets/Amistoso_predeterm..png');
@@ -156,13 +162,6 @@ const parseDateInput = (value) => {
   return new Date(year, month - 1, day);
 };
 
-const formatCurrencyValue = (value) => {
-  const digits = String(value ?? '').replace(/\D/g, '');
-  if (!digits) return '';
-  const numeric = Number(digits);
-  if (!Number.isFinite(numeric)) return '';
-  return `$ ${numeric.toLocaleString('es-AR')}`;
-};
 
 const resolveLocationLabel = (evento) => {
   if (evento?.descripcion) return evento.descripcion;
@@ -224,12 +223,6 @@ const normalizeNumberValue = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const parseCurrencyInput = (value) => {
-  const digits = String(value ?? '').replace(/\D/g, '');
-  if (!digits) return null;
-  const parsed = Number(digits);
-  return Number.isFinite(parsed) ? parsed : null;
-};
 
 const resolveDateRangeInput = (formValues, fallbackStart, fallbackEnd) => {
   const explicitStart = formValues?.startDate ?? formValues?.fecha_inicio ?? '';
@@ -1527,6 +1520,8 @@ function TournamentEventModal({
   const [pickingImage, setPickingImage] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -1540,6 +1535,7 @@ function TournamentEventModal({
     setImageError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
+    setSubmitError('');
   }, [initialValues]);
 
   const handleChange = (field, value) => {
@@ -1669,6 +1665,15 @@ function TournamentEventModal({
       return;
     }
     if (!validateDateRange()) return;
+    if (form?.entry && parseCurrencyInput(form.entry) === null) {
+      setSubmitError('Ingresá un valor de inscripción válido.');
+      return;
+    }
+    if (form?.prizes && parseCurrencyInput(form.prizes) === null) {
+      setSubmitError('Ingresá un valor de premio válido.');
+      return;
+    }
+    setSubmitError('');
     await onSave({
       ...form,
       standings,
@@ -1925,18 +1930,20 @@ function TournamentEventModal({
           <FormField
             label="Premios"
             placeholder="Trofeos, premios en efectivo"
-            value={form.prizes}
-            onChangeText={(value) => handleChange('prizes', value)}
+            value={formatCurrencyInput(form.prizes)}
+            onChangeText={(value) => handleChange('prizes', normalizeCurrencyInput(value))}
             editable={editable}
+            keyboardType="numeric"
           />
           <View className="flex-row gap-4">
             <View className="flex-1">
               <FormField
                 label="Inscripción"
                 placeholder="$ 12.000"
-                value={form.entry}
-                onChangeText={(value) => handleChange('entry', value)}
+                value={formatCurrencyInput(form.entry)}
+                onChangeText={(value) => handleChange('entry', normalizeCurrencyInput(value))}
                 editable={editable}
+                keyboardType="numeric"
               />
             </View>
             <View className="flex-1">
@@ -2061,6 +2068,9 @@ function TournamentEventModal({
             </Text>
           </Pressable>
         </View>
+        {submitError ? (
+          <Text className="text-rose-200 text-xs">{submitError}</Text>
+        ) : null}
       </View>
       {datePicker.visible && Platform.OS !== 'web' ? (
         <DateTimePicker
@@ -2106,6 +2116,7 @@ function CupEventModal({
     setImageError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
+    setSubmitError('');
   }, [initialValues]);
 
   const handleChange = (field, value) => {
@@ -2225,6 +2236,15 @@ function CupEventModal({
       return;
     }
     if (!validateDateRange()) return;
+    if (form?.entry && parseCurrencyInput(form.entry) === null) {
+      setSubmitError('Ingresá un valor de inscripción válido.');
+      return;
+    }
+    if (form?.prizes && parseCurrencyInput(form.prizes) === null) {
+      setSubmitError('Ingresá un valor de premio válido.');
+      return;
+    }
+    setSubmitError('');
     await onSave({
       ...form,
       bracket,
@@ -2478,16 +2498,18 @@ function CupEventModal({
           <FormField
             label="Premios"
             placeholder="Trofeo y medallas"
-            value={form.prizes}
-            onChangeText={(value) => handleChange('prizes', value)}
+            value={formatCurrencyInput(form.prizes)}
+            onChangeText={(value) => handleChange('prizes', normalizeCurrencyInput(value))}
             editable={editable}
+            keyboardType="numeric"
           />
           <FormField
             label="Inscripción"
             placeholder="$ 15.000"
-            value={form.entry}
-            onChangeText={(value) => handleChange('entry', value)}
+            value={formatCurrencyInput(form.entry)}
+            onChangeText={(value) => handleChange('entry', normalizeCurrencyInput(value))}
             editable={editable}
+            keyboardType="numeric"
           />
           <View className="gap-3">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
@@ -2573,6 +2595,9 @@ function CupEventModal({
             </Text>
           </Pressable>
         </View>
+        {submitError ? (
+          <Text className="text-rose-200 text-xs">{submitError}</Text>
+        ) : null}
       </View>
       {datePicker.visible && Platform.OS !== 'web' ? (
         <DateTimePicker
