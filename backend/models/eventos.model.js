@@ -21,9 +21,10 @@ const normalizeTipoEvento = (tipo) => {
 
 const normalizeEventoRow = (row) => {
   if (!row) return null;
+  const { reglamento_blob: _reglamentoBlob, ...safeRow } = row;
   const horaFin = row.hora_fin ?? row.hora_finalizacion ?? null;
   return {
-    ...row,
+    ...safeRow,
     evento_id: toNullableInteger(row.evento_id),
     club_id: toNullableInteger(row.club_id),
     provincia_id: toNullableInteger(row.provincia_id),
@@ -272,6 +273,30 @@ const EventosModel = {
     }
 
     return EventosModel.guardarImagen(eventoId, file);
+  },
+
+  guardarReglamento: async (eventoId, file) => {
+    if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
+      throw new Error('Archivo de reglamento inválido');
+    }
+
+    const reglamentoUrl = `/eventos/${eventoId}/reglamento`;
+    await db.query(
+      `UPDATE eventos
+       SET reglamento_blob = ?, reglamento_mime = ?, reglamento_nombre = ?, reglamento_url = ?
+       WHERE evento_id = ?`,
+      [file.buffer, file.mimetype || 'application/pdf', file.originalname || null, reglamentoUrl, eventoId]
+    );
+    return reglamentoUrl;
+  },
+
+  actualizarReglamento: async (eventoId, clubId, file) => {
+    const existente = await EventosModel.obtenerPorId(eventoId, clubId);
+    if (!existente) {
+      throw new Error('Evento no encontrado');
+    }
+
+    return EventosModel.guardarReglamento(eventoId, file);
   },
 
   finalizarEventosVencidos: async (referenceDate = new Date()) => {

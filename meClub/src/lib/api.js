@@ -1482,6 +1482,110 @@ export async function uploadEventImage(eventoId, file) {
   return response?.evento?.imagen_url ?? response?.imagen_url ?? null;
 }
 
+export async function uploadEventReglamento(eventoId, file) {
+  if (!eventoId) {
+    throw new Error('Identificador de evento inválido');
+  }
+  if (!file) {
+    throw new Error('Debés seleccionar un reglamento');
+  }
+
+  if (typeof FormData === 'undefined') {
+    throw new Error('La plataforma no soporta uploads');
+  }
+
+  const buildFormData = async () => {
+    if (typeof FormData !== 'undefined' && file instanceof FormData) {
+      return file;
+    }
+
+    const formData = new FormData();
+
+    if (typeof File !== 'undefined' && file instanceof File) {
+      formData.append('reglamento', file);
+      return formData;
+    }
+
+    const candidate = file && typeof file === 'object' ? file : null;
+    const nestedFile = candidate?.file || null;
+    const uri = candidate?.uri || candidate?.url || candidate?.path || nestedFile?.uri;
+    const name =
+      candidate?.name ||
+      candidate?.fileName ||
+      nestedFile?.name ||
+      (uri ? uri.split('/').pop() : null) ||
+      `reglamento-${Date.now()}.pdf`;
+
+    const normalizeMimeType = (value) => {
+      if (!value) return null;
+      const normalized = String(value).trim().toLowerCase();
+      if (!normalized) return null;
+      if (normalized === 'pdf') return 'application/pdf';
+      if (normalized === 'application/pdf') return normalized;
+      if (normalized.includes('pdf')) return 'application/pdf';
+      return normalized;
+    };
+
+    const type =
+      normalizeMimeType(candidate?.mimeType) ||
+      normalizeMimeType(candidate?.type) ||
+      normalizeMimeType(candidate?.fileType) ||
+      normalizeMimeType(nestedFile?.type) ||
+      normalizeMimeType(nestedFile?.mimeType) ||
+      'application/pdf';
+
+    if (nestedFile) {
+      if (typeof File !== 'undefined' && nestedFile instanceof File) {
+        const typedFile =
+          type && nestedFile.type !== type
+            ? new File([nestedFile], nestedFile.name || name, { type })
+            : nestedFile;
+        formData.append('reglamento', typedFile);
+      } else {
+        formData.append('reglamento', nestedFile);
+      }
+      return formData;
+    }
+
+    if (!uri) {
+      throw new Error('Reglamento inválido');
+    }
+
+    let blob;
+    try {
+      const res = await fetch(uri);
+      if (!res?.ok) {
+        throw new Error('No se pudo leer el reglamento');
+      }
+      blob = await res.blob();
+    } catch {
+      throw new Error('No se pudo leer el reglamento');
+    }
+
+    const fallbackType = type || blob.type || 'application/pdf';
+
+    if (typeof File !== 'undefined') {
+      const fileFromBlob = new File([blob], name, { type: fallbackType });
+      formData.append('reglamento', fileFromBlob);
+    } else {
+      const typedBlob =
+        blob.type === fallbackType || !blob.slice
+          ? blob
+          : blob.slice(0, blob.size, fallbackType);
+      formData.append('reglamento', typedBlob, name);
+    }
+
+    return formData;
+  };
+
+  const formData = await buildFormData();
+  const response = await api.post(
+    `/eventos/${encodeURIComponent(eventoId)}/reglamento`,
+    formData
+  );
+  return response?.reglamento_url ?? response?.evento?.reglamento_url ?? null;
+}
+
 export async function getClubCourtSummary(canchaId) {
   if (!canchaId) {
     throw new Error('Identificador de cancha inválido');
