@@ -40,6 +40,11 @@ const EVENT_TYPE_LABELS = {
   copa: 'COPA',
 };
 
+const ZONE_OPTIONS = [
+  { value: 'regional', label: 'Regional' },
+  { value: 'nacional', label: 'Nacional' },
+];
+
 const resolveEventTypeLabel = (type) => {
   if (!type) return '';
   const normalized = String(type).trim().toLowerCase();
@@ -63,6 +68,13 @@ const resolveGlobalScope = (zona) => {
   const normalized = String(zona ?? '').toLowerCase();
   if (['regional', 'provincial', 'provincia'].includes(normalized)) return 'provincia';
   return 'nacional';
+};
+
+const normalizeZoneValue = (zona) => {
+  const normalized = String(zona ?? '').trim().toLowerCase();
+  if (['regional', 'provincial', 'provincia'].includes(normalized)) return 'regional';
+  if (normalized === 'nacional') return 'nacional';
+  return 'regional';
 };
 
 const formatEventDate = (value) => {
@@ -1757,13 +1769,22 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
             </View>
           </View>
           {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
-          <FormField
-            label="Zona"
-            placeholder="Zona Norte"
-            value={form.zone}
-            onChangeText={(value) => handleChange('zone', value)}
-            editable={editable}
-          />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Zona
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {ZONE_OPTIONS.map((option) => (
+                <OptionPill
+                  key={option.value}
+                  label={option.label}
+                  active={normalizeZoneValue(form.zone) === option.value}
+                  onPress={() => handleChange('zone', option.value)}
+                  disabled={!editable}
+                />
+              ))}
+            </View>
+          </View>
           <View className="gap-3">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Sedes (máximo 10)
@@ -2265,13 +2286,22 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
             </View>
           </View>
           {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
-          <FormField
-            label="Zona"
-            placeholder="Zona Sur"
-            value={form.zone}
-            onChangeText={(value) => handleChange('zone', value)}
-            editable={editable}
-          />
+          <View className="gap-2">
+            <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+              Zona
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {ZONE_OPTIONS.map((option) => (
+                <OptionPill
+                  key={option.value}
+                  label={option.label}
+                  active={normalizeZoneValue(form.zone) === option.value}
+                  onPress={() => handleChange('zone', option.value)}
+                  disabled={!editable}
+                />
+              ))}
+            </View>
+          </View>
           <View className="gap-3">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Sedes (máximo 10)
@@ -2811,7 +2841,7 @@ export default function EventosScreen() {
       endDate: normalizeDateInputValue(
         selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? ''
       ),
-      zone: selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? '',
+      zone: normalizeZoneValue(selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? ''),
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
       sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
       round: selectedEvent?.round ?? 'ida',
@@ -2846,7 +2876,7 @@ export default function EventosScreen() {
       endDate: normalizeDateInputValue(
         selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? ''
       ),
-      zone: selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? '',
+      zone: normalizeZoneValue(selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? ''),
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
       sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
       prizes: selectedEvent?.prizes ?? selectedEvent?.raw?.premio_1 ?? '',
@@ -2870,14 +2900,11 @@ export default function EventosScreen() {
     return match?.nombre ?? match?.label ?? String(venueValue);
   };
 
-  const resolveProvinceId = (formValues, fallbackEvent) => {
+  const resolveClubProvinceId = () => {
     const candidates = [
-      formValues?.provincia_id,
-      formValues?.provinceId,
-      fallbackEvent?.raw?.provincia_id,
-      user?.provincia_id,
       user?.club?.provincia_id,
       user?.club?.provincia?.id,
+      user?.provincia_id,
     ];
     for (const candidate of candidates) {
       const parsed = normalizeNumberValue(candidate);
@@ -2902,14 +2929,17 @@ export default function EventosScreen() {
       fallbackStart,
       fallbackEnd
     );
-    const zona = String(formValues?.zone ?? '').trim() || fallbackEvent?.raw?.zona || 'regional';
+    const zona = normalizeZoneValue(
+      formValues?.zone ?? fallbackEvent?.raw?.zona ?? 'regional'
+    );
+    const provinciaId = zona === 'regional' ? resolveClubProvinceId() : null;
     const payload = {
       nombre: formValues?.name?.trim() || fallbackEvent?.title || '',
       tipo: type,
       fecha_inicio: startDate,
       fecha_fin: endDate,
       zona,
-      provincia_id: resolveProvinceId(formValues, fallbackEvent),
+      provincia_id: provinciaId,
       deporte_id: resolveSportId(formValues?.sport, fallbackEvent),
       limite_equipos: normalizeNumberValue(formValues?.teams),
       valor_inscripcion: parseCurrencyInput(formValues?.entry),
@@ -2918,7 +2948,6 @@ export default function EventosScreen() {
     };
     if (!payload.fecha_inicio) delete payload.fecha_inicio;
     if (!payload.fecha_fin) delete payload.fecha_fin;
-    if (!payload.provincia_id) delete payload.provincia_id;
     if (!payload.deporte_id) delete payload.deporte_id;
     if (payload.limite_equipos == null) delete payload.limite_equipos;
     if (payload.valor_inscripcion == null) delete payload.valor_inscripcion;
