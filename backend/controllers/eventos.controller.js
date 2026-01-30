@@ -788,7 +788,10 @@ const createPartido = async (req, res) => {
       }
     }
 
-    const sedeId = parseOptionalInteger(req.body?.sede_id, 'sede_id');
+    const sedeId = parseOptionalInteger(
+      req.body?.sede_id ?? req.body?.cancha_id,
+      'sede_id'
+    );
     const equipoLocalId = parseOptionalInteger(req.body?.equipo_local_id, 'equipo_local_id');
     const equipoVisitanteId = parseOptionalInteger(
       req.body?.equipo_visitante_id,
@@ -805,9 +808,12 @@ const createPartido = async (req, res) => {
     }
 
     const fecha = parseOptionalDateTime(req.body?.fecha, 'fecha');
-    const marcadorLocal = parseOptionalInteger(req.body?.marcador_local, 'marcador_local');
+    const marcadorLocal = parseOptionalInteger(
+      req.body?.marcador_local ?? req.body?.goles_local,
+      'marcador_local'
+    );
     const marcadorVisitante = parseOptionalInteger(
-      req.body?.marcador_visitante,
+      req.body?.marcador_visitante ?? req.body?.goles_visitante,
       'marcador_visitante'
     );
 
@@ -876,8 +882,11 @@ const updatePartido = async (req, res) => {
     if (req.body?.jornada !== undefined) {
       updates.jornada = parseOptionalInteger(req.body.jornada, 'jornada');
     }
-    if (req.body?.sede_id !== undefined) {
-      updates.sede_id = parseOptionalInteger(req.body.sede_id, 'sede_id');
+    if (req.body?.sede_id !== undefined || req.body?.cancha_id !== undefined) {
+      updates.sede_id = parseOptionalInteger(
+        req.body.sede_id ?? req.body.cancha_id,
+        'sede_id'
+      );
     }
     if (req.body?.equipo_local_id !== undefined) {
       updates.equipo_local_id = parseOptionalInteger(
@@ -905,12 +914,15 @@ const updatePartido = async (req, res) => {
     if (req.body?.fecha !== undefined) {
       updates.fecha = parseOptionalDateTime(req.body.fecha, 'fecha');
     }
-    if (req.body?.marcador_local !== undefined) {
-      updates.marcador_local = parseOptionalInteger(req.body.marcador_local, 'marcador_local');
+    if (req.body?.marcador_local !== undefined || req.body?.goles_local !== undefined) {
+      updates.marcador_local = parseOptionalInteger(
+        req.body.marcador_local ?? req.body.goles_local,
+        'marcador_local'
+      );
     }
-    if (req.body?.marcador_visitante !== undefined) {
+    if (req.body?.marcador_visitante !== undefined || req.body?.goles_visitante !== undefined) {
       updates.marcador_visitante = parseOptionalInteger(
-        req.body.marcador_visitante,
+        req.body.marcador_visitante ?? req.body.goles_visitante,
         'marcador_visitante'
       );
     }
@@ -961,12 +973,15 @@ const setGanadorPartido = async (req, res) => {
       estado: 'jugado',
     };
 
-    if (req.body?.marcador_local !== undefined) {
-      updates.marcador_local = parseOptionalInteger(req.body.marcador_local, 'marcador_local');
+    if (req.body?.marcador_local !== undefined || req.body?.goles_local !== undefined) {
+      updates.marcador_local = parseOptionalInteger(
+        req.body.marcador_local ?? req.body.goles_local,
+        'marcador_local'
+      );
     }
-    if (req.body?.marcador_visitante !== undefined) {
+    if (req.body?.marcador_visitante !== undefined || req.body?.goles_visitante !== undefined) {
       updates.marcador_visitante = parseOptionalInteger(
-        req.body.marcador_visitante,
+        req.body.marcador_visitante ?? req.body.goles_visitante,
         'marcador_visitante'
       );
     }
@@ -1030,12 +1045,15 @@ const createPosicion = async (req, res) => {
     const posicion = await EventoPosicionesModel.crear(eventoId, {
       equipo_id: equipoId,
       puntos: parseOptionalInteger(req.body?.puntos, 'puntos') ?? 0,
-      partidos_jugados: parseOptionalInteger(req.body?.partidos_jugados, 'partidos_jugados') ?? 0,
-      victorias: parseOptionalInteger(req.body?.victorias, 'victorias') ?? 0,
-      empates: parseOptionalInteger(req.body?.empates, 'empates') ?? 0,
-      derrotas: parseOptionalInteger(req.body?.derrotas, 'derrotas') ?? 0,
-      goles_favor: parseOptionalInteger(req.body?.goles_favor, 'goles_favor') ?? 0,
-      goles_contra: parseOptionalInteger(req.body?.goles_contra, 'goles_contra') ?? 0,
+      partidos_jugados:
+        parseOptionalInteger(req.body?.partidos_jugados ?? req.body?.pj, 'partidos_jugados') ??
+        0,
+      victorias: parseOptionalInteger(req.body?.victorias ?? req.body?.pg, 'victorias') ?? 0,
+      empates: parseOptionalInteger(req.body?.empates ?? req.body?.pe, 'empates') ?? 0,
+      derrotas: parseOptionalInteger(req.body?.derrotas ?? req.body?.pp, 'derrotas') ?? 0,
+      goles_favor: parseOptionalInteger(req.body?.goles_favor ?? req.body?.gf, 'goles_favor') ?? 0,
+      goles_contra:
+        parseOptionalInteger(req.body?.goles_contra ?? req.body?.gc, 'goles_contra') ?? 0,
       orden: parseOptionalInteger(req.body?.orden, 'orden'),
     });
 

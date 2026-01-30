@@ -2,12 +2,31 @@ const db = require('../config/db');
 
 const normalizePosicionRow = (row) => {
   if (!row) return null;
+  const posicionId = row.evento_posicion_id ?? row.equipo_id ?? null;
+  const partidosJugados = row.partidos_jugados ?? row.pj ?? null;
+  const victorias = row.victorias ?? row.pg ?? null;
+  const empates = row.empates ?? row.pe ?? null;
+  const derrotas = row.derrotas ?? row.pp ?? null;
+  const golesFavor = row.goles_favor ?? row.gf ?? null;
+  const golesContra = row.goles_contra ?? row.gc ?? null;
   return {
     ...row,
-    evento_posicion_id: row.evento_posicion_id === null ? null : Number(row.evento_posicion_id),
+    evento_posicion_id: posicionId === null ? null : Number(posicionId),
     evento_id: row.evento_id === null ? null : Number(row.evento_id),
     equipo_id: row.equipo_id === null ? null : Number(row.equipo_id),
     puntos: row.puntos === null ? null : Number(row.puntos),
+    partidos_jugados: partidosJugados === null ? null : Number(partidosJugados),
+    pj: partidosJugados === null ? null : Number(partidosJugados),
+    victorias: victorias === null ? null : Number(victorias),
+    pg: victorias === null ? null : Number(victorias),
+    empates: empates === null ? null : Number(empates),
+    pe: empates === null ? null : Number(empates),
+    derrotas: derrotas === null ? null : Number(derrotas),
+    pp: derrotas === null ? null : Number(derrotas),
+    goles_favor: golesFavor === null ? null : Number(golesFavor),
+    gf: golesFavor === null ? null : Number(golesFavor),
+    goles_contra: golesContra === null ? null : Number(golesContra),
+    gc: golesContra === null ? null : Number(golesContra),
     orden: row.orden === null ? null : Number(row.orden),
   };
 };
@@ -15,11 +34,11 @@ const normalizePosicionRow = (row) => {
 const EventoPosicionesModel = {
   listarPorEvento: async (eventoId) => {
     const [rows] = await db.query(
-      `SELECT evento_posicion_id, evento_id, equipo_id, puntos, partidos_jugados,
-              victorias, empates, derrotas, goles_favor, goles_contra, orden, creado_en, actualizado_en
+      `SELECT evento_id, equipo_id, puntos, pj, pg, pe, pp, gf, gc,
+              orden, creado_en, actualizado_en
        FROM evento_posiciones
        WHERE evento_id = ?
-       ORDER BY orden ASC, puntos DESC, goles_favor DESC`,
+       ORDER BY orden ASC, puntos DESC, gf DESC`,
       [eventoId]
     );
     return rows.map((row) => normalizePosicionRow(row));
@@ -27,10 +46,10 @@ const EventoPosicionesModel = {
 
   obtenerPorId: async (posicionId, eventoId) => {
     const [rows] = await db.query(
-      `SELECT evento_posicion_id, evento_id, equipo_id, puntos, partidos_jugados,
-              victorias, empates, derrotas, goles_favor, goles_contra, orden, creado_en, actualizado_en
+      `SELECT evento_id, equipo_id, puntos, pj, pg, pe, pp, gf, gc,
+              orden, creado_en, actualizado_en
        FROM evento_posiciones
-       WHERE evento_posicion_id = ? AND evento_id = ?
+       WHERE equipo_id = ? AND evento_id = ?
        LIMIT 1`,
       [posicionId, eventoId]
     );
@@ -38,28 +57,59 @@ const EventoPosicionesModel = {
   },
 
   crear: async (eventoId, payload) => {
+    const partidosJugados = payload.partidos_jugados ?? payload.pj ?? 0;
+    const victorias = payload.victorias ?? payload.pg ?? 0;
+    const empates = payload.empates ?? payload.pe ?? 0;
+    const derrotas = payload.derrotas ?? payload.pp ?? 0;
+    const golesFavor = payload.goles_favor ?? payload.gf ?? 0;
+    const golesContra = payload.goles_contra ?? payload.gc ?? 0;
     const [result] = await db.query(
       `INSERT INTO evento_posiciones
-       (evento_id, equipo_id, puntos, partidos_jugados, victorias, empates, derrotas, goles_favor, goles_contra, orden)
+       (evento_id, equipo_id, puntos, pj, pg, pe, pp, gf, gc, orden)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         eventoId,
         payload.equipo_id,
         payload.puntos,
-        payload.partidos_jugados,
-        payload.victorias,
-        payload.empates,
-        payload.derrotas,
-        payload.goles_favor,
-        payload.goles_contra,
+        partidosJugados,
+        victorias,
+        empates,
+        derrotas,
+        golesFavor,
+        golesContra,
         payload.orden,
       ]
     );
-    return EventoPosicionesModel.obtenerPorId(result.insertId, eventoId);
+    return EventoPosicionesModel.obtenerPorId(payload.equipo_id ?? result.insertId, eventoId);
   },
 
   actualizar: async (posicionId, eventoId, updates) => {
-    const fields = Object.entries(updates).filter(([, value]) => value !== undefined);
+    const mappedUpdates = { ...updates };
+    if (mappedUpdates.partidos_jugados !== undefined && mappedUpdates.pj === undefined) {
+      mappedUpdates.pj = mappedUpdates.partidos_jugados;
+    }
+    if (mappedUpdates.victorias !== undefined && mappedUpdates.pg === undefined) {
+      mappedUpdates.pg = mappedUpdates.victorias;
+    }
+    if (mappedUpdates.empates !== undefined && mappedUpdates.pe === undefined) {
+      mappedUpdates.pe = mappedUpdates.empates;
+    }
+    if (mappedUpdates.derrotas !== undefined && mappedUpdates.pp === undefined) {
+      mappedUpdates.pp = mappedUpdates.derrotas;
+    }
+    if (mappedUpdates.goles_favor !== undefined && mappedUpdates.gf === undefined) {
+      mappedUpdates.gf = mappedUpdates.goles_favor;
+    }
+    if (mappedUpdates.goles_contra !== undefined && mappedUpdates.gc === undefined) {
+      mappedUpdates.gc = mappedUpdates.goles_contra;
+    }
+    delete mappedUpdates.partidos_jugados;
+    delete mappedUpdates.victorias;
+    delete mappedUpdates.empates;
+    delete mappedUpdates.derrotas;
+    delete mappedUpdates.goles_favor;
+    delete mappedUpdates.goles_contra;
+    const fields = Object.entries(mappedUpdates).filter(([, value]) => value !== undefined);
     if (fields.length === 0) {
       return EventoPosicionesModel.obtenerPorId(posicionId, eventoId);
     }
@@ -76,7 +126,7 @@ const EventoPosicionesModel = {
     await db.query(
       `UPDATE evento_posiciones
        SET ${setters.join(', ')}
-       WHERE evento_posicion_id = ? AND evento_id = ?`,
+       WHERE equipo_id = ? AND evento_id = ?`,
       values
     );
     return EventoPosicionesModel.obtenerPorId(posicionId, eventoId);
@@ -84,7 +134,7 @@ const EventoPosicionesModel = {
 
   eliminar: async (posicionId, eventoId) => {
     const [result] = await db.query(
-      'DELETE FROM evento_posiciones WHERE evento_posicion_id = ? AND evento_id = ?',
+      'DELETE FROM evento_posiciones WHERE equipo_id = ? AND evento_id = ?',
       [posicionId, eventoId]
     );
     return result.affectedRows > 0;

@@ -4,82 +4,48 @@ const normalizeSedeRow = (row) => {
   if (!row) return null;
   return {
     ...row,
-    latitud: row.latitud === null ? null : Number(row.latitud),
-    longitud: row.longitud === null ? null : Number(row.longitud),
+    evento_id: row.evento_id === null ? null : Number(row.evento_id),
+    cancha_id: row.cancha_id === null ? null : Number(row.cancha_id),
   };
 };
 
 const EventoSedesModel = {
   listarPorEvento: async (eventoId) => {
     const [rows] = await db.query(
-      `SELECT evento_sede_id, evento_id, nombre, direccion, provincia_id, localidad_id,
-              latitud, longitud, creado_en, actualizado_en
+      `SELECT evento_id, cancha_id
        FROM evento_sedes
        WHERE evento_id = ?
-       ORDER BY evento_sede_id DESC`,
+       ORDER BY cancha_id DESC`,
       [eventoId]
     );
     return rows.map((row) => normalizeSedeRow(row));
   },
 
-  obtenerPorId: async (sedeId, eventoId) => {
+  obtenerPorId: async (canchaId, eventoId) => {
     const [rows] = await db.query(
-      `SELECT evento_sede_id, evento_id, nombre, direccion, provincia_id, localidad_id,
-              latitud, longitud, creado_en, actualizado_en
+      `SELECT evento_id, cancha_id
        FROM evento_sedes
-       WHERE evento_sede_id = ? AND evento_id = ?
+       WHERE cancha_id = ? AND evento_id = ?
        LIMIT 1`,
-      [sedeId, eventoId]
+      [canchaId, eventoId]
     );
     return normalizeSedeRow(rows[0]);
   },
 
   crear: async (eventoId, payload) => {
-    const [result] = await db.query(
-      `INSERT INTO evento_sedes
-       (evento_id, nombre, direccion, provincia_id, localidad_id, latitud, longitud)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        eventoId,
-        payload.nombre,
-        payload.direccion,
-        payload.provincia_id,
-        payload.localidad_id,
-        payload.latitud,
-        payload.longitud,
-      ]
-    );
-    return EventoSedesModel.obtenerPorId(result.insertId, eventoId);
-  },
-
-  actualizar: async (sedeId, eventoId, updates) => {
-    const fields = Object.entries(updates).filter(([, value]) => value !== undefined);
-    if (fields.length === 0) {
-      return EventoSedesModel.obtenerPorId(sedeId, eventoId);
-    }
-
-    const setters = [];
-    const values = [];
-    fields.forEach(([key, value]) => {
-      setters.push(`${key} = ?`);
-      values.push(value);
-    });
-
-    values.push(sedeId, eventoId);
-
     await db.query(
-      `UPDATE evento_sedes
-       SET ${setters.join(', ')}
-       WHERE evento_sede_id = ? AND evento_id = ?`,
-      values
+      `INSERT INTO evento_sedes
+       (evento_id, cancha_id)
+       VALUES (?, ?)`,
+      [eventoId, payload.cancha_id]
     );
-    return EventoSedesModel.obtenerPorId(sedeId, eventoId);
+    return EventoSedesModel.obtenerPorId(payload.cancha_id, eventoId);
   },
 
-  eliminar: async (sedeId, eventoId) => {
+  eliminar: async (canchaId, eventoId) => {
     const [result] = await db.query(
-      'DELETE FROM evento_sedes WHERE evento_sede_id = ? AND evento_id = ?',
-      [sedeId, eventoId]
+      'DELETE FROM evento_sedes WHERE cancha_id = ? AND evento_id = ?',
+      [canchaId, eventoId]
     );
     return result.affectedRows > 0;
   },
