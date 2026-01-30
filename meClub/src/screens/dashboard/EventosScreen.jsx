@@ -149,6 +149,48 @@ const normalizeScoreValue = (value) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+const normalizeNumberValue = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseCurrencyInput = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return null;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const resolveDateRangeInput = (formValues, fallbackStart, fallbackEnd) => {
+  const explicitStart = formValues?.startDate ?? formValues?.fecha_inicio ?? '';
+  const explicitEnd = formValues?.endDate ?? formValues?.fecha_fin ?? '';
+  if (explicitStart || explicitEnd) {
+    return {
+      startDate: explicitStart || null,
+      endDate: explicitEnd || null,
+    };
+  }
+  const rawDates = String(formValues?.dates ?? '').trim();
+  if (!rawDates) {
+    return {
+      startDate: fallbackStart || null,
+      endDate: fallbackEnd || null,
+    };
+  }
+  const separator = rawDates.includes(' - ') ? ' - ' : null;
+  if (!separator) {
+    return {
+      startDate: rawDates,
+      endDate: fallbackEnd || null,
+    };
+  }
+  const [start, end] = rawDates.split(separator).map((value) => value.trim());
+  return {
+    startDate: start || fallbackStart || null,
+    endDate: end || fallbackEnd || null,
+  };
+};
+
 const resolveFriendlyMatch = (evento) => {
   const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
   if (partidos.length === 0) return null;
@@ -2486,16 +2528,26 @@ export default function EventosScreen() {
   const tournamentInitialValues = useMemo(
     () => ({
       name: selectedEvent?.title ?? '',
-      dates: selectedEvent?.dates ?? '',
-      zone: selectedEvent?.zone ?? '',
-      teams: selectedEvent?.teams ?? '',
-      sport: selectedEvent?.sport ?? '',
+      dates:
+        selectedEvent?.dates ??
+        (() => {
+          const range = formatEventRange(
+            selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio,
+            selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin
+          );
+          return range === 'Sin fecha' ? '' : range;
+        })(),
+      startDate: selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio ?? '',
+      endDate: selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? '',
+      zone: selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? '',
+      teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
+      sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
       round: selectedEvent?.round ?? 'ida',
-      prizes: selectedEvent?.prizes ?? '',
-      entry: selectedEvent?.entry ?? '',
+      prizes: selectedEvent?.prizes ?? selectedEvent?.raw?.premio_1 ?? '',
+      entry: selectedEvent?.entry ?? selectedEvent?.raw?.valor_inscripcion ?? '',
       days: selectedEvent?.days ?? '',
       pdfName: selectedEvent?.pdfName ?? '',
-      pdfUrl: selectedEvent?.pdfUrl ?? '',
+      pdfUrl: selectedEvent?.pdfUrl ?? selectedEvent?.raw?.reglamento_url ?? '',
       venues: selectedEvent?.venues ?? [],
       standings: selectedEvent?.standings ?? DEFAULT_STANDINGS,
       status: selectedEvent?.status ?? '',
@@ -2507,15 +2559,25 @@ export default function EventosScreen() {
   const cupInitialValues = useMemo(
     () => ({
       name: selectedEvent?.title ?? '',
-      dates: selectedEvent?.dates ?? '',
-      zone: selectedEvent?.zone ?? '',
-      teams: selectedEvent?.teams ?? '',
-      sport: selectedEvent?.sport ?? '',
-      prizes: selectedEvent?.prizes ?? '',
-      entry: selectedEvent?.entry ?? '',
+      dates:
+        selectedEvent?.dates ??
+        (() => {
+          const range = formatEventRange(
+            selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio,
+            selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin
+          );
+          return range === 'Sin fecha' ? '' : range;
+        })(),
+      startDate: selectedEvent?.startDate ?? selectedEvent?.raw?.fecha_inicio ?? '',
+      endDate: selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? '',
+      zone: selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? '',
+      teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
+      sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
+      prizes: selectedEvent?.prizes ?? selectedEvent?.raw?.premio_1 ?? '',
+      entry: selectedEvent?.entry ?? selectedEvent?.raw?.valor_inscripcion ?? '',
       days: selectedEvent?.days ?? '',
       pdfName: selectedEvent?.pdfName ?? '',
-      pdfUrl: selectedEvent?.pdfUrl ?? '',
+      pdfUrl: selectedEvent?.pdfUrl ?? selectedEvent?.raw?.reglamento_url ?? '',
       venues: selectedEvent?.venues ?? [],
       bracket: selectedEvent?.bracket ?? DEFAULT_BRACKET,
       status: selectedEvent?.status ?? '',
@@ -2530,6 +2592,63 @@ export default function EventosScreen() {
       (venue) => String(venue.cancha_id ?? venue.id) === String(venueValue)
     );
     return match?.nombre ?? match?.label ?? String(venueValue);
+  };
+
+  const resolveProvinceId = (formValues, fallbackEvent) => {
+    const candidates = [
+      formValues?.provincia_id,
+      formValues?.provinceId,
+      fallbackEvent?.raw?.provincia_id,
+      user?.provincia_id,
+      user?.club?.provincia_id,
+      user?.club?.provincia?.id,
+    ];
+    for (const candidate of candidates) {
+      const parsed = normalizeNumberValue(candidate);
+      if (parsed && parsed > 0) return parsed;
+    }
+    return null;
+  };
+
+  const resolveSportId = (value, fallbackEvent) => {
+    const parsed = normalizeNumberValue(value);
+    if (parsed && parsed > 0) return parsed;
+    const fallback = normalizeNumberValue(fallbackEvent?.raw?.deporte_id ?? fallbackEvent?.sport);
+    if (fallback && fallback > 0) return fallback;
+    return null;
+  };
+
+  const buildTournamentPayload = (type, formValues, fallbackEvent) => {
+    const fallbackStart = fallbackEvent?.startDate ?? fallbackEvent?.raw?.fecha_inicio ?? null;
+    const fallbackEnd = fallbackEvent?.endDate ?? fallbackEvent?.raw?.fecha_fin ?? null;
+    const { startDate, endDate } = resolveDateRangeInput(
+      formValues,
+      fallbackStart,
+      fallbackEnd
+    );
+    const zona = String(formValues?.zone ?? '').trim() || fallbackEvent?.raw?.zona || 'regional';
+    const payload = {
+      nombre: formValues?.name?.trim() || fallbackEvent?.title || '',
+      tipo: type,
+      fecha_inicio: startDate,
+      fecha_fin: endDate,
+      zona,
+      provincia_id: resolveProvinceId(formValues, fallbackEvent),
+      deporte_id: resolveSportId(formValues?.sport, fallbackEvent),
+      limite_equipos: normalizeNumberValue(formValues?.teams),
+      valor_inscripcion: parseCurrencyInput(formValues?.entry),
+      premio_1: parseCurrencyInput(formValues?.prizes),
+      reglamento_url: formValues?.pdfUrl?.trim() || null,
+    };
+    if (!payload.fecha_inicio) delete payload.fecha_inicio;
+    if (!payload.fecha_fin) delete payload.fecha_fin;
+    if (!payload.provincia_id) delete payload.provincia_id;
+    if (!payload.deporte_id) delete payload.deporte_id;
+    if (payload.limite_equipos == null) delete payload.limite_equipos;
+    if (payload.valor_inscripcion == null) delete payload.valor_inscripcion;
+    if (payload.premio_1 == null) delete payload.premio_1;
+    if (!payload.reglamento_url) delete payload.reglamento_url;
+    return payload;
   };
 
   const upsertFriendlyMatch = async (eventId, formValues, matchId) => {
@@ -2626,33 +2745,81 @@ export default function EventosScreen() {
   };
 
   const handleSaveTournament = async (formValues) => {
-    if (activeMode !== 'edit' || !selectedEvent?.id) return;
-    setEvents((prev) =>
-      prev.map((item) =>
-        item.id === selectedEvent.id
-          ? {
-            ...item,
-            standings: formValues.standings,
-            imageUrl: formValues.imageUrl ?? item.imageUrl,
-          }
-          : item
-      )
-    );
+    try {
+      const payload = buildTournamentPayload('torneo', formValues, selectedEvent);
+      if (activeMode === 'edit' && selectedEvent?.id) {
+        const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        const updatedEvent = mapClubEvent(data?.evento ?? { ...payload, id: selectedEvent.id });
+        setEvents((prev) =>
+          prev.map((item) =>
+            item.id === selectedEvent.id
+              ? {
+                ...updatedEvent,
+                standings: formValues.standings ?? item.standings,
+                imageUrl: formValues.imageUrl ?? updatedEvent.imageUrl ?? item.imageUrl,
+              }
+              : item
+          )
+        );
+        return;
+      }
+      const data = await api.post('/eventos', payload);
+      if (data?.evento) {
+        const created = mapClubEvent(data.evento);
+        setEvents((prev) => [
+          {
+            ...created,
+            standings: formValues.standings ?? DEFAULT_STANDINGS,
+            imageUrl: formValues.imageUrl ?? created.imageUrl,
+          },
+          ...prev,
+        ]);
+        return;
+      }
+      await loadClubEvents();
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   };
 
   const handleSaveCup = async (formValues) => {
-    if (activeMode !== 'edit' || !selectedEvent?.id) return;
-    setEvents((prev) =>
-      prev.map((item) =>
-        item.id === selectedEvent.id
-          ? {
-            ...item,
-            bracket: formValues.bracket,
-            imageUrl: formValues.imageUrl ?? item.imageUrl,
-          }
-          : item
-      )
-    );
+    try {
+      const payload = buildTournamentPayload('copa', formValues, selectedEvent);
+      if (activeMode === 'edit' && selectedEvent?.id) {
+        const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        const updatedEvent = mapClubEvent(data?.evento ?? { ...payload, id: selectedEvent.id });
+        setEvents((prev) =>
+          prev.map((item) =>
+            item.id === selectedEvent.id
+              ? {
+                ...updatedEvent,
+                bracket: formValues.bracket ?? item.bracket,
+                imageUrl: formValues.imageUrl ?? updatedEvent.imageUrl ?? item.imageUrl,
+              }
+              : item
+          )
+        );
+        return;
+      }
+      const data = await api.post('/eventos', payload);
+      if (data?.evento) {
+        const created = mapClubEvent(data.evento);
+        setEvents((prev) => [
+          {
+            ...created,
+            bracket: formValues.bracket ?? DEFAULT_BRACKET,
+            imageUrl: formValues.imageUrl ?? created.imageUrl,
+          },
+          ...prev,
+        ]);
+        return;
+      }
+      await loadClubEvents();
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   };
 
   return (
