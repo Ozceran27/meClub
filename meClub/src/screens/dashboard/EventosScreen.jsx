@@ -77,6 +77,21 @@ const normalizeZoneValue = (zona) => {
   return 'regional';
 };
 
+const normalizeVenueIds = (sedes) => {
+  if (!Array.isArray(sedes)) return [];
+  const ids = sedes
+    .map((sede) => {
+      if (typeof sede === 'number' || typeof sede === 'string') {
+        const parsed = Number(sede);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      const parsed = Number(sede?.cancha_id ?? sede?.canchaId ?? sede?.id);
+      return Number.isFinite(parsed) ? parsed : null;
+    })
+    .filter((value) => value !== null);
+  return Array.from(new Set(ids));
+};
+
 const formatEventDate = (value) => {
   if (!value) return 'Sin fecha';
   const parsed = new Date(value);
@@ -368,6 +383,7 @@ const mapClubEvent = (evento) => ({
   sport: evento?.deporte_id ?? '',
   prize: evento?.premio_1 ?? '',
   venue: evento?.descripcion ?? '',
+  venues: normalizeVenueIds(evento?.sedes),
   imageUrl: evento?.imagen_url ?? '',
   raw: evento,
 });
@@ -1492,10 +1508,18 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
   );
 }
 
-function TournamentEventModal({ visible, mode, initialValues, onClose, onSave }) {
+function TournamentEventModal({
+  visible,
+  mode,
+  initialValues,
+  onClose,
+  onSave,
+  availableVenues,
+}) {
   const [form, setForm] = useState(() => initialValues);
-  const [venues, setVenues] = useState(() => initialValues?.venues ?? []);
-  const [newVenue, setNewVenue] = useState('');
+  const [selectedVenues, setSelectedVenues] = useState(() =>
+    normalizeVenueIds(initialValues?.venues)
+  );
   const [standings, setStandings] = useState(() => initialValues?.standings ?? []);
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
@@ -1509,7 +1533,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
 
   useEffect(() => {
     setForm(initialValues);
-    setVenues(initialValues?.venues ?? []);
+    setSelectedVenues(normalizeVenueIds(initialValues?.venues));
     setStandings(initialValues?.standings ?? []);
     setImageAsset(null);
     setImageError('');
@@ -1551,17 +1575,18 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
     return true;
   };
 
-  const handleAddVenue = () => {
+  const toggleVenue = (venueId) => {
     if (!editable) return;
-    if (!newVenue.trim()) return;
-    if (venues.length >= 10) return;
-    setVenues((prev) => [...prev, newVenue.trim()]);
-    setNewVenue('');
-  };
-
-  const handleRemoveVenue = (index) => {
-    if (!editable) return;
-    setVenues((prev) => prev.filter((_, idx) => idx !== index));
+    const parsed = Number(venueId);
+    if (!Number.isFinite(parsed)) return;
+    setSelectedVenues((prev) => {
+      const exists = prev.includes(parsed);
+      if (exists) {
+        return prev.filter((id) => id !== parsed);
+      }
+      if (prev.length >= 10) return prev;
+      return [...prev, parsed];
+    });
   };
 
   const handleUploadPdf = () => {
@@ -1647,6 +1672,7 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
       ...form,
       standings,
       imageAsset,
+      venues: selectedVenues,
     });
     onClose();
   };
@@ -1789,44 +1815,49 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Sedes (máximo 10)
             </Text>
-            <View className="flex-row gap-2">
-              <TextInput
-                className={FORM_FIELD_CLASSNAME}
-                placeholder="Agregar sede"
-                placeholderTextColor="#94A3B8"
-                value={newVenue}
-                onChangeText={setNewVenue}
-                editable={editable}
-              />
-              <Pressable
-                onPress={handleAddVenue}
-                disabled={!editable || venues.length >= 10}
-                className={`h-[44px] items-center justify-center rounded-xl px-4 ${
-                  !editable || venues.length >= 10 ? 'bg-white/10' : 'bg-emerald-500/70'
-                }`}
-              >
-                <Text className="text-white text-xs font-semibold">Agregar</Text>
-              </Pressable>
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              {venues.length === 0 ? (
-                <Text className="text-white/40 text-xs">Sin sedes cargadas.</Text>
-              ) : (
-                venues.map((venue, index) => (
-                  <View
-                    key={`${venue}-${index}`}
-                    className="flex-row items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1"
-                  >
-                    <Text className="text-white text-xs">{venue}</Text>
-                    {editable ? (
-                      <Pressable onPress={() => handleRemoveVenue(index)}>
-                        <Ionicons name="close" size={14} color="#CBD5F5" />
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ))
-              )}
-            </View>
+            {availableVenues?.length ? (
+              <View className="gap-2">
+                {availableVenues.map((venue) => {
+                  const venueId = venue.cancha_id ?? venue.id;
+                  const selected = selectedVenues.includes(Number(venueId));
+                  const isDisabled =
+                    !editable || (!selected && selectedVenues.length >= 10);
+                  return (
+                    <Pressable
+                      key={`venue-${venueId}`}
+                      onPress={() => toggleVenue(venueId)}
+                      disabled={isDisabled}
+                      className={`flex-row items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                        isDisabled ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <Ionicons
+                        name={selected ? 'checkbox' : 'square-outline'}
+                        size={18}
+                        color={selected ? '#34D399' : '#94A3B8'}
+                      />
+                      <View className="flex-1">
+                        <Text className="text-white text-xs">
+                          {venue.nombre ?? venue.label ?? `Cancha #${venueId}`}
+                        </Text>
+                        {venue?.deporte?.nombre ? (
+                          <Text className="text-white/40 text-[10px]">
+                            {venue.deporte.nombre}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text className="text-white/40 text-xs">Sin sedes disponibles.</Text>
+            )}
+            {selectedVenues.length >= 10 ? (
+              <Text className="text-amber-100 text-xs">
+                Llegaste al máximo de sedes seleccionadas.
+              </Text>
+            ) : null}
           </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
@@ -2019,10 +2050,11 @@ function TournamentEventModal({ visible, mode, initialValues, onClose, onSave })
   );
 }
 
-function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
+function CupEventModal({ visible, mode, initialValues, onClose, onSave, availableVenues }) {
   const [form, setForm] = useState(() => initialValues);
-  const [venues, setVenues] = useState(() => initialValues?.venues ?? []);
-  const [newVenue, setNewVenue] = useState('');
+  const [selectedVenues, setSelectedVenues] = useState(() =>
+    normalizeVenueIds(initialValues?.venues)
+  );
   const [bracket, setBracket] = useState(() => initialValues?.bracket ?? []);
   const [imageAsset, setImageAsset] = useState(null);
   const [imageError, setImageError] = useState('');
@@ -2036,7 +2068,7 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
 
   useEffect(() => {
     setForm(initialValues);
-    setVenues(initialValues?.venues ?? []);
+    setSelectedVenues(normalizeVenueIds(initialValues?.venues));
     setBracket(initialValues?.bracket ?? []);
     setImageAsset(null);
     setImageError('');
@@ -2078,17 +2110,18 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
     return true;
   };
 
-  const handleAddVenue = () => {
+  const toggleVenue = (venueId) => {
     if (!editable) return;
-    if (!newVenue.trim()) return;
-    if (venues.length >= 10) return;
-    setVenues((prev) => [...prev, newVenue.trim()]);
-    setNewVenue('');
-  };
-
-  const handleRemoveVenue = (index) => {
-    if (!editable) return;
-    setVenues((prev) => prev.filter((_, idx) => idx !== index));
+    const parsed = Number(venueId);
+    if (!Number.isFinite(parsed)) return;
+    setSelectedVenues((prev) => {
+      const exists = prev.includes(parsed);
+      if (exists) {
+        return prev.filter((id) => id !== parsed);
+      }
+      if (prev.length >= 10) return prev;
+      return [...prev, parsed];
+    });
   };
 
   const handleUploadPdf = () => {
@@ -2164,6 +2197,7 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
       ...form,
       bracket,
       imageAsset,
+      venues: selectedVenues,
     });
     onClose();
   };
@@ -2306,44 +2340,49 @@ function CupEventModal({ visible, mode, initialValues, onClose, onSave }) {
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Sedes (máximo 10)
             </Text>
-            <View className="flex-row gap-2">
-              <TextInput
-                className={FORM_FIELD_CLASSNAME}
-                placeholder="Agregar sede"
-                placeholderTextColor="#94A3B8"
-                value={newVenue}
-                onChangeText={setNewVenue}
-                editable={editable}
-              />
-              <Pressable
-                onPress={handleAddVenue}
-                disabled={!editable || venues.length >= 10}
-                className={`h-[44px] items-center justify-center rounded-xl px-4 ${
-                  !editable || venues.length >= 10 ? 'bg-white/10' : 'bg-emerald-500/70'
-                }`}
-              >
-                <Text className="text-white text-xs font-semibold">Agregar</Text>
-              </Pressable>
-            </View>
-            <View className="flex-row flex-wrap gap-2">
-              {venues.length === 0 ? (
-                <Text className="text-white/40 text-xs">Sin sedes cargadas.</Text>
-              ) : (
-                venues.map((venue, index) => (
-                  <View
-                    key={`${venue}-${index}`}
-                    className="flex-row items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1"
-                  >
-                    <Text className="text-white text-xs">{venue}</Text>
-                    {editable ? (
-                      <Pressable onPress={() => handleRemoveVenue(index)}>
-                        <Ionicons name="close" size={14} color="#CBD5F5" />
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ))
-              )}
-            </View>
+            {availableVenues?.length ? (
+              <View className="gap-2">
+                {availableVenues.map((venue) => {
+                  const venueId = venue.cancha_id ?? venue.id;
+                  const selected = selectedVenues.includes(Number(venueId));
+                  const isDisabled =
+                    !editable || (!selected && selectedVenues.length >= 10);
+                  return (
+                    <Pressable
+                      key={`venue-${venueId}`}
+                      onPress={() => toggleVenue(venueId)}
+                      disabled={isDisabled}
+                      className={`flex-row items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 ${
+                        isDisabled ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <Ionicons
+                        name={selected ? 'checkbox' : 'square-outline'}
+                        size={18}
+                        color={selected ? '#34D399' : '#94A3B8'}
+                      />
+                      <View className="flex-1">
+                        <Text className="text-white text-xs">
+                          {venue.nombre ?? venue.label ?? `Cancha #${venueId}`}
+                        </Text>
+                        {venue?.deporte?.nombre ? (
+                          <Text className="text-white/40 text-[10px]">
+                            {venue.deporte.nombre}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text className="text-white/40 text-xs">Sin sedes disponibles.</Text>
+            )}
+            {selectedVenues.length >= 10 ? (
+              <Text className="text-amber-100 text-xs">
+                Llegaste al máximo de sedes seleccionadas.
+              </Text>
+            ) : null}
           </View>
           <View className="gap-2">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
@@ -2694,39 +2733,43 @@ export default function EventosScreen() {
     setActiveMode('edit');
     setSelectedEvent(event);
     setActiveModal(event.type);
-    if (event.type !== 'amistoso') return;
-    const loadFriendlyDetails = async () => {
+    const loadEventDetails = async () => {
       try {
         const data = await api.get(`/eventos/${event.id}`);
         if (data?.evento) {
-          const friendlyTeams = resolveFriendlyTeams(data.evento);
-          const matchResult = buildMatchResult(data.evento);
-          const winnerLabel = matchResult?.winnerId
-            ? resolveEquipoName(
-              Array.isArray(data.evento?.equipos) ? data.evento.equipos : [],
-              matchResult.winnerId
-            )
-            : '';
-          setSelectedEvent({
-            ...mapClubEvent(data.evento),
-            ...friendlyTeams,
-            team1Score:
-              matchResult?.team1Score !== null && matchResult?.team1Score !== undefined
-                ? String(matchResult.team1Score)
-                : '',
-            team2Score:
-              matchResult?.team2Score !== null && matchResult?.team2Score !== undefined
-                ? String(matchResult.team2Score)
-                : '',
-            winner: winnerLabel,
-            matchId: matchResult?.matchId ?? null,
-          });
+          const baseEvent = mapClubEvent(data.evento);
+          if (event.type === 'amistoso') {
+            const friendlyTeams = resolveFriendlyTeams(data.evento);
+            const matchResult = buildMatchResult(data.evento);
+            const winnerLabel = matchResult?.winnerId
+              ? resolveEquipoName(
+                Array.isArray(data.evento?.equipos) ? data.evento.equipos : [],
+                matchResult.winnerId
+              )
+              : '';
+            setSelectedEvent({
+              ...baseEvent,
+              ...friendlyTeams,
+              team1Score:
+                matchResult?.team1Score !== null && matchResult?.team1Score !== undefined
+                  ? String(matchResult.team1Score)
+                  : '',
+              team2Score:
+                matchResult?.team2Score !== null && matchResult?.team2Score !== undefined
+                  ? String(matchResult.team2Score)
+                  : '',
+              winner: winnerLabel,
+              matchId: matchResult?.matchId ?? null,
+            });
+            return;
+          }
+          setSelectedEvent((prev) => ({ ...prev, ...baseEvent }));
         }
       } catch (error) {
         console.error(error);
       }
     };
-    loadFriendlyDetails();
+    loadEventDetails();
   };
 
   const handleCloseModal = () => {
@@ -2850,7 +2893,7 @@ export default function EventosScreen() {
       days: selectedEvent?.days ?? '',
       pdfName: selectedEvent?.pdfName ?? '',
       pdfUrl: selectedEvent?.pdfUrl ?? selectedEvent?.raw?.reglamento_url ?? '',
-      venues: selectedEvent?.venues ?? [],
+      venues: normalizeVenueIds(selectedEvent?.venues ?? selectedEvent?.raw?.sedes ?? []),
       standings: selectedEvent?.standings ?? DEFAULT_STANDINGS,
       status: selectedEvent?.status ?? '',
       imageUrl: selectedEvent?.imageUrl ?? '',
@@ -2884,7 +2927,7 @@ export default function EventosScreen() {
       days: selectedEvent?.days ?? '',
       pdfName: selectedEvent?.pdfName ?? '',
       pdfUrl: selectedEvent?.pdfUrl ?? selectedEvent?.raw?.reglamento_url ?? '',
-      venues: selectedEvent?.venues ?? [],
+      venues: normalizeVenueIds(selectedEvent?.venues ?? selectedEvent?.raw?.sedes ?? []),
       bracket: selectedEvent?.bracket ?? DEFAULT_BRACKET,
       status: selectedEvent?.status ?? '',
       imageUrl: selectedEvent?.imageUrl ?? '',
@@ -2954,6 +2997,12 @@ export default function EventosScreen() {
     if (payload.premio_1 == null) delete payload.premio_1;
     if (!payload.reglamento_url) delete payload.reglamento_url;
     return payload;
+  };
+
+  const saveEventVenues = async (eventId, venuesSelection) => {
+    if (!eventId) return;
+    const sedes = normalizeVenueIds(venuesSelection);
+    await api.put(`/eventos/${eventId}/sedes`, { sedes });
   };
 
   const upsertFriendlyMatch = async (eventId, formValues, matchId) => {
@@ -3054,6 +3103,7 @@ export default function EventosScreen() {
       const payload = buildTournamentPayload('torneo', formValues, selectedEvent);
       if (activeMode === 'edit' && selectedEvent?.id) {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        await saveEventVenues(selectedEvent.id, formValues?.venues);
         let uploadedImageUrl = null;
         if (formValues?.imageAsset) {
           uploadedImageUrl = await uploadEventImage(selectedEvent.id, formValues.imageAsset);
@@ -3065,6 +3115,7 @@ export default function EventosScreen() {
               ? {
                 ...updatedEvent,
                 standings: formValues.standings ?? item.standings,
+                venues: normalizeVenueIds(formValues?.venues),
                 imageUrl:
                   uploadedImageUrl ??
                   formValues.imageUrl ??
@@ -3080,6 +3131,7 @@ export default function EventosScreen() {
       if (data?.evento) {
         const created = mapClubEvent(data.evento);
         const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
+        await saveEventVenues(createdId, formValues?.venues);
         let uploadedImageUrl = null;
         if (formValues?.imageAsset && createdId) {
           uploadedImageUrl = await uploadEventImage(createdId, formValues.imageAsset);
@@ -3088,6 +3140,7 @@ export default function EventosScreen() {
           {
             ...created,
             standings: formValues.standings ?? DEFAULT_STANDINGS,
+            venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
           },
           ...prev,
@@ -3106,6 +3159,7 @@ export default function EventosScreen() {
       const payload = buildTournamentPayload('copa', formValues, selectedEvent);
       if (activeMode === 'edit' && selectedEvent?.id) {
         const data = await api.put(`/eventos/${selectedEvent.id}`, payload);
+        await saveEventVenues(selectedEvent.id, formValues?.venues);
         let uploadedImageUrl = null;
         if (formValues?.imageAsset) {
           uploadedImageUrl = await uploadEventImage(selectedEvent.id, formValues.imageAsset);
@@ -3117,6 +3171,7 @@ export default function EventosScreen() {
               ? {
                 ...updatedEvent,
                 bracket: formValues.bracket ?? item.bracket,
+                venues: normalizeVenueIds(formValues?.venues),
                 imageUrl:
                   uploadedImageUrl ??
                   formValues.imageUrl ??
@@ -3132,6 +3187,7 @@ export default function EventosScreen() {
       if (data?.evento) {
         const created = mapClubEvent(data.evento);
         const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
+        await saveEventVenues(createdId, formValues?.venues);
         let uploadedImageUrl = null;
         if (formValues?.imageAsset && createdId) {
           uploadedImageUrl = await uploadEventImage(createdId, formValues.imageAsset);
@@ -3140,6 +3196,7 @@ export default function EventosScreen() {
           {
             ...created,
             bracket: formValues.bracket ?? DEFAULT_BRACKET,
+            venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
           },
           ...prev,
@@ -3424,6 +3481,7 @@ export default function EventosScreen() {
         initialValues={tournamentInitialValues}
         onClose={handleCloseModal}
         onSave={handleSaveTournament}
+        availableVenues={venues}
       />
       <CupEventModal
         visible={activeModal === 'copa'}
@@ -3431,6 +3489,7 @@ export default function EventosScreen() {
         initialValues={cupInitialValues}
         onClose={handleCloseModal}
         onSave={handleSaveCup}
+        availableVenues={venues}
       />
       <GlobalEventModal
         event={selectedGlobalEvent}
