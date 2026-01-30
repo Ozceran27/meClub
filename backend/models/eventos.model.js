@@ -173,33 +173,53 @@ const EventosModel = {
     const cantidadEquipos =
       payload.cantidad_equipos ?? payload.limite_equipos ?? null;
     const limiteColumn = (await resolveLimiteColumn()) || 'cantidad_equipos';
-    const horaFinColumn = (await resolveHoraFinColumn()) || 'hora_fin';
+    const horaFinColumn = await resolveHoraFinColumn();
+    const columns = [
+      'club_id',
+      'nombre',
+      'tipo',
+      'descripcion',
+      'estado',
+      'fecha_inicio',
+      'fecha_fin',
+      'hora_inicio',
+      ...(horaFinColumn ? [horaFinColumn] : []),
+      'provincia_id',
+      'zona',
+      'deporte_id',
+      limiteColumn,
+      'valor_inscripcion',
+      'premio_1',
+      'premio_2',
+      'premio_3',
+      'imagen_url',
+    ];
+    const values = [
+      clubId,
+      payload.nombre,
+      payload.tipo,
+      payload.descripcion,
+      payload.estado,
+      payload.fecha_inicio,
+      payload.fecha_fin,
+      payload.hora_inicio,
+      ...(horaFinColumn ? [payload.hora_fin] : []),
+      payload.provincia_id,
+      payload.zona,
+      payload.deporte_id,
+      cantidadEquipos,
+      payload.valor_inscripcion ?? 0,
+      payload.premio_1,
+      payload.premio_2,
+      payload.premio_3,
+      payload.imagen_url ?? null,
+    ];
+    const placeholders = columns.map(() => '?').join(', ');
     const [result] = await db.query(
       `INSERT INTO eventos
-       (club_id, nombre, tipo, descripcion, estado, fecha_inicio, fecha_fin, hora_inicio, ${horaFinColumn},
-        provincia_id, zona, deporte_id, ${limiteColumn}, valor_inscripcion, premio_1, premio_2,
-        premio_3, imagen_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        clubId,
-        payload.nombre,
-        payload.tipo,
-        payload.descripcion,
-        payload.estado,
-        payload.fecha_inicio,
-        payload.fecha_fin,
-        payload.hora_inicio,
-        payload.hora_fin,
-        payload.provincia_id,
-        payload.zona,
-        payload.deporte_id,
-        cantidadEquipos,
-        payload.valor_inscripcion ?? 0,
-        payload.premio_1,
-        payload.premio_2,
-        payload.premio_3,
-        payload.imagen_url ?? null,
-      ]
+       (${columns.join(', ')})
+       VALUES (${placeholders})`,
+      values
     );
     return EventosModel.obtenerPorId(result.insertId, clubId);
   },
@@ -216,8 +236,10 @@ const EventosModel = {
       }
     }
     if (normalizedUpdates.hora_fin !== undefined) {
-      const horaFinColumn = (await resolveHoraFinColumn()) || 'hora_fin';
-      if (horaFinColumn !== 'hora_fin') {
+      const horaFinColumn = await resolveHoraFinColumn();
+      if (!horaFinColumn) {
+        delete normalizedUpdates.hora_fin;
+      } else if (horaFinColumn !== 'hora_fin') {
         normalizedUpdates[horaFinColumn] = normalizedUpdates.hora_fin;
         delete normalizedUpdates.hora_fin;
       }
