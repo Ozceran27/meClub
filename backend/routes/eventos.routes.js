@@ -18,6 +18,8 @@ router.get('/', eventosController.listEventos);
 router.get('/:evento_id', eventosController.getEvento);
 router.post('/', eventosController.createEvento);
 router.put('/:evento_id', eventosController.updateEvento);
+router.get('/:evento_id/sedes', eventosController.listEventoSedes);
+router.put('/:evento_id/sedes', eventosController.updateEventoSedes);
 router.post('/:evento_id/imagen', uploadEventoImagen, eventosController.uploadEventoImagen);
 router.delete('/:evento_id', eventosController.deleteEvento);
 

@@ -49,6 +49,13 @@ const EventoSedesModel = {
     );
     return result.affectedRows > 0;
   },
+
+  eliminarPorEvento: async (eventoId) => {
+    const [result] = await db.query('DELETE FROM evento_sedes WHERE evento_id = ?', [
+      eventoId,
+    ]);
+    return result.affectedRows > 0;
+  },
 };
 
 module.exports = EventoSedesModel;

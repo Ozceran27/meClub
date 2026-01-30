@@ -2,6 +2,7 @@ const EventosModel = require('../models/eventos.model');
 const EventoEquiposModel = require('../models/evento_equipos.model');
 const EventoPartidosModel = require('../models/evento_partidos.model');
 const EventoPosicionesModel = require('../models/evento_posiciones.model');
+const EventoSedesModel = require('../models/evento_sedes.model');
 const ClubesModel = require('../models/clubes.model');
 const { normalizeHour } = require('../utils/datetime');
 const {
@@ -167,6 +168,26 @@ const parseEquiposPayload = (equiposInput, { requiredCount } = {}) => {
   return equipos;
 };
 
+const parseSedesPayload = (sedesInput) => {
+  if (!Array.isArray(sedesInput)) {
+    throwValidationError('sedes debe ser una lista');
+  }
+  const sedes = sedesInput
+    .filter((sede) => sede !== null && sede !== undefined)
+    .map((sede, index) => {
+      const canchaId = parseRequiredInteger(
+        sede?.cancha_id ?? sede?.canchaId ?? sede?.id ?? sede,
+        `sedes[${index}]`
+      );
+      return canchaId;
+    });
+  const unique = Array.from(new Set(sedes));
+  if (unique.length !== sedes.length) {
+    throwValidationError('Las sedes deben ser distintas');
+  }
+  return sedes;
+};
+
 const validateFasePartido = (value) => {
   if (!value) return null;
   const normalized = parseRequiredString(value, 'fase').toLowerCase();
@@ -213,9 +234,10 @@ const cargarDetallesEvento = async (eventoId) => {
     EventoEquiposModel.listarPorEvento(eventoId),
     EventoPartidosModel.listarPorEvento(eventoId),
     EventoPosicionesModel.listarPorEvento(eventoId),
+    EventoSedesModel.listarPorEvento(eventoId),
   ]);
 
-  const [equiposResult, partidosResult, posicionesResult] = results;
+  const [equiposResult, partidosResult, posicionesResult, sedesResult] = results;
   const safeValue = (result, label) => {
     if (result.status === 'fulfilled') {
       return ensureArray(result.value);
@@ -228,6 +250,7 @@ const cargarDetallesEvento = async (eventoId) => {
     equipos: safeValue(equiposResult, 'equipos'),
     partidos: safeValue(partidosResult, 'partidos'),
     posiciones: safeValue(posicionesResult, 'posiciones'),
+    sedes: safeValue(sedesResult, 'sedes'),
   };
 };
 
@@ -289,9 +312,9 @@ const getEventoGlobal = async (req, res) => {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
 
-    const { equipos, partidos, posiciones } = await cargarDetallesEvento(eventoId);
+    const { equipos, partidos, posiciones, sedes } = await cargarDetallesEvento(eventoId);
 
-    res.json({ evento: { ...evento, equipos, partidos, posiciones } });
+    res.json({ evento: { ...evento, equipos, partidos, posiciones, sedes } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
@@ -308,12 +331,8 @@ const getEvento = async (req, res) => {
     if (!evento) {
       return res.status(404).json({ mensaje: 'Evento no encontrado' });
     }
-    const [equipos, partidos, posiciones] = await Promise.all([
-      EventoEquiposModel.listarPorEvento(eventoId),
-      EventoPartidosModel.listarPorEvento(eventoId),
-      EventoPosicionesModel.listarPorEvento(eventoId),
-    ]);
-    res.json({ evento: { ...evento, equipos, partidos, posiciones } });
+    const { equipos, partidos, posiciones, sedes } = await cargarDetallesEvento(eventoId);
+    res.json({ evento: { ...evento, equipos, partidos, posiciones, sedes } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ mensaje: 'Error interno del servidor' });
@@ -581,6 +600,58 @@ const updateEvento = async (req, res) => {
         : evento;
 
     res.json({ mensaje: 'Evento actualizado', evento: eventoConEquipos });
+  } catch (error) {
+    if (error.statusCode === 400 || error.statusCode === 403) {
+      return res.status(error.statusCode).json({ mensaje: error.message });
+    }
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const listEventoSedes = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+    const sedes = await EventoSedesModel.listarPorEvento(eventoId);
+    res.json({ sedes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ mensaje: 'Error interno del servidor' });
+  }
+};
+
+const updateEventoSedes = async (req, res) => {
+  try {
+    const eventoId = Number.parseInt(req.params.evento_id, 10);
+    if (!Number.isInteger(eventoId)) {
+      return res.status(400).json({ mensaje: 'evento_id inválido' });
+    }
+    const evento = await EventosModel.obtenerPorId(eventoId, req.club.club_id);
+    if (!evento) {
+      return res.status(404).json({ mensaje: 'Evento no encontrado' });
+    }
+    if (evento.estado !== 'inactivo') {
+      throwValidationError('El evento está en modo solo lectura');
+    }
+
+    const sedesInput = req.body?.sedes ?? req.body?.canchas ?? req.body?.cancha_ids;
+    const sedes = parseSedesPayload(sedesInput ?? []);
+
+    await EventoSedesModel.eliminarPorEvento(eventoId);
+    if (sedes.length > 0) {
+      await Promise.all(
+        sedes.map((canchaId) => EventoSedesModel.crear(eventoId, { cancha_id: canchaId }))
+      );
+    }
+    const updated = await EventoSedesModel.listarPorEvento(eventoId);
+    res.json({ mensaje: 'Sedes actualizadas', sedes: updated });
   } catch (error) {
     if (error.statusCode === 400 || error.statusCode === 403) {
       return res.status(error.statusCode).json({ mensaje: error.message });
@@ -1150,6 +1221,8 @@ module.exports = {
   updateEvento,
   uploadEventoImagen,
   deleteEvento,
+  listEventoSedes,
+  updateEventoSedes,
   iniciarEvento,
   pausarEvento,
   finalizarEvento,
