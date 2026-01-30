@@ -323,10 +323,70 @@ const buildStandings = (evento) => {
   return sortStandingsByPoints(mapped);
 };
 
+const CUP_ROUNDS_ORDER = [
+  { fase: 'octavos', name: 'Octavos', matchCount: 8 },
+  { fase: 'cuartos', name: 'Cuartos', matchCount: 4 },
+  { fase: 'semifinal', name: 'Semifinal', matchCount: 2 },
+  { fase: 'final', name: 'Final', matchCount: 1 },
+];
+
+const resolveCupRounds = (teamCount) => {
+  const normalized = normalizeNumberValue(teamCount);
+  if (!normalized || normalized < 2) return [];
+  const maxTeams = Math.min(normalized, 16);
+  const rounds = [];
+  let matchCount = Math.floor(maxTeams / 2);
+  while (matchCount >= 1) {
+    const round = CUP_ROUNDS_ORDER.find((item) => item.matchCount === matchCount);
+    if (!round) break;
+    rounds.push(round);
+    matchCount = Math.floor(matchCount / 2);
+  }
+  return rounds;
+};
+
+const buildCupBracket = (teamCount) => {
+  const rounds = resolveCupRounds(teamCount);
+  if (rounds.length === 0) {
+    return DEFAULT_BRACKET.map((round) => ({
+      ...round,
+      matches: round.matches.map((match) => ({
+        ...match,
+        teamA: { ...match.teamA },
+        teamB: { ...match.teamB },
+      })),
+    }));
+  }
+  const teamSlots = Array.from({ length: rounds[0].matchCount * 2 }, (_, index) => ({
+    id: null,
+    name: `Equipo ${index + 1}`,
+  }));
+  return rounds.map((round, roundIndex) => ({
+    name: round.name,
+    fase: round.fase,
+    matches: Array.from({ length: round.matchCount }, (_, index) => {
+      const teamIndex = index * 2;
+      const teamA = roundIndex === 0 ? teamSlots[teamIndex] : { id: null, name: '—' };
+      const teamB =
+        roundIndex === 0 ? teamSlots[teamIndex + 1] : { id: null, name: '—' };
+      return {
+        id: `${round.fase}-${index + 1}`,
+        teamA,
+        teamB,
+        winnerId: null,
+        winnerName: '',
+      };
+    }),
+  }));
+};
+
 const buildBracket = (evento) => {
   const equipos = Array.isArray(evento?.equipos) ? evento.equipos : [];
   const partidos = Array.isArray(evento?.partidos) ? evento.partidos : [];
-  if (partidos.length === 0) return [];
+  const teamCount = normalizeNumberValue(evento?.limite_equipos ?? evento?.cantidad_equipos);
+  if (partidos.length === 0) {
+    return buildCupBracket(teamCount);
+  }
   const matchesByFase = partidos.reduce((acc, partido) => {
     const fase = String(partido?.fase ?? '').toLowerCase();
     if (!fase) return acc;
@@ -335,15 +395,12 @@ const buildBracket = (evento) => {
     return acc;
   }, {});
 
-  return DEFAULT_BRACKET.map((round) => {
-    const faseKey = String(round?.name ?? '').toLowerCase();
-    const roundMatches = matchesByFase[faseKey];
-    if (!roundMatches || roundMatches.length === 0) {
-      return {
-        ...round,
-        matches: round.matches.map((match) => ({ ...match })),
-      };
-    }
+  const availableRounds = CUP_ROUNDS_ORDER.filter(
+    (round) => matchesByFase[round.fase]?.length
+  );
+
+  return availableRounds.map((round) => {
+    const roundMatches = matchesByFase[round.fase] ?? [];
     const mappedMatches = [...roundMatches]
       .sort((a, b) => {
         const orderA = a?.orden ?? 0;
@@ -351,12 +408,24 @@ const buildBracket = (evento) => {
         if (orderA !== orderB) return orderA - orderB;
         return (a?.evento_partido_id ?? 0) - (b?.evento_partido_id ?? 0);
       })
-      .map((match, index) => ({
-        id: match?.evento_partido_id ?? `${faseKey}-${index}`,
-        teamA: resolveEquipoName(equipos, match?.equipo_local_id) || '—',
-        teamB: resolveEquipoName(equipos, match?.equipo_visitante_id) || '—',
-        winner: resolveEquipoName(equipos, match?.ganador_equipo_id) || '',
-      }));
+      .map((match, index) => {
+        const teamAId = match?.equipo_local_id ?? null;
+        const teamBId = match?.equipo_visitante_id ?? null;
+        const winnerId = match?.ganador_equipo_id ?? null;
+        return {
+          id: match?.evento_partido_id ?? `${round.fase}-${index}`,
+          teamA: {
+            id: teamAId,
+            name: resolveEquipoName(equipos, teamAId) || '—',
+          },
+          teamB: {
+            id: teamBId,
+            name: resolveEquipoName(equipos, teamBId) || '—',
+          },
+          winnerId,
+          winnerName: resolveEquipoName(equipos, winnerId) || '',
+        };
+      });
     return { ...round, matches: mappedMatches };
   });
 };
@@ -421,23 +490,70 @@ const DEFAULT_STANDINGS = [
 const DEFAULT_BRACKET = [
   {
     name: 'Cuartos',
+    fase: 'cuartos',
     matches: [
-      { id: 'qf-1', teamA: 'Club Centro', teamB: 'Unión Oeste', winner: '' },
-      { id: 'qf-2', teamA: 'Atlético Norte', teamB: 'Social Este', winner: '' },
-      { id: 'qf-3', teamA: 'Deportivo Sur', teamB: 'Club Andes', winner: '' },
-      { id: 'qf-4', teamA: 'Juventud', teamB: 'San Martín', winner: '' },
+      {
+        id: 'qf-1',
+        teamA: { id: null, name: 'Club Centro' },
+        teamB: { id: null, name: 'Unión Oeste' },
+        winnerId: null,
+        winnerName: '',
+      },
+      {
+        id: 'qf-2',
+        teamA: { id: null, name: 'Atlético Norte' },
+        teamB: { id: null, name: 'Social Este' },
+        winnerId: null,
+        winnerName: '',
+      },
+      {
+        id: 'qf-3',
+        teamA: { id: null, name: 'Deportivo Sur' },
+        teamB: { id: null, name: 'Club Andes' },
+        winnerId: null,
+        winnerName: '',
+      },
+      {
+        id: 'qf-4',
+        teamA: { id: null, name: 'Juventud' },
+        teamB: { id: null, name: 'San Martín' },
+        winnerId: null,
+        winnerName: '',
+      },
     ],
   },
   {
     name: 'Semifinal',
+    fase: 'semifinal',
     matches: [
-      { id: 'sf-1', teamA: '—', teamB: '—', winner: '' },
-      { id: 'sf-2', teamA: '—', teamB: '—', winner: '' },
+      {
+        id: 'sf-1',
+        teamA: { id: null, name: '—' },
+        teamB: { id: null, name: '—' },
+        winnerId: null,
+        winnerName: '',
+      },
+      {
+        id: 'sf-2',
+        teamA: { id: null, name: '—' },
+        teamB: { id: null, name: '—' },
+        winnerId: null,
+        winnerName: '',
+      },
     ],
   },
   {
     name: 'Final',
-    matches: [{ id: 'f-1', teamA: '—', teamB: '—', winner: '' }],
+    fase: 'final',
+    matches: [
+      {
+        id: 'f-1',
+        teamA: { id: null, name: '—' },
+        teamB: { id: null, name: '—' },
+        winnerId: null,
+        winnerName: '',
+      },
+    ],
   },
 ];
 
@@ -889,10 +1005,12 @@ function GlobalEventModal({ event, detailStatus, onClose }) {
                           className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"
                         >
                           <Text className="text-white text-xs">
-                            {match.teamA} <Text className="text-white/40">vs</Text> {match.teamB}
+                            {match.teamA?.name ?? '—'}{' '}
+                            <Text className="text-white/40">vs</Text>{' '}
+                            {match.teamB?.name ?? '—'}
                           </Text>
                           <Text className="text-white/40 text-[10px]">
-                            Ganador: {match.winner || 'Sin definir'}
+                            Ganador: {match.winnerName || 'Sin definir'}
                           </Text>
                         </View>
                       ))}
@@ -2132,7 +2250,11 @@ function CupEventModal({
   useEffect(() => {
     setForm(initialValues);
     setSelectedVenues(normalizeVenueIds(initialValues?.venues));
-    setBracket(initialValues?.bracket ?? []);
+    const nextBracket =
+      initialValues?.bracket?.length && Array.isArray(initialValues?.bracket)
+        ? initialValues.bracket
+        : buildCupBracket(initialValues?.teams);
+    setBracket(nextBracket);
     setImageAsset(null);
     setImageError('');
     setPdfAsset(null);
@@ -2141,6 +2263,14 @@ function CupEventModal({
     setDateError('');
     setSubmitError('');
   }, [initialValues]);
+
+  useEffect(() => {
+    if (!editable || mode !== 'create') return;
+    const regenerated = buildCupBracket(form?.teams);
+    if (regenerated.length) {
+      setBracket(regenerated);
+    }
+  }, [editable, form?.teams, mode]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -2213,26 +2343,41 @@ function CupEventModal({
     }
   };
 
-  const handleSelectWinner = (roundIndex, matchIndex, team) => {
-    if (!resultsEditable) return;
-    setBracket((prev) => {
-      const next = prev.map((round) => ({
-        ...round,
-        matches: round.matches.map((match) => ({ ...match })),
-      }));
-      const round = next[roundIndex];
-      if (!round) return prev;
-      const match = round.matches[matchIndex];
-      if (!match) return prev;
-      match.winner = team;
-      if (next[roundIndex + 1]) {
-        const nextRound = next[roundIndex + 1];
-        const nextMatchIndex = Math.floor(matchIndex / 2);
-        const slot = matchIndex % 2 === 0 ? 'teamA' : 'teamB';
-        nextRound.matches[nextMatchIndex][slot] = team;
+  const handleSelectWinner = async (roundIndex, matchIndex, team) => {
+    if (!resultsEditable || !team?.id) return;
+    const eventId = initialValues?.eventId;
+    setSubmitError('');
+    try {
+      const currentRound = bracket?.[roundIndex];
+      const currentMatch = currentRound?.matches?.[matchIndex];
+      if (eventId && currentMatch?.id) {
+        await api.post(`/eventos/${eventId}/partidos/${currentMatch.id}/ganador`, {
+          ganador_equipo_id: team.id,
+        });
       }
-      return next;
-    });
+      setBracket((prev) => {
+        const next = prev.map((round) => ({
+          ...round,
+          matches: round.matches.map((match) => ({ ...match })),
+        }));
+        const round = next[roundIndex];
+        if (!round) return prev;
+        const match = round.matches[matchIndex];
+        if (!match) return prev;
+        match.winnerId = team.id;
+        match.winnerName = team.name;
+        if (next[roundIndex + 1]) {
+          const nextRound = next[roundIndex + 1];
+          const nextMatchIndex = Math.floor(matchIndex / 2);
+          const slot = matchIndex % 2 === 0 ? 'teamA' : 'teamB';
+          nextRound.matches[nextMatchIndex][slot] = team;
+        }
+        return next;
+      });
+    } catch (error) {
+      console.error(error);
+      setSubmitError('No pudimos actualizar el ganador.');
+    }
   };
 
   const handlePickImage = async () => {
@@ -2599,21 +2744,23 @@ function CupEventModal({
                         className="gap-2 rounded-2xl border border-white/10 bg-white/5 p-3"
                       >
                         {[match.teamA, match.teamB].map((team) => (
-                            <Pressable
-                              key={`${match.id}-${team}`}
-                              onPress={() => handleSelectWinner(roundIndex, matchIndex, team)}
-                              disabled={!resultsEditable}
-                              className={`rounded-xl border px-3 py-2 ${
-                                match.winner === team
-                                  ? 'border-emerald-400/60 bg-emerald-500/10'
-                                  : 'border-white/10 bg-white/5'
-                            } ${!resultsEditable ? 'opacity-60' : ''}`}
-                            >
-                            <Text className="text-white text-xs font-semibold">{team}</Text>
+                          <Pressable
+                            key={`${match.id}-${team?.id ?? team?.name}`}
+                            onPress={() => handleSelectWinner(roundIndex, matchIndex, team)}
+                            disabled={!resultsEditable || !team?.id}
+                            className={`rounded-xl border px-3 py-2 ${
+                              match.winnerId === team?.id
+                                ? 'border-emerald-400/60 bg-emerald-500/10'
+                                : 'border-white/10 bg-white/5'
+                            } ${!resultsEditable || !team?.id ? 'opacity-60' : ''}`}
+                          >
+                            <Text className="text-white text-xs font-semibold">
+                              {team?.name ?? '—'}
+                            </Text>
                           </Pressable>
                         ))}
                         <Text className="text-white/40 text-[11px]">
-                          Ganador: {match.winner || 'Sin definir'}
+                          Ganador: {match.winnerName || 'Sin definir'}
                         </Text>
                       </View>
                     ))}
@@ -2887,13 +3034,12 @@ export default function EventosScreen() {
             });
             return;
           }
+          const detailType = resolveEventDetailType(event?.type);
           setSelectedEvent((prev) => ({
             ...prev,
             ...baseEvent,
-            standings:
-              resolveEventDetailType(event?.type) === 'torneo'
-                ? buildStandings(data.evento)
-                : baseEvent.standings,
+            standings: detailType === 'torneo' ? buildStandings(data.evento) : baseEvent.standings,
+            bracket: detailType === 'copa' ? buildBracket(data.evento) : baseEvent.bracket,
           }));
         }
       } catch (error) {
@@ -3034,6 +3180,7 @@ export default function EventosScreen() {
 
   const cupInitialValues = useMemo(
     () => ({
+      eventId: selectedEvent?.id ?? null,
       name: selectedEvent?.title ?? '',
       dates:
         selectedEvent?.dates ??
@@ -3164,6 +3311,24 @@ export default function EventosScreen() {
       })
     );
     return orderedStandings;
+  };
+
+  const createCupFixtureMatches = async (eventId, teamCount) => {
+    const rounds = resolveCupRounds(teamCount);
+    if (!eventId || rounds.length === 0) return [];
+    const requests = rounds.flatMap((round) =>
+      Array.from({ length: round.matchCount }, (_, index) =>
+        api
+          .post(`/eventos/${eventId}/partidos`, {
+            fase: round.fase,
+            orden: index + 1,
+            estado: 'pendiente',
+          })
+          .then((response) => response?.partido ?? response)
+      )
+    );
+    const created = await Promise.all(requests);
+    return created.filter(Boolean);
   };
 
   const upsertFriendlyMatch = async (eventId, formValues, matchId) => {
@@ -3313,6 +3478,7 @@ export default function EventosScreen() {
       if (data?.evento) {
         const created = mapClubEvent(data.evento);
         const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
+        const createdMatches = await createCupFixtureMatches(createdId, formValues?.teams);
         await saveEventVenues(createdId, formValues?.venues);
         let uploadedImageUrl = null;
         let uploadedReglamentoUrl = null;
@@ -3403,6 +3569,7 @@ export default function EventosScreen() {
       if (data?.evento) {
         const created = mapClubEvent(data.evento);
         const createdId = data.evento?.evento_id ?? data.evento?.id ?? created.id;
+        const createdMatches = await createCupFixtureMatches(createdId, formValues?.teams);
         await saveEventVenues(createdId, formValues?.venues);
         let uploadedImageUrl = null;
         let uploadedReglamentoUrl = null;
@@ -3417,10 +3584,13 @@ export default function EventosScreen() {
           formValues?.pdfUrl ??
           created.raw?.reglamento_url ??
           null;
+        const bracket = createdMatches.length
+          ? buildBracket({ equipos: [], partidos: createdMatches, limite_equipos: formValues?.teams })
+          : buildCupBracket(formValues?.teams);
         setEvents((prev) => [
           {
             ...created,
-            bracket: formValues.bracket ?? DEFAULT_BRACKET,
+            bracket,
             venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
             raw: {
