@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, View, Text, Pressable } from 'react-native';
 import Card from '../../components/Card';
 import ScreenHeader from '../../components/ScreenHeader';
 import { useAuth } from '../../features/auth/useAuth';
+import { updateClubProfile } from '../../lib/api';
 
 export default function MejorarPlanScreen({ go }) {
   const { user, updateUser } = useAuth();
   const activeNivelId = Number(user?.nivel_id ?? 1);
+  const [updatingPlanId, setUpdatingPlanId] = useState(null);
+  const [planError, setPlanError] = useState('');
 
   const plans = [
     {
@@ -57,10 +60,16 @@ export default function MejorarPlanScreen({ go }) {
             estará disponible muy pronto.
           </Text>
         </Card>
+        {planError ? (
+          <View className="rounded-2xl border border-rose-400/40 bg-rose-500/10 px-4 py-3">
+            <Text className="text-rose-100 text-xs">{planError}</Text>
+          </View>
+        ) : null}
 
         <View className="gap-4 md:flex-row">
           {plans.map((plan) => {
             const isActive = plan.id === activeNivelId;
+            const isUpdating = updatingPlanId === plan.id;
             return (
               <Card
                 key={plan.id}
@@ -96,15 +105,39 @@ export default function MejorarPlanScreen({ go }) {
                 </View>
 
                 <Pressable
-                  onPress={() => updateUser({ nivel_id: plan.id })}
+                  onPress={async () => {
+                    if (isActive || isUpdating) return;
+                    setPlanError('');
+                    setUpdatingPlanId(plan.id);
+                    try {
+                      const updatedClub = await updateClubProfile({ nivel_id: plan.id });
+                      await updateUser({
+                        nivel_id: updatedClub?.nivel_id ?? plan.id,
+                        club: updatedClub ?? user?.club,
+                        clubId: updatedClub?.club_id ?? user?.clubId,
+                        clubNombre: updatedClub?.nombre ?? user?.clubNombre,
+                      });
+                    } catch (error) {
+                      setPlanError(error?.message || 'No se pudo actualizar el plan.');
+                    } finally {
+                      setUpdatingPlanId(null);
+                    }
+                  }}
+                  disabled={isUpdating}
                   className={`mt-6 rounded-2xl px-4 py-2 ${
                     isActive
                       ? 'border border-emerald-400/50 bg-emerald-500/10'
-                      : 'bg-white/10 hover:bg-white/15'
+                      : isUpdating
+                        ? 'bg-white/5'
+                        : 'bg-white/10 hover:bg-white/15'
                   }`}
                 >
                   <Text className="text-white text-sm font-semibold text-center">
-                    {isActive ? 'Plan seleccionado' : 'Seleccionar plan'}
+                    {isActive
+                      ? 'Plan seleccionado'
+                      : isUpdating
+                        ? 'Actualizando...'
+                        : 'Seleccionar plan'}
                   </Text>
                 </Pressable>
               </Card>
