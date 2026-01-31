@@ -15,7 +15,6 @@ const resolveLimiteEquipos = (row) => {
 const normalizeTipoEvento = (tipo) => {
   if (!tipo) return tipo;
   const normalized = String(tipo).trim().toLowerCase();
-  if (normalized === 'liga') return 'torneo';
   return normalized;
 };
 

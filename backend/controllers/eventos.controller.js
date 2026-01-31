@@ -17,7 +17,7 @@ const {
 
 const FASES_PARTIDO = new Set([
   'amistoso',
-  'liga',
+  'torneo',
   'octavos',
   'cuartos',
   'semifinal',
@@ -212,7 +212,7 @@ const resolveDefaultFase = (eventoTipo, providedFase) => {
     throwValidationError('fase es obligatoria para copas');
   }
   if (eventoTipo === 'amistoso') return 'amistoso';
-  return 'liga';
+  return 'torneo';
 };
 
 const NEXT_FASE_MAP = {
@@ -932,14 +932,14 @@ const createPartido = async (req, res) => {
     const faseInput = req.body?.fase !== undefined ? validateFasePartido(req.body.fase) : null;
     const fase = resolveDefaultFase(evento.tipo, faseInput);
 
-    if (evento.tipo === 'copa' && ['liga', 'amistoso'].includes(fase)) {
+    if (evento.tipo === 'copa' && ['torneo', 'amistoso'].includes(fase)) {
       throwValidationError('fase inválida para copa');
     }
     if (evento.tipo === 'amistoso' && fase !== 'amistoso') {
       throwValidationError('fase inválida para amistoso');
     }
-    if (['liga', 'torneo'].includes(evento.tipo) && fase !== 'liga') {
-      throwValidationError('fase inválida para liga/torneo');
+    if (evento.tipo === 'torneo' && fase !== 'torneo') {
+      throwValidationError('fase inválida para torneo');
     }
 
     let orden = parseOptionalInteger(req.body?.orden, 'orden');
@@ -1030,14 +1030,14 @@ const updatePartido = async (req, res) => {
 
     if (req.body?.fase !== undefined) {
       updates.fase = validateFasePartido(req.body.fase);
-      if (evento.tipo === 'copa' && ['liga', 'amistoso'].includes(updates.fase)) {
+      if (evento.tipo === 'copa' && ['torneo', 'amistoso'].includes(updates.fase)) {
         throwValidationError('fase inválida para copa');
       }
       if (evento.tipo === 'amistoso' && updates.fase !== 'amistoso') {
         throwValidationError('fase inválida para amistoso');
       }
-      if (['liga', 'torneo'].includes(evento.tipo) && updates.fase !== 'liga') {
-        throwValidationError('fase inválida para liga/torneo');
+      if (evento.tipo === 'torneo' && updates.fase !== 'torneo') {
+        throwValidationError('fase inválida para torneo');
       }
     }
 
@@ -1200,8 +1200,8 @@ const createPosicion = async (req, res) => {
     }
     ensureEventoNoFinalizado(evento);
 
-    if (!['torneo', 'liga'].includes(evento.tipo)) {
-      return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
+    if (evento.tipo !== 'torneo') {
+      return res.status(400).json({ mensaje: 'Solo disponible para torneos' });
     }
 
     const equipoId = parseOptionalInteger(req.body?.equipo_id, 'equipo_id');
@@ -1248,8 +1248,8 @@ const updatePosicion = async (req, res) => {
     }
     ensureEventoNoFinalizado(evento);
 
-    if (!['torneo', 'liga'].includes(evento.tipo)) {
-      return res.status(400).json({ mensaje: 'Solo disponible para torneos o ligas' });
+    if (evento.tipo !== 'torneo') {
+      return res.status(400).json({ mensaje: 'Solo disponible para torneos' });
     }
 
     const existente = await EventoPosicionesModel.obtenerPorId(posicionId, eventoId);

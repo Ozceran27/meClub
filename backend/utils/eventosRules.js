@@ -1,9 +1,8 @@
 const ESTADOS_EVENTO = new Set(['inactivo', 'activo', 'pausado', 'finalizado']);
-const TIPOS_EVENTO = new Set(['torneo', 'copa', 'liga', 'amistoso']);
+const TIPOS_EVENTO = new Set(['torneo', 'copa', 'amistoso']);
 const LIMITES_EQUIPOS_POR_TIPO = {
   torneo: 40,
   copa: 64,
-  liga: 20,
   amistoso: 2,
 };
 
