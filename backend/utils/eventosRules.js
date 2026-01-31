@@ -18,6 +18,47 @@ const normalizeTipo = (value) => {
   return parsed ? parsed.toLowerCase() : null;
 };
 
+const normalizeNivelNombre = (value) => {
+  const normalized = normalizeString(value);
+  if (!normalized) return null;
+  const match = normalized.match(/\d+/);
+  if (match) return Number(match[0]);
+  if (/gratuito/i.test(normalized)) return 1;
+  if (/avanzado/i.test(normalized)) return 2;
+  if (/pro/i.test(normalized)) return 3;
+  return null;
+};
+
+const resolveClubNivelId = (club) => {
+  if (!club || typeof club !== 'object') return null;
+  const candidates = [
+    club.nivel_id,
+    club.nivelId,
+    club.nivel,
+    club?.nivel?.id,
+    club?.nivel?.nivel_id,
+    club?.nivel?.nivelId,
+    club?.plan?.nivel_id,
+    club?.plan?.nivelId,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return (
+    normalizeNivelNombre(club.nivel_nombre) ??
+    normalizeNivelNombre(club.nivelNombre) ??
+    normalizeNivelNombre(club.nivel) ??
+    normalizeNivelNombre(club?.nivel?.nombre) ??
+    normalizeNivelNombre(club?.nivel?.label) ??
+    normalizeNivelNombre(club?.plan?.nombre)
+  );
+};
+
 const getLimitePorTipo = (tipo) => {
   if (!tipo) return null;
   return LIMITES_EQUIPOS_POR_TIPO[tipo] ?? null;
@@ -47,10 +88,16 @@ const validateTipo = (tipo) => {
 
 const validateClubPermisoTipo = (tipo, club) => {
   if (!tipo || !club) return;
-  if (['torneo', 'copa'].includes(tipo) && Number(club.nivel_id) < 2) {
-    const error = new Error('El club no tiene nivel suficiente para crear torneos o copas');
-    error.statusCode = 403;
-    throw error;
+  if (['torneo', 'copa'].includes(tipo)) {
+    const nivelId = resolveClubNivelId(club);
+    const normalizedNivel = Number.isFinite(nivelId) && nivelId > 0 ? nivelId : 1;
+    if (normalizedNivel < 2) {
+      const error = new Error(
+        'El club no tiene nivel suficiente para crear torneos o copas'
+      );
+      error.statusCode = 403;
+      throw error;
+    }
   }
 };
 
@@ -98,6 +145,7 @@ module.exports = {
   TIPOS_EVENTO,
   LIMITES_EQUIPOS_POR_TIPO,
   normalizeTipo,
+  resolveClubNivelId,
   getLimitePorTipo,
   validateEstado,
   validateTipo,
