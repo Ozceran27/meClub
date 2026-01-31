@@ -313,7 +313,9 @@ router.patch('/mis-datos', async (req, res) => {
       hora_nocturna_fin,
     } = req.body || {};
 
-    if (typeof nombre !== 'string' || nombre.trim() === '') {
+    const nombreValue =
+      nombre === undefined ? req.club?.nombre : typeof nombre === 'string' ? nombre.trim() : null;
+    if (!nombreValue) {
       return res.status(400).json({ mensaje: 'El nombre es obligatorio' });
     }
 
@@ -511,7 +513,7 @@ router.patch('/mis-datos', async (req, res) => {
     }
 
     const payload = {
-      nombre,
+      nombre: nombreValue,
     };
 
     if (descripcion !== undefined) payload.descripcion = descripcion;
