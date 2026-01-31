@@ -479,13 +479,40 @@ const STATUS_ORDER = {
   finalizado: 3,
 };
 
-const DEFAULT_STANDINGS = [
-  { id: 'st-1', team: 'Club Centro', played: 3, points: 7 },
-  { id: 'st-2', team: 'Atlético Norte', played: 3, points: 6 },
-  { id: 'st-3', team: 'Deportivo Sur', played: 3, points: 4 },
-  { id: 'st-4', team: 'Social Este', played: 3, points: 3 },
-  { id: 'st-5', team: 'Unión Oeste', played: 3, points: 1 },
-];
+const DEFAULT_STANDINGS = [];
+
+const resolveStandingsSlots = (teamCount) => {
+  const normalized = normalizeNumberValue(teamCount);
+  if (!normalized) return 0;
+  const clamped = Math.max(5, Math.min(40, normalized));
+  const rounded = Math.ceil(clamped / 10) * 10;
+  return Math.min(40, rounded);
+};
+
+const normalizeStandingsRow = (row, index) => ({
+  id: row?.id ?? `st-${index + 1}`,
+  equipoId: row?.equipoId ?? row?.equipo_id ?? null,
+  team: row?.team ?? '',
+  played: row?.played ?? 0,
+  points: row?.points ?? 0,
+});
+
+const buildStandingsRows = (teamCount, existing = []) => {
+  const target = resolveStandingsSlots(teamCount);
+  if (!target) return Array.isArray(existing) ? existing : [];
+  const base = Array.isArray(existing) ? existing : [];
+  const rows = base.slice(0, target).map(normalizeStandingsRow);
+  for (let index = rows.length; index < target; index += 1) {
+    rows.push({
+      id: `st-${index + 1}`,
+      equipoId: null,
+      team: '',
+      played: 0,
+      points: 0,
+    });
+  }
+  return rows;
+};
 
 const DEFAULT_BRACKET = [
   {
@@ -1664,6 +1691,7 @@ function TournamentEventModal({
   const [pickingPdf, setPickingPdf] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
+  const [timeErrors, setTimeErrors] = useState({ startTime: '', endTime: '' });
   const [submitError, setSubmitError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
@@ -1680,11 +1708,30 @@ function TournamentEventModal({
     setPdfError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
+    setTimeErrors({ startTime: '', endTime: '' });
     setSubmitError('');
   }, [initialValues]);
 
+  useEffect(() => {
+    if (!editable) return;
+    setStandings((prev) => {
+      const next = buildStandingsRows(form?.teams, prev);
+      if (next.length === prev.length) return prev;
+      return next;
+    });
+  }, [editable, form?.teams]);
+
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleTimeFieldChange = (field, value) => {
+    const { formatted, isComplete, isValid } = formatTimeInput(value);
+    handleChange(field, formatted);
+    setTimeErrors((prev) => ({
+      ...prev,
+      [field]: isComplete && !isValid ? 'Ingresá una hora válida (00-23 / 00-59).' : '',
+    }));
   };
 
   const handleOpenDatePicker = (field) => {
@@ -1825,6 +1872,14 @@ function TournamentEventModal({
       setSubmitError('Ingresá un valor de premio válido.');
       return;
     }
+    if (!form?.endTime) {
+      setSubmitError('Ingresá un horario de finalización.');
+      return;
+    }
+    if (timeErrors.startTime || timeErrors.endTime) {
+      setSubmitError('Corregí los horarios antes de guardar.');
+      return;
+    }
     setSubmitError('');
     await onSave({
       ...form,
@@ -1954,6 +2009,34 @@ function TournamentEventModal({
             </View>
           </View>
           {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
+          <View className="flex-row gap-4">
+            <View className="flex-1">
+              <FormField
+                label="Hora inicio"
+                placeholder="08:00"
+                value={form.startTime}
+                onChangeText={(value) => handleTimeFieldChange('startTime', value)}
+                editable={editable}
+                keyboardType="numeric"
+              />
+              {timeErrors.startTime ? (
+                <Text className="text-rose-200 text-xs mt-1">{timeErrors.startTime}</Text>
+              ) : null}
+            </View>
+            <View className="flex-1">
+              <FormField
+                label="Hora fin"
+                placeholder="20:00"
+                value={form.endTime}
+                onChangeText={(value) => handleTimeFieldChange('endTime', value)}
+                editable={editable}
+                keyboardType="numeric"
+              />
+              {timeErrors.endTime ? (
+                <Text className="text-rose-200 text-xs mt-1">{timeErrors.endTime}</Text>
+              ) : null}
+            </View>
+          </View>
           <View className="gap-2">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Zona
@@ -2241,6 +2324,7 @@ function CupEventModal({
   const [pickingPdf, setPickingPdf] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
+  const [timeErrors, setTimeErrors] = useState({ startTime: '', endTime: '' });
   const [submitError, setSubmitError] = useState('');
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
@@ -2261,6 +2345,7 @@ function CupEventModal({
     setPdfError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
+    setTimeErrors({ startTime: '', endTime: '' });
     setSubmitError('');
   }, [initialValues]);
 
@@ -2272,8 +2357,18 @@ function CupEventModal({
     }
   }, [editable, form?.teams, mode]);
 
+
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleTimeFieldChange = (field, value) => {
+    const { formatted, isComplete, isValid } = formatTimeInput(value);
+    handleChange(field, formatted);
+    setTimeErrors((prev) => ({
+      ...prev,
+      [field]: isComplete && !isValid ? 'Ingresá una hora válida (00-23 / 00-59).' : '',
+    }));
   };
 
   const handleOpenDatePicker = (field) => {
@@ -2429,6 +2524,14 @@ function CupEventModal({
       setSubmitError('Ingresá un valor de premio válido.');
       return;
     }
+    if (!form?.endTime) {
+      setSubmitError('Ingresá un horario de finalización.');
+      return;
+    }
+    if (timeErrors.startTime || timeErrors.endTime) {
+      setSubmitError('Corregí los horarios antes de guardar.');
+      return;
+    }
     setSubmitError('');
     await onSave({
       ...form,
@@ -2558,6 +2661,34 @@ function CupEventModal({
             </View>
           </View>
           {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
+          <View className="flex-row gap-4">
+            <View className="flex-1">
+              <FormField
+                label="Hora inicio"
+                placeholder="08:00"
+                value={form.startTime}
+                onChangeText={(value) => handleTimeFieldChange('startTime', value)}
+                editable={editable}
+                keyboardType="numeric"
+              />
+              {timeErrors.startTime ? (
+                <Text className="text-rose-200 text-xs mt-1">{timeErrors.startTime}</Text>
+              ) : null}
+            </View>
+            <View className="flex-1">
+              <FormField
+                label="Hora fin"
+                placeholder="20:00"
+                value={form.endTime}
+                onChangeText={(value) => handleTimeFieldChange('endTime', value)}
+                editable={editable}
+                keyboardType="numeric"
+              />
+              {timeErrors.endTime ? (
+                <Text className="text-rose-200 text-xs mt-1">{timeErrors.endTime}</Text>
+              ) : null}
+            </View>
+          </View>
           <View className="gap-2">
             <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
               Zona
@@ -3161,6 +3292,14 @@ export default function EventosScreen() {
       endDate: normalizeDateInputValue(
         selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? ''
       ),
+      startTime: formatEventTime(
+        selectedEvent?.raw?.hora_inicio ?? selectedEvent?.time ?? ''
+      ),
+      endTime: formatEventTime(
+        selectedEvent?.raw?.hora_fin ??
+          selectedEvent?.raw?.hora_finalizacion ??
+          ''
+      ),
       zone: normalizeZoneValue(selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? ''),
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
       sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
@@ -3171,7 +3310,10 @@ export default function EventosScreen() {
       pdfName: selectedEvent?.pdfName ?? '',
       pdfUrl: selectedEvent?.pdfUrl ?? selectedEvent?.raw?.reglamento_url ?? '',
       venues: normalizeVenueIds(selectedEvent?.venues ?? selectedEvent?.raw?.sedes ?? []),
-      standings: selectedEvent?.standings ?? DEFAULT_STANDINGS,
+      standings: selectedEvent?.standings ?? buildStandingsRows(
+        selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
+        DEFAULT_STANDINGS
+      ),
       status: selectedEvent?.status ?? '',
       imageUrl: selectedEvent?.imageUrl ?? '',
     }),
@@ -3196,6 +3338,14 @@ export default function EventosScreen() {
       ),
       endDate: normalizeDateInputValue(
         selectedEvent?.endDate ?? selectedEvent?.raw?.fecha_fin ?? ''
+      ),
+      startTime: formatEventTime(
+        selectedEvent?.raw?.hora_inicio ?? selectedEvent?.time ?? ''
+      ),
+      endTime: formatEventTime(
+        selectedEvent?.raw?.hora_fin ??
+          selectedEvent?.raw?.hora_finalizacion ??
+          ''
       ),
       zone: normalizeZoneValue(selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? ''),
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
@@ -3259,6 +3409,8 @@ export default function EventosScreen() {
       tipo: type,
       fecha_inicio: startDate,
       fecha_fin: endDate,
+      hora_inicio: formValues?.startTime?.trim() || null,
+      hora_fin: formValues?.endTime?.trim() || null,
       zona,
       provincia_id: provinciaId,
       deporte_id: resolveSportId(formValues?.sport, fallbackEvent),
@@ -3269,6 +3421,7 @@ export default function EventosScreen() {
     };
     if (!payload.fecha_inicio) delete payload.fecha_inicio;
     if (!payload.fecha_fin) delete payload.fecha_fin;
+    if (!payload.hora_inicio) delete payload.hora_inicio;
     if (!payload.deporte_id) delete payload.deporte_id;
     if (payload.limite_equipos == null) delete payload.limite_equipos;
     if (payload.valor_inscripcion == null) delete payload.valor_inscripcion;
@@ -3497,10 +3650,14 @@ export default function EventosScreen() {
           formValues?.pdfUrl ??
           created.raw?.reglamento_url ??
           null;
+        const fallbackStandings = buildStandingsRows(
+          formValues?.teams,
+          orderedStandings.length ? orderedStandings : DEFAULT_STANDINGS
+        );
         setEvents((prev) => [
           {
             ...created,
-            standings: orderedStandings.length ? orderedStandings : DEFAULT_STANDINGS,
+            standings: fallbackStandings.length ? fallbackStandings : orderedStandings,
             venues: normalizeVenueIds(formValues?.venues),
             imageUrl: uploadedImageUrl ?? formValues.imageUrl ?? created.imageUrl,
             raw: {
