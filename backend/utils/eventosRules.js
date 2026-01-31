@@ -52,6 +52,9 @@ const resolveClubNivelId = (club) => {
   return (
     normalizeNivelNombre(club.nivel_nombre) ??
     normalizeNivelNombre(club.nivelNombre) ??
+    normalizeNivelNombre(club.nivel) ??
+    normalizeNivelNombre(club?.nivel?.nombre) ??
+    normalizeNivelNombre(club?.nivel?.label) ??
     normalizeNivelNombre(club?.plan?.nombre)
   );
 };
