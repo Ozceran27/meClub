@@ -13,6 +13,7 @@ const ReservasModel = require('../models/reservas.model');
 const TarifasModel = require('../models/tarifas.model');
 const ProvinciasModel = require('../models/provincias.model');
 const LocalidadesModel = require('../models/localidades.model');
+const NivelesModel = require('../models/niveles.model');
 const ServiciosModel = require('../models/servicios.model');
 const ClubServiciosModel = require('../models/clubServicios.model');
 const ClubesImpuestosModel = require('../models/clubesImpuestos.model');
@@ -307,6 +308,7 @@ router.patch('/mis-datos', async (req, res) => {
       latitud,
       longitud,
       google_place_id,
+      nivel_id,
       hora_nocturna_inicio,
       hora_nocturna_fin,
     } = req.body || {};
@@ -468,6 +470,22 @@ router.patch('/mis-datos', async (req, res) => {
       });
     }
 
+    let nivelIdValue = nivel_id;
+    if (nivel_id !== undefined) {
+      if (nivel_id === null || nivel_id === '') {
+        return res.status(400).json({ mensaje: 'nivel_id inválido' });
+      }
+      const nivelNumerico = Number(nivel_id);
+      if (!Number.isInteger(nivelNumerico) || nivelNumerico <= 0) {
+        return res.status(400).json({ mensaje: 'nivel_id inválido' });
+      }
+      const nivelExiste = await NivelesModel.existe(nivelNumerico);
+      if (!nivelExiste) {
+        return res.status(400).json({ mensaje: 'El nivel especificado no existe' });
+      }
+      nivelIdValue = nivelNumerico;
+    }
+
     if (localidadIdValue !== undefined && localidadIdValue !== null) {
       let provinciaParaValidar = req.club.provincia_id;
       if (provincia_id !== undefined) {
@@ -507,6 +525,7 @@ router.patch('/mis-datos', async (req, res) => {
     if (latitud !== undefined) payload.latitud = latitudValue;
     if (longitud !== undefined) payload.longitud = longitudValue;
     if (google_place_id !== undefined) payload.google_place_id = placeIdValue;
+    if (nivel_id !== undefined) payload.nivel_id = nivelIdValue;
     if (hora_nocturna_inicio !== undefined) payload.hora_nocturna_inicio = horaNocturnaInicioValue;
     if (hora_nocturna_fin !== undefined) payload.hora_nocturna_fin = horaNocturnaFinValue;
 

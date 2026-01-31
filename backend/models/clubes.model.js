@@ -277,6 +277,7 @@ const ClubesModel = {
       latitud,
       longitud,
       google_place_id,
+      nivel_id,
       hora_nocturna_inicio,
       hora_nocturna_fin,
     } = {}
@@ -309,6 +310,7 @@ const ClubesModel = {
     setField('precio_grabacion', normalizeNullableFloat(precio_grabacion, 'precio_grabacion'));
     setField('direccion', normalizeNullableTrimmedString(direccion, 'direccion'));
     setField('google_place_id', normalizeNullableTrimmedString(google_place_id, 'google_place_id'));
+    setField('nivel_id', normalizeNullableInteger(nivel_id, 'nivel_id'));
     setField('hora_nocturna_inicio', normalizeNullableTime(hora_nocturna_inicio, 'hora_nocturna_inicio'));
     setField('hora_nocturna_fin', normalizeNullableTime(hora_nocturna_fin, 'hora_nocturna_fin'));
 

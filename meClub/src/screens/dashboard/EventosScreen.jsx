@@ -1696,6 +1696,7 @@ function TournamentEventModal({
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showTeamsPicker, setShowTeamsPicker] = useState(false);
 
@@ -1714,6 +1715,7 @@ function TournamentEventModal({
     setDatePicker({ visible: false, field: null });
     setDateError('');
     setSubmitError('');
+    setSaving(false);
     setShowTimePicker(false);
     setShowTeamsPicker(false);
   }, [initialValues]);
@@ -1845,6 +1847,7 @@ function TournamentEventModal({
   }, [imageAsset?.uri, form?.imageUrl]);
 
   const handleSubmit = async () => {
+    if (saving) return;
     if (typeof onSave !== 'function') {
       onClose();
       return;
@@ -1859,14 +1862,21 @@ function TournamentEventModal({
       return;
     }
     setSubmitError('');
-    await onSave({
-      ...form,
-      standings: sortStandingsByPoints(standings),
-      imageAsset,
-      pdfFile: pdfAsset,
-      venues: selectedVenues,
-    });
-    onClose();
+    setSaving(true);
+    try {
+      await onSave({
+        ...form,
+        standings: sortStandingsByPoints(standings),
+        imageAsset,
+        pdfFile: pdfAsset,
+        venues: selectedVenues,
+      });
+      onClose();
+    } catch (error) {
+      setSubmitError(error?.message || 'No se pudo guardar el torneo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -2249,14 +2259,14 @@ function TournamentEventModal({
             <Text className="text-white text-xs font-semibold">Cancelar</Text>
           </Pressable>
           <Pressable
-            disabled={!(editable || resultsEditable)}
+            disabled={saving || !(editable || resultsEditable)}
             onPress={handleSubmit}
             className={`rounded-full px-4 py-2 ${
-              editable || resultsEditable ? 'bg-emerald-500/80' : 'bg-white/10'
+              !saving && (editable || resultsEditable) ? 'bg-emerald-500/80' : 'bg-white/10'
             }`}
           >
             <Text className="text-white text-xs font-semibold">
-              {mode === 'edit' ? 'Guardar cambios' : 'Crear torneo'}
+              {saving ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Crear torneo'}
             </Text>
           </Pressable>
         </View>
@@ -2317,6 +2327,7 @@ function CupEventModal({
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
@@ -2338,6 +2349,7 @@ function CupEventModal({
     setDatePicker({ visible: false, field: null });
     setDateError('');
     setSubmitError('');
+    setSaving(false);
     setShowTimePicker(false);
   }, [initialValues]);
 
@@ -2494,6 +2506,7 @@ function CupEventModal({
   }, [imageAsset?.uri, form?.imageUrl]);
 
   const handleSubmit = async () => {
+    if (saving) return;
     if (typeof onSave !== 'function') {
       onClose();
       return;
@@ -2508,14 +2521,21 @@ function CupEventModal({
       return;
     }
     setSubmitError('');
-    await onSave({
-      ...form,
-      bracket,
-      imageAsset,
-      pdfFile: pdfAsset,
-      venues: selectedVenues,
-    });
-    onClose();
+    setSaving(true);
+    try {
+      await onSave({
+        ...form,
+        bracket,
+        imageAsset,
+        pdfFile: pdfAsset,
+        venues: selectedVenues,
+      });
+      onClose();
+    } catch (error) {
+      setSubmitError(error?.message || 'No se pudo guardar la copa.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -2871,14 +2891,14 @@ function CupEventModal({
             <Text className="text-white text-xs font-semibold">Cancelar</Text>
           </Pressable>
           <Pressable
-            disabled={!(editable || resultsEditable)}
+            disabled={saving || !(editable || resultsEditable)}
             onPress={handleSubmit}
             className={`rounded-full px-4 py-2 ${
-              editable || resultsEditable ? 'bg-emerald-500/80' : 'bg-white/10'
+              !saving && (editable || resultsEditable) ? 'bg-emerald-500/80' : 'bg-white/10'
             }`}
           >
             <Text className="text-white text-xs font-semibold">
-              {mode === 'edit' ? 'Guardar cambios' : 'Crear copa'}
+              {saving ? 'Guardando...' : mode === 'edit' ? 'Guardar cambios' : 'Crear copa'}
             </Text>
           </Pressable>
         </View>
