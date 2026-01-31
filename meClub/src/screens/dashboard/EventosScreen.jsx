@@ -485,8 +485,7 @@ const resolveStandingsSlots = (teamCount) => {
   const normalized = normalizeNumberValue(teamCount);
   if (!normalized) return 0;
   const clamped = Math.max(5, Math.min(40, normalized));
-  const rounded = Math.ceil(clamped / 10) * 10;
-  return Math.min(40, rounded);
+  return clamped;
 };
 
 const normalizeStandingsRow = (row, index) => ({
@@ -692,6 +691,11 @@ const EVENT_TIME_OPTIONS = Array.from({ length: 30 }, (_, index) => {
   return { value: label, label };
 });
 
+const TEAM_COUNT_OPTIONS = Array.from({ length: 36 }, (_, index) => {
+  const value = index + 5;
+  return { value, label: String(value) };
+});
+
 const formatTimeInput = (input) => {
   const digits = String(input ?? '').replace(/\D/g, '').slice(0, 4);
   if (!digits) {
@@ -738,6 +742,63 @@ function OptionPill({ label, active, onPress, disabled }) {
     >
       <Text className="text-xs font-semibold text-white">{label}</Text>
     </Pressable>
+  );
+}
+
+function PickerModal({
+  visible,
+  onClose,
+  options,
+  selectedValue,
+  onSelect,
+  title,
+  emptyText = 'No hay datos disponibles',
+  headerContent,
+}) {
+  if (!visible) return null;
+  return (
+    <ModalContainer
+      visible={visible}
+      onRequestClose={onClose}
+      containerClassName="w-full max-w-xl max-h-[480px]"
+    >
+      <Card className="w-full max-h-[480px]">
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-white text-lg font-semibold">{title}</Text>
+          <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
+            <Ionicons name="close" size={18} color="white" />
+          </Pressable>
+        </View>
+        {headerContent ? <View className="mb-3">{headerContent}</View> : null}
+        <ScrollView className="max-h-[320px]" contentContainerClassName="pb-2">
+          {options.map((option) => {
+            const value = option.value ?? option.id ?? option.key ?? option;
+            const label = option.label ?? option.nombre ?? option.title ?? String(option);
+            const active = String(selectedValue) === String(value);
+            return (
+              <Pressable
+                key={value}
+                onPress={() => {
+                  onSelect(value, option);
+                  onClose();
+                }}
+                className={`rounded-xl px-4 py-3 mb-2 border border-white/5 ${
+                  active ? 'bg-white/10 border-mc-warn' : 'bg-white/5'
+                }`}
+              >
+                <Text className="text-white text-base font-medium">{label}</Text>
+                {option.description ? (
+                  <Text className="text-white/60 text-sm mt-1">{option.description}</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+          {options.length === 0 ? (
+            <Text className="text-white/60 text-sm text-center">{emptyText}</Text>
+          ) : null}
+        </ScrollView>
+      </Card>
+    </ModalContainer>
   );
 }
 
@@ -1241,63 +1302,6 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
     }
   };
 
-  const renderPickerModal = ({
-    visible: pickerVisible,
-    onClose,
-    options,
-    selectedValue,
-    onSelect,
-    title: pickerTitle,
-    emptyText = 'No hay datos disponibles',
-    headerContent,
-  }) => {
-    if (!pickerVisible) return null;
-    return (
-      <ModalContainer
-        visible={pickerVisible}
-        onRequestClose={onClose}
-        containerClassName="w-full max-w-xl max-h-[480px]"
-      >
-        <Card className="w-full max-h-[480px]">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-white text-lg font-semibold">{pickerTitle}</Text>
-            <Pressable onPress={onClose} className="h-9 w-9 items-center justify-center rounded-full bg-white/5">
-              <Ionicons name="close" size={18} color="white" />
-            </Pressable>
-          </View>
-          {headerContent ? <View className="mb-3">{headerContent}</View> : null}
-          <ScrollView className="max-h-[320px]" contentContainerClassName="pb-2">
-            {options.map((option) => {
-              const value = option.value ?? option.id ?? option.key ?? option;
-              const label = option.label ?? option.nombre ?? option.title ?? String(option);
-              const active = String(selectedValue) === String(value);
-              return (
-                <Pressable
-                  key={value}
-                  onPress={() => {
-                    onSelect(value, option);
-                    onClose();
-                  }}
-                  className={`rounded-xl px-4 py-3 mb-2 border border-white/5 ${
-                    active ? 'bg-white/10 border-mc-warn' : 'bg-white/5'
-                  }`}
-                >
-                  <Text className="text-white text-base font-medium">{label}</Text>
-                  {option.description ? (
-                    <Text className="text-white/60 text-sm mt-1">{option.description}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-            {options.length === 0 ? (
-              <Text className="text-white/60 text-sm text-center">{emptyText}</Text>
-            ) : null}
-          </ScrollView>
-        </Card>
-      </ModalContainer>
-    );
-  };
-
   const renderTeamResults = ({ query, results, loading, error, onSelect }) => (
     <View className="mt-2 rounded-2xl border border-white/10 bg-white/5">
       {loading ? (
@@ -1599,27 +1603,27 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
           <Text className="text-rose-200 text-xs">{submitError}</Text>
         ) : null}
       </View>
-      {renderPickerModal({
-        visible: showDatePicker,
-        onClose: () => setShowDatePicker(false),
-        options: EVENT_DATE_OPTIONS,
-        selectedValue: form.date,
-        onSelect: (value) => handleChange('date', value),
-        title: 'Seleccioná una fecha',
-        emptyText: 'No hay fechas disponibles',
-      })}
-      {renderPickerModal({
-        visible: showTimePicker,
-        onClose: () => setShowTimePicker(false),
-        options: EVENT_TIME_OPTIONS,
-        selectedValue: form.time,
-        onSelect: (value) => {
+      <PickerModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        options={EVENT_DATE_OPTIONS}
+        selectedValue={form.date}
+        onSelect={(value) => handleChange('date', value)}
+        title="Seleccioná una fecha"
+        emptyText="No hay fechas disponibles"
+      />
+      <PickerModal
+        visible={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        options={EVENT_TIME_OPTIONS}
+        selectedValue={form.time}
+        onSelect={(value) => {
           handleChange('time', value);
           setTimeInput(value);
           setTimeInputError('');
-        },
-        title: 'Seleccioná un horario',
-        headerContent: (
+        }}
+        title="Seleccioná un horario"
+        headerContent={(
           <View className="gap-2">
             <Text className="text-white/70 text-xs">Ingresar manualmente</Text>
             <TextInput
@@ -1635,34 +1639,34 @@ function FriendlyEventModal({ visible, mode, initialValues, onClose, venues, spo
               <Text className="text-rose-200 text-xs">{timeInputError}</Text>
             ) : null}
           </View>
-        ),
-        emptyText: 'No hay horarios disponibles',
-      })}
-      {renderPickerModal({
-        visible: showVenuePicker,
-        onClose: () => setShowVenuePicker(false),
-        options: venues.map((venue) => ({
+        )}
+        emptyText="No hay horarios disponibles"
+      />
+      <PickerModal
+        visible={showVenuePicker}
+        onClose={() => setShowVenuePicker(false)}
+        options={venues.map((venue) => ({
           value: venue.cancha_id ?? venue.id,
           label: venue.nombre ?? venue.label ?? `Cancha #${venue.cancha_id ?? venue.id}`,
           description: venue.descripcion ?? venue.deporte?.nombre,
-        })),
-        selectedValue: form.venue,
-        onSelect: (value) => handleChange('venue', value),
-        title: 'Seleccioná una sede',
-        emptyText: 'No encontramos sedes disponibles',
-      })}
-      {renderPickerModal({
-        visible: showSportPicker,
-        onClose: () => setShowSportPicker(false),
-        options: sports.map((sport) => ({
+        }))}
+        selectedValue={form.venue}
+        onSelect={(value) => handleChange('venue', value)}
+        title="Seleccioná una sede"
+        emptyText="No encontramos sedes disponibles"
+      />
+      <PickerModal
+        visible={showSportPicker}
+        onClose={() => setShowSportPicker(false)}
+        options={sports.map((sport) => ({
           value: sport.id ?? sport.deporte_id,
           label: sport.nombre ?? sport.label ?? `Deporte #${sport.id ?? sport.deporte_id}`,
-        })),
-        selectedValue: form.sport,
-        onSelect: (value) => handleChange('sport', value),
-        title: 'Seleccioná un deporte',
-        emptyText: 'No encontramos deportes disponibles',
-      })}
+        }))}
+        selectedValue={form.sport}
+        onSelect={(value) => handleChange('sport', value)}
+        title="Seleccioná un deporte"
+        emptyText="No encontramos deportes disponibles"
+      />
     </ModalContainer>
   );
 }
@@ -1691,8 +1695,9 @@ function TournamentEventModal({
   const [pickingPdf, setPickingPdf] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
-  const [timeErrors, setTimeErrors] = useState({ startTime: '', endTime: '' });
   const [submitError, setSubmitError] = useState('');
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showTeamsPicker, setShowTeamsPicker] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -1708,8 +1713,9 @@ function TournamentEventModal({
     setPdfError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
-    setTimeErrors({ startTime: '', endTime: '' });
     setSubmitError('');
+    setShowTimePicker(false);
+    setShowTeamsPicker(false);
   }, [initialValues]);
 
   useEffect(() => {
@@ -1723,15 +1729,6 @@ function TournamentEventModal({
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleTimeFieldChange = (field, value) => {
-    const { formatted, isComplete, isValid } = formatTimeInput(value);
-    handleChange(field, formatted);
-    setTimeErrors((prev) => ({
-      ...prev,
-      [field]: isComplete && !isValid ? 'Ingresá una hora válida (00-23 / 00-59).' : '',
-    }));
   };
 
   const handleOpenDatePicker = (field) => {
@@ -1801,17 +1798,6 @@ function TournamentEventModal({
     }
   };
 
-  const handleTeamCount = (value) => {
-    const normalized = value.replace(/[^0-9]/g, '');
-    const parsed = Number(normalized);
-    if (!Number.isFinite(parsed)) {
-      handleChange('teams', '');
-      return;
-    }
-    const clamped = Math.max(5, Math.min(40, parsed));
-    handleChange('teams', String(clamped));
-  };
-
   const handleStandingChange = (index, field, value) => {
     if (!resultsEditable) return;
     setStandings((prev) =>
@@ -1870,14 +1856,6 @@ function TournamentEventModal({
     }
     if (form?.prizes && parseCurrencyInput(form.prizes) === null) {
       setSubmitError('Ingresá un valor de premio válido.');
-      return;
-    }
-    if (!form?.endTime) {
-      setSubmitError('Ingresá un horario de finalización.');
-      return;
-    }
-    if (timeErrors.startTime || timeErrors.endTime) {
-      setSubmitError('Corregí los horarios antes de guardar.');
       return;
     }
     setSubmitError('');
@@ -2011,30 +1989,20 @@ function TournamentEventModal({
           {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Hora inicio"
-                placeholder="08:00"
-                value={form.startTime}
-                onChangeText={(value) => handleTimeFieldChange('startTime', value)}
-                editable={editable}
-                keyboardType="numeric"
-              />
-              {timeErrors.startTime ? (
-                <Text className="text-rose-200 text-xs mt-1">{timeErrors.startTime}</Text>
-              ) : null}
-            </View>
-            <View className="flex-1">
-              <FormField
-                label="Hora fin"
-                placeholder="20:00"
-                value={form.endTime}
-                onChangeText={(value) => handleTimeFieldChange('endTime', value)}
-                editable={editable}
-                keyboardType="numeric"
-              />
-              {timeErrors.endTime ? (
-                <Text className="text-rose-200 text-xs mt-1">{timeErrors.endTime}</Text>
-              ) : null}
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Horario
+              </Text>
+              <Pressable
+                onPress={() => editable && setShowTimePicker(true)}
+                className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                  editable ? '' : 'opacity-70'
+                }`}
+              >
+                <Text className={form.startTime ? 'text-white' : 'text-white/50'}>
+                  {form.startTime || 'Seleccionar horario'}
+                </Text>
+                <Ionicons name="time-outline" size={16} color="#E2E8F0" />
+              </Pressable>
             </View>
           </View>
           <View className="gap-2">
@@ -2103,15 +2071,21 @@ function TournamentEventModal({
           </View>
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Cantidad de equipos"
-                placeholder="5-40"
-                value={form.teams}
-                onChangeText={handleTeamCount}
-                editable={editable}
-                keyboardType="numeric"
-              />
-              <Text className="text-white/40 text-xs mt-1">Min 5 · Max 40</Text>
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Cantidad de equipos
+              </Text>
+              <Pressable
+                onPress={() => editable && setShowTeamsPicker(true)}
+                className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                  editable ? '' : 'opacity-70'
+                }`}
+              >
+                <Text className={form.teams ? 'text-white' : 'text-white/50'}>
+                  {form.teams ? `${form.teams} equipos` : 'Seleccionar cantidad'}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color="#E2E8F0" />
+              </Pressable>
+              <Text className="text-white/40 text-xs mt-1">Seleccioná entre 5 y 40 equipos.</Text>
             </View>
           </View>
           <View className="gap-2">
@@ -2290,6 +2264,24 @@ function TournamentEventModal({
           <Text className="text-rose-200 text-xs">{submitError}</Text>
         ) : null}
       </View>
+      <PickerModal
+        visible={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        options={EVENT_TIME_OPTIONS}
+        selectedValue={form.startTime}
+        onSelect={(value) => handleChange('startTime', value)}
+        title="Seleccioná un horario"
+        emptyText="No hay horarios disponibles"
+      />
+      <PickerModal
+        visible={showTeamsPicker}
+        onClose={() => setShowTeamsPicker(false)}
+        options={TEAM_COUNT_OPTIONS}
+        selectedValue={form.teams}
+        onSelect={(value) => handleChange('teams', String(value))}
+        title="Seleccioná la cantidad de equipos"
+        emptyText="No hay opciones disponibles"
+      />
       {datePicker.visible && Platform.OS !== 'web' ? (
         <DateTimePicker
           mode="date"
@@ -2324,8 +2316,8 @@ function CupEventModal({
   const [pickingPdf, setPickingPdf] = useState(false);
   const [datePicker, setDatePicker] = useState({ visible: false, field: null });
   const [dateError, setDateError] = useState('');
-  const [timeErrors, setTimeErrors] = useState({ startTime: '', endTime: '' });
   const [submitError, setSubmitError] = useState('');
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const isEditLocked = mode === 'edit' && initialValues?.status?.toLowerCase() !== 'inactivo';
   const editable = !isEditLocked;
@@ -2345,8 +2337,8 @@ function CupEventModal({
     setPdfError('');
     setDatePicker({ visible: false, field: null });
     setDateError('');
-    setTimeErrors({ startTime: '', endTime: '' });
     setSubmitError('');
+    setShowTimePicker(false);
   }, [initialValues]);
 
   useEffect(() => {
@@ -2360,15 +2352,6 @@ function CupEventModal({
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleTimeFieldChange = (field, value) => {
-    const { formatted, isComplete, isValid } = formatTimeInput(value);
-    handleChange(field, formatted);
-    setTimeErrors((prev) => ({
-      ...prev,
-      [field]: isComplete && !isValid ? 'Ingresá una hora válida (00-23 / 00-59).' : '',
-    }));
   };
 
   const handleOpenDatePicker = (field) => {
@@ -2524,14 +2507,6 @@ function CupEventModal({
       setSubmitError('Ingresá un valor de premio válido.');
       return;
     }
-    if (!form?.endTime) {
-      setSubmitError('Ingresá un horario de finalización.');
-      return;
-    }
-    if (timeErrors.startTime || timeErrors.endTime) {
-      setSubmitError('Corregí los horarios antes de guardar.');
-      return;
-    }
     setSubmitError('');
     await onSave({
       ...form,
@@ -2663,30 +2638,20 @@ function CupEventModal({
           {dateError ? <Text className="text-rose-200 text-xs">{dateError}</Text> : null}
           <View className="flex-row gap-4">
             <View className="flex-1">
-              <FormField
-                label="Hora inicio"
-                placeholder="08:00"
-                value={form.startTime}
-                onChangeText={(value) => handleTimeFieldChange('startTime', value)}
-                editable={editable}
-                keyboardType="numeric"
-              />
-              {timeErrors.startTime ? (
-                <Text className="text-rose-200 text-xs mt-1">{timeErrors.startTime}</Text>
-              ) : null}
-            </View>
-            <View className="flex-1">
-              <FormField
-                label="Hora fin"
-                placeholder="20:00"
-                value={form.endTime}
-                onChangeText={(value) => handleTimeFieldChange('endTime', value)}
-                editable={editable}
-                keyboardType="numeric"
-              />
-              {timeErrors.endTime ? (
-                <Text className="text-rose-200 text-xs mt-1">{timeErrors.endTime}</Text>
-              ) : null}
+              <Text className="text-white/70 text-xs font-semibold uppercase tracking-wide">
+                Horario
+              </Text>
+              <Pressable
+                onPress={() => editable && setShowTimePicker(true)}
+                className={`${FORM_FIELD_CLASSNAME} flex-row items-center justify-between ${
+                  editable ? '' : 'opacity-70'
+                }`}
+              >
+                <Text className={form.startTime ? 'text-white' : 'text-white/50'}>
+                  {form.startTime || 'Seleccionar horario'}
+                </Text>
+                <Ionicons name="time-outline" size={16} color="#E2E8F0" />
+              </Pressable>
             </View>
           </View>
           <View className="gap-2">
@@ -2921,6 +2886,15 @@ function CupEventModal({
           <Text className="text-rose-200 text-xs">{submitError}</Text>
         ) : null}
       </View>
+      <PickerModal
+        visible={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        options={EVENT_TIME_OPTIONS}
+        selectedValue={form.startTime}
+        onSelect={(value) => handleChange('startTime', value)}
+        title="Seleccioná un horario"
+        emptyText="No hay horarios disponibles"
+      />
       {datePicker.visible && Platform.OS !== 'web' ? (
         <DateTimePicker
           mode="date"
@@ -3295,11 +3269,6 @@ export default function EventosScreen() {
       startTime: formatEventTime(
         selectedEvent?.raw?.hora_inicio ?? selectedEvent?.time ?? ''
       ),
-      endTime: formatEventTime(
-        selectedEvent?.raw?.hora_fin ??
-          selectedEvent?.raw?.hora_finalizacion ??
-          ''
-      ),
       zone: normalizeZoneValue(selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? ''),
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
       sport: selectedEvent?.sport ?? selectedEvent?.raw?.deporte_id ?? '',
@@ -3341,11 +3310,6 @@ export default function EventosScreen() {
       ),
       startTime: formatEventTime(
         selectedEvent?.raw?.hora_inicio ?? selectedEvent?.time ?? ''
-      ),
-      endTime: formatEventTime(
-        selectedEvent?.raw?.hora_fin ??
-          selectedEvent?.raw?.hora_finalizacion ??
-          ''
       ),
       zone: normalizeZoneValue(selectedEvent?.zone ?? selectedEvent?.raw?.zona ?? ''),
       teams: selectedEvent?.teams ?? selectedEvent?.raw?.limite_equipos ?? '',
@@ -3410,7 +3374,6 @@ export default function EventosScreen() {
       fecha_inicio: startDate,
       fecha_fin: endDate,
       hora_inicio: formValues?.startTime?.trim() || null,
-      hora_fin: formValues?.endTime?.trim() || null,
       zona,
       provincia_id: provinciaId,
       deporte_id: resolveSportId(formValues?.sport, fallbackEvent),

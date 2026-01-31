@@ -370,10 +370,6 @@ const createEvento = async (req, res) => {
     const equipos = parseEquiposPayload(req.body?.equipos ?? [], {
       requiredCount: tipo === 'amistoso' ? 2 : undefined,
     });
-    if (['torneo', 'copa'].includes(tipo) && !hora_fin) {
-      throwValidationError('hora_fin es obligatoria para torneos y copas');
-    }
-
     const evento = await EventosModel.crear(req.club.club_id, {
       nombre,
       tipo,
@@ -568,16 +564,6 @@ const updateEvento = async (req, res) => {
 
     if (req.body?.imagen_url !== undefined) {
       updates.imagen_url = parseOptionalString(req.body.imagen_url);
-    }
-
-    const tipoFinal = updates.tipo || existente.tipo;
-    const horaFinFinal = updates.hora_fin ?? existente.hora_fin;
-    const horaFinTouched =
-      req.body?.hora_fin !== undefined ||
-      req.body?.tipo !== undefined ||
-      req.body?.fecha_fin !== undefined;
-    if (['torneo', 'copa'].includes(tipoFinal) && horaFinTouched && !horaFinFinal) {
-      throwValidationError('hora_fin es obligatoria para torneos y copas');
     }
 
     const evento = await EventosModel.actualizar(eventoId, req.club.club_id, updates);
